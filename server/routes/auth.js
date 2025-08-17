@@ -1,22 +1,8 @@
-import bycrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import User from '../models/UserModel';
+import express from 'express';
+import { login } from '../controllers/AuthController.js';
 
-const login = async (req, res) =>{
-  try {
-    const {email, password} = req.body;
-    const user = await User.findOne({email});
-    if(!user){
-      return res.status(401).json({succcess:false, message:"User not found"});
+const router = express.Router();
 
-      const isMatch = bycrypt.compare(password, user.password);
+router.post('login', login);
 
-      if(!isMatch){
-        return res.status(401).json({success: false, message: "Invalid credentials"});
-      };
-      const token = jwt.sign({id: user._id}, process.env.JWT_SECRET, {expiresIn: '1h'})
-    } 
-  } catch (error) {
-    
-  }
-}
+export default router;
