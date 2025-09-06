@@ -1,3 +1,4 @@
+import axios from 'axios';
 import React, { useState } from 'react'
 
 const Categories = () => {
@@ -6,7 +7,7 @@ const Categories = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const response = await fetch('http://localhost:5000/api/category/add',
+    const response = await axios.post('http://localhost:3000/api/category/add',
     { categoryName, categoryDescription },
      {
         headers: {
@@ -15,9 +16,9 @@ const Categories = () => {
       }
     );
     if (response.data.success) {
-      alert("Category added succesfully")
       setCategoryDescription("");
       setCategoryName("");
+      alert("Category added succesfully!")
     }else{
       console.log("Error adding category:", data);
       alert("Error adding category, Please try again")
