@@ -31,4 +31,45 @@ const getCategories = async (req, res) => {
   } 
 }
 
-export { addCategory, getCategories }
+const updateCategory = async (req, res)=>{
+  console.log(req.categoryName);
+  
+  try {
+    const {id} = req.params;
+    const {categoryName, categoryDescription} = req.body;
+
+    // check if the category exists
+    const existingCategory = await Category.findById(id);
+    if (!existingCategory) {
+      return res.status(404).json({success: false, message:'Category not found'})
+    }
+
+    const updatedCategory = await Category.findByIdAndUpdate(
+      id,
+      {categoryName, categoryDescription},
+      {new: true}
+    );
+    return res.status(200).json({success: true, message: 'Category updated successfully'});
+  } catch (error) {
+    
+  }
+}
+
+const deleteCategory = async (req, res)=>{
+  try{
+    const {id} = req.params;
+
+    //check if the category exists
+    const existingCategory = await Category.findById(id);
+    if (!existingCategory) {
+      return res.status(404).json({success: false, message: 'Category not found'})
+    }
+
+    await Category.findByIdAndDelete(id);
+    return res.status(200).json({success: true, message: 'Category deleted successfully'})
+  }catch(error){
+    console.error('Error deleting category', error);
+    return res.status(500).json({success: false, message: 'Server error'})
+  }
+}
+export { addCategory, getCategories, updateCategory, deleteCategory}
