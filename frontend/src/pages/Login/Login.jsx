@@ -19,7 +19,7 @@ const Login = () => {
 
     try {
       const response = await axios.post("http://localhost:3000/api/auth/login", { email, password });
-      console.log(response);
+      // console.log(response);
 
 
       if (response.data.success) {
@@ -27,9 +27,9 @@ const Login = () => {
         console.log(response.data.user.role);
         
         if (response.data.user.role === "admin") {
-          navigate("/admin/dashboard")
+          navigate("/admin-dashboard")
         } else {
-          navigate("/customer/dashboard")
+          navigate("/customer-dashboard")
         }
       } else {
         alert(response.data.message)
@@ -87,4 +87,4 @@ const Login = () => {
   )
 }
 
-export default Login
+export default Login;
