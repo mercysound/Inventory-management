@@ -5,6 +5,7 @@ import Login from './pages/Login/Login.jsx';
 import ProtectedRoutes from './utils/ProtectedRoutes.jsx';
 import Dashboard from './pages/Login/Dashboard.jsx';
 import Categories from './components/Categories.jsx';
+import Suppliers from './components/Suppliers.jsx';
 
 function App () {
 
@@ -21,7 +22,7 @@ function App () {
           <Route index element={<h1>summary of dashbord</h1>} />
           <Route path='categories' element={<Categories/>} />
           <Route path='products' element={<h1>Products</h1>} />
-          <Route path='suppliers' element={<h1>Suppliers</h1>} />
+          <Route path='suppliers' element={<Suppliers/>} />
           <Route path='orders' element={<h1>Orders</h1>} />
           <Route path='profile' element={<h1>Profile</h1>} />
           <Route path='users' element={<h1>Users</h1>} />
