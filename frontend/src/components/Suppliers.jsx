@@ -63,6 +63,8 @@ const Suppliers = () => {
       number: "",
       address: ""
     })
+
+    setEditSupplier(null)
   }
   // const handleAddSupplier = () => {
   //    setAddSupplier(true)
@@ -73,16 +75,29 @@ const Suppliers = () => {
     e.preventDefault()
     let response
     try {
-      response = await axios.post(`http://localhost:3000/api/supplier/add`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('pos-token')}`
-          },
-        }
-      );
+      if (editSupplier) {
+        response = await axios.put(`http://localhost:3000/api/supplier/${editSupplier}`,
+          formData,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('pos-token')}`
+            },
+          }
+        )
+      }else{
+        response = await axios.post(`http://localhost:3000/api/supplier/add`,
+          formData,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('pos-token')}`
+            },
+          }
+        );
+      }
       if (response.data.success) {
-        alert("Supplier added succefully!");
+        fetchSuppliers()
+        alert(editSupplier?"Supplier upadated successfully!":"Supplier added succefully!");
+        setAddSupplier(false);
         setEditSupplier(false);
         setFormData({
           name: "",
@@ -91,14 +106,14 @@ const Suppliers = () => {
           address: ""
         })
       } else {
-        console.error("Error adding Supplier:", response.data);
-        alert("Error adding Supplier. Please try again")
+        console.error(editSupplier?"Error updating Supplier":"Error adding Supplier:", response.data);
+        alert(editSupplier?"Error updating Supplier, Please try again":"Error adding Supplier, Please try again")
       }
     } catch (error) {
       // console.error("Error adding supplier:", error);
       // alert(error.response.data.message," Please try again")
       // alert("Error adding. Please try agains.")
-      if (error.response?.status === 40) {
+      if (error.response?.status === 400) {
         alert("Supplier already exists");
       } else if (error.response?.status === 401) {
         alert("Session expired, please log in again");
@@ -106,12 +121,33 @@ const Suppliers = () => {
       } else {
         alert("Something went wrong");
       }
-    }finally{
-      setAddSupplier(false)
     }
   }
 
-
+  const handleDelete = async (id)=>{
+    try {
+      const confirmDelete = confirm("Are you sure you want to delete this supplier")
+      if (confirmDelete) {
+        const response = await axios.delete(`http://localhost:3000/api/supplier/${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("pos-token")}`
+            },
+          }
+        )
+        if(response.data.success){
+          alert('Supplier deleted successfully!')
+          fetchSuppliers();
+        }else{
+          console.error("Error deleting supplier", data);
+          alert("Error deleting supplier. Please try again")
+        }
+      }
+    } catch (error) {
+      console.error("Error deleting supplier:", error)
+        alert("Error deleting supplier. Please try again")
+    }
+  }
 
 
 
@@ -120,7 +156,7 @@ const Suppliers = () => {
       <h1 className="text-2xl font-bold">Supplier Management</h1>
       <div className='flex justify-between items-center'>
         <input type="text" placeholder='Search' className='border p-1 bg-white rounded px-4' />
-        <button className='px-4 py-1.5 bg-blue-500 text-white rounded cursor-pointer' onClick={()=>setAddSupplier(1)}>Add Supplier</button>
+        <button className='px-4 py-1.5 bg-blue-500 text-white rounded cursor-pointer' onClick={()=>setAddSupplier(true)}>Add Supplier</button>
       </div>
 
 
@@ -148,7 +184,7 @@ const Suppliers = () => {
                 <td className='border border-gray-300 p-2'>{supplier.address}</td>
                 <td className='border border-gray-300 p-2'>
                   <button className='px-2 py-1 bg-yellow-500 text-white rounded cursor-pointer mr-2' onClick={() => handleEdit(supplier)}>Edit</button>
-                  <button className='px-2 py-1 bg-red-500 text-white rounded cursor-pointer mr-2' >Delete</button>
+                  <button className='px-2 py-1 bg-red-500 text-white rounded cursor-pointer mr-2' onClick={()=>handleDelete(supplier._id)}>Delete</button>
                 </td>
               </tr>
             ))

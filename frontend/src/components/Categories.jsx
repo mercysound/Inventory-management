@@ -148,8 +148,7 @@ const Categories = () => {
           fetchCagories(); // Refresh the categories list after deletion
         } else {
           console.error("Error deleting category", data);
-          alert("Error category. Please try again")
-
+          alert("Error deleting category. Please try again")
         } 
       } catch (error) {
         console.error("Error deleting category:", error)
