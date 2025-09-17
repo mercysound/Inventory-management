@@ -22,65 +22,22 @@ const Categories = () => {
       setCategories(response.data.categories);
     } catch (error) {
       console.error("Error fetching categories", error)
-      // if (error.response && error.response.status === 401) {
-      //     if (error.response.data.message === "Token has expired, please login again") {
-      //       localStorage.removeItem("token");
-      //       alert("gone")
-      //       navigate("/login");
-      //     }
-      //   }
-    } finally {
+      
+      if (error.response && error.response.status === 401) {
+          if (error.response.data.message === "Token has expired, please login again") {
+            localStorage.removeItem("token");
+            alert("gone")
+            navigate("/login");
+          }
+        }
+    } 
+    finally {
       setLoading(false);
     }
   }
   useEffect(() => {
     fetchCagories()
   }, [])
-
-  // const handleSubmit = async (e) => {
-  //   e.preventDefault();
-  //   if (editCategory) {
-  //     const response = await axios.put(`http://localhost:3000/api/category/${editCategory}`,
-  //       { categoryName, categoryDescription },
-  //       {
-  //         headers: {
-  //           Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
-  //         },
-  //       }
-  //     );
-  //     if (response.data.success) {
-  //       setEditCategory(null)
-  //       fetchCagories();
-  //       alert("Category Updated succesfully!");
-  //     } else {
-  //       console.log("Error update category");
-  //       alert("Error update category, Please try again")
-  //     }
-  //   } else {
-  //     try {
-  //       const response = await axios.post('http://localhost:3000/api/category/add',
-  //         { categoryName, categoryDescription },
-  //         {
-  //           headers: {
-  //             Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
-  //           },
-  //         }
-  //       );
-  //       if (response.data.success) {
-  //         setCategoryDescription("");
-  //         setCategoryName("");
-  //         alert("Category added succesfully!");
-  //         fetchCagories(); // Refresh the categories list after adding a new category 
-  //       } else {
-  //         console.log("Error adding category");
-  //         alert("Error adding category, Please try again")
-  //       }
-  //     } catch (error) {
-  //       console.log("Error adding category:", data);
-
-  //     }
-  //   }
-  // }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -124,8 +81,8 @@ const Categories = () => {
 
   const handleEdit = async (category) => {
     setEditCategory(category._id)
-    setCategoryName(category.categoryName)
-    setCategoryDescription(category.categoryDescription)
+    setCategoryName(category.name)
+    setCategoryDescription(category.description)
   }
   const handleCancel = async () => {
     setEditCategory(null)
@@ -213,8 +170,8 @@ const Categories = () => {
                   {categories.map((category, index) => (
                     <tr key={index}>
                       <td className='border border-gray-200 p-2'>{index + 1}</td>
-                      <td className='border border-gray-200 p-2'>{category.categoryName}</td>
-                      <td className='border border-gray-200 p-2'>{category.categoryDescription}</td>
+                      <td className='border border-gray-200 p-2'>{category.name}</td>
+                      <td className='border border-gray-200 p-2'>{category.description}</td>
                       <td className='border border-gray-200 p-2'>
                         <button onClick={() => handleEdit(category)} className='bg-blue-500 text-white p-2 rounded-md hover:bg-red-600 mr-2'>Edit</button>
                         <button

@@ -1,17 +1,18 @@
-import Category from '../models/Category.js'
+import CategoryModel from '../models/CategoryModel.js'
 
 const addCategory = async (req, res) => {
   try {
-    const { categoryName, categoryDescription } = req.body
+    const { categoryName, categoryDescription } = req.body;
+    
     //check if the category already exists
-    const existingCategory = await Category.findOne({ categoryName });
+    const existingCategory = await CategoryModel.findOne({ categoryName });
     if (existingCategory) {
       return res.status(400).json({ success: false, message: 'Category already exists' })
     }
     // Create a new category
-    const newCategory = new Category({
-      categoryName,
-      categoryDescription
+    const newCategory = new CategoryModel({
+      name: categoryName,
+      description: categoryDescription
     });
 
     await newCategory.save();
@@ -24,7 +25,7 @@ const addCategory = async (req, res) => {
 
 const getCategories = async (req, res) => {
   try {
-    const categories = await Category.find();
+    const categories = await CategoryModel.find();
     return res.status(200).json({ success: true, categories })
   } catch (error) {
     return res.status(500).json({success:false, message: "Server error in categories"})
@@ -32,21 +33,19 @@ const getCategories = async (req, res) => {
 }
 
 const updateCategory = async (req, res)=>{
-  console.log(req.categoryName);
-  
   try {
     const {id} = req.params;
     const {categoryName, categoryDescription} = req.body;
 
     // check if the category exists
-    const existingCategory = await Category.findById(id);
+    const existingCategory = await CategoryModel.findById(id);
     if (!existingCategory) {
       return res.status(404).json({success: false, message:'Category not found'})
     }
 
-    const updatedCategory = await Category.findByIdAndUpdate(
+    const updatedCategory = await CategoryModel.findByIdAndUpdate(
       id,
-      {categoryName, categoryDescription},
+      {name:categoryName, description:categoryDescription},
       {new: true}
     );
     return res.status(200).json({success: true, message: 'Category updated successfully'});
@@ -61,7 +60,7 @@ const deleteCategory = async (req, res)=>{
     const {id} = req.params;
 
     //check if the category exists
-    const existingCategory = await Category.findById(id);
+    const existingCategory = await CategoryModel.findById(id);
     if (!existingCategory) {
       return res.status(404).json({success: false, message: 'Category not found'})
     }

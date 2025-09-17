@@ -24,7 +24,6 @@ const Login = () => {
 
       if (response.data.success) {
         await login(response.data.user, response.data.token);
-        console.log(response.data.user.role);
         
         if (response.data.user.role === "admin") {
           navigate("/admin-dashboard")

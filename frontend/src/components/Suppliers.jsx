@@ -4,6 +4,7 @@ import axios from 'axios';
 const Suppliers = () => {
   const [editSupplier, setEditSupplier] = useState(null);
   const [addSupplier, setAddSupplier] = useState(null);
+  const [filterSupplier, setFilterSupplier] = useState([])
 
   const [formData, setFormData] = useState({
     name: "",
@@ -31,7 +32,8 @@ const Suppliers = () => {
           Authorization: `Bearer ${localStorage.getItem('pos-token')}`
         },
       })
-      setSetsuppliers(response.data.suppliers)
+      setSetsuppliers(response.data.suppliers);
+      setFilterSupplier(response.data.suppliers);
     } catch (error) { 
       console.error("Error fetching suppliers", error);
     } finally {
@@ -66,10 +68,6 @@ const Suppliers = () => {
 
     setEditSupplier(null)
   }
-  // const handleAddSupplier = () => {
-  //    setAddSupplier(true)
-  //    setEditSupplier(true)
-  // }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -149,13 +147,19 @@ const Suppliers = () => {
     }
   }
 
-
+  const handleSearch = async (e)=>{
+    setFilterSupplier(
+      suppliers.filter((supplier)=>
+        supplier.name.toLowerCase().includes(e.target.value.toLowerCase())
+      )
+    )
+  }
 
   return (
     <div className='w-full h-full flex flex-col gap-4 p-4'>
       <h1 className="text-2xl font-bold">Supplier Management</h1>
       <div className='flex justify-between items-center'>
-        <input type="text" placeholder='Search' className='border p-1 bg-white rounded px-4' />
+        <input type="text" placeholder='Search' className='border p-1 bg-white rounded px-4' onChange={handleSearch} />
         <button className='px-4 py-1.5 bg-blue-500 text-white rounded cursor-pointer' onClick={()=>setAddSupplier(true)}>Add Supplier</button>
       </div>
 
@@ -173,7 +177,7 @@ const Suppliers = () => {
             </tr>
           </thead>
           <tbody>
-            {suppliers.map((supplier, index) => (
+            {filterSupplier.map((supplier, index) => (
               // console.log(supplier)
 
               <tr key={supplier._id}>
@@ -193,6 +197,7 @@ const Suppliers = () => {
         </table>
       )}
 
+      {filterSupplier === 0 && <div>No record</div>}
 
       {
         addSupplier && (
