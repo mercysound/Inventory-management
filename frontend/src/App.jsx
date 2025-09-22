@@ -8,6 +8,7 @@ import Categories from './components/Categories.jsx';
 import Suppliers from './components/Suppliers.jsx';
 import Product from './components/Product.jsx';
 import Logout from './components/Logout.jsx';
+import Users from './components/User.jsx';
 
 function App () {
 
@@ -27,7 +28,7 @@ function App () {
           <Route path='suppliers' element={<Suppliers/>} />
           <Route path='orders' element={<h1>Orders</h1>} />
           <Route path='profile' element={<h1>Profile</h1>} />
-          <Route path='users' element={<h1>Users</h1>} />
+          <Route path='users' element={<Users/>} />
           <Route path='logout' element={<Logout/>} />
         </Route>
         <Route path='/customer/dashboard' element={<h1>Customer dashboard</h1>} />

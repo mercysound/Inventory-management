@@ -1,12 +1,16 @@
 import SupplierModel from '../models/SupplierModel.js';
 import CategoryModel from '../models/CategoryModel.js';
+import ProductModel from '../models/ProductModel.js';
+
 
 
 const getProducts = async (req, res) => {
   try {
+    const products = await ProductModel.find({ isDeleted: false }).populate('categoryId').populate('supplierId');
+    
     const suppliers = await SupplierModel.find();
     const categories = await CategoryModel.find();
-    return res.status(200).json({ success: true, suppliers, categories })
+    return res.status(200).json({ success: true, suppliers, categories, products })
   } catch (error) {
     console.error('Error fetching suppliers:', error);
 
@@ -16,26 +20,69 @@ const getProducts = async (req, res) => {
 
 const addProduct = async (req, res) => {
   try {
-    const { name, email, number, address } = req.body
-    //check if the category already exists
-    const existingSupplier = await Supplier.findOne({ name });
-    if (existingSupplier) {
-      return res.status(409).json({ success: false, message: 'Supplier already exists' }) // 409 = Conflict
-    }
+    const { name, description, price, stock, categoryId, supplierId, } = req.body;
     // Create a new category
-    const newSupplier = new Supplier({
+    const newProduct = new ProductModel({
       name,
-      email,
-      number,
-      address
+      description,
+      price,
+      stock,
+      categoryId,
+      supplierId,
     });
 
-    await newSupplier.save();
-    return res.status(201).json({ success: true, message: 'Supplier added succesfully' }) // 201 = Created
+    await newProduct.save();
+    return res.status(201).json({ success: true, message: 'Product  added succesfully' }) // 201 = Created
   } catch (error) {
-    console.error("Error adding supplier", error);
+    console.error("Error adding Product", error);
     return res.status(500).json({ success: false, message: "server error" }) // 500 = Internal error
   }
 }
 
-export {getProducts, addProduct}
+const updateProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { name, description, price, stock, categoryId, supplierId } = req.body;
+    // Update the product
+    const updateProduct = await ProductModel.findByIdAndUpdate(id, {
+      name,
+      description,
+      price,
+      stock,
+      categoryId,
+      supplierId
+    }, { new: true });
+    if (!updateProduct) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    return res.status(200).json({ success: true, message: 'Product updated successfully', product: updateProduct });
+  } catch (error) {
+    console.error('Error updating Product', error);
+    return res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+const deleteProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+  
+    const existingProduct = await ProductModel.findById(id);
+
+    if (!existingProduct) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    if (existingProduct.isDeleted) {
+      return res.status(400).json({ success: false, message: 'Product already deleted' })
+    }
+    await ProductModel.findByIdAndUpdate(id, {isDeleted: true}, {new: true})
+    return res.status(200).json({ success: true, message: 'Product deleted successfully' })
+
+  } catch (error) {
+    console.error('Error deleting Product', error);
+    return res.status(500).json({ success: false, message: 'Server error' })
+  }
+}
+
+export { getProducts, addProduct, updateProduct, deleteProduct }

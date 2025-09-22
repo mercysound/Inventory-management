@@ -26,7 +26,7 @@ const Categories = () => {
       if (error.response && error.response.status === 401) {
           if (error.response.data.message === "Token has expired, please login again") {
             localStorage.removeItem("token");
-            alert("gone")
+            // alert("gone")
             navigate("/login");
           }
         }
