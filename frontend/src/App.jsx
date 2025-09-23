@@ -9,6 +9,7 @@ import Suppliers from './components/Suppliers.jsx';
 import Product from './components/Product.jsx';
 import Logout from './components/Logout.jsx';
 import Users from './components/User.jsx';
+import CustomerProducts from './components/CustomerProducts.jsx';
 
 function App () {
 
@@ -31,7 +32,13 @@ function App () {
           <Route path='users' element={<Users/>} />
           <Route path='logout' element={<Logout/>} />
         </Route>
-        <Route path='/customer/dashboard' element={<h1>Customer dashboard</h1>} />
+        <Route 
+        path='/customer-dashboard' 
+        element={<Dashboard />}
+        >
+        <Route
+        index element={<CustomerProducts/>}></Route>
+        </Route>
         <Route path='/login' element={<Login />} />
         <Route path='/unathorized' element={<p className='font-bold text-3xl mt-20 ml-20'>Uanthorized</p>} />
       </Routes>

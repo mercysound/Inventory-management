@@ -6,8 +6,8 @@ const productSchema = new mongoose.Schema({
   price: {type: Number, required:true},
   stock: {type: Number, required:true},
   isDeleted: {type: Boolean, default: false},
-  categoryId: {type: mongoose.Schema.Types.ObjectId, ref: "Category", require: true},
-  supplierId: {type: mongoose.Schema.Types.ObjectId, ref: "Supplier", require: true},
+  category: {type: mongoose.Schema.Types.ObjectId, ref: "Category", require: true},
+  supplier: {type: mongoose.Schema.Types.ObjectId, ref: "Supplier", require: true},
 });
 
 const ProductModel = mongoose.model("Product", productSchema);

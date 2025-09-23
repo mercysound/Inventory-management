@@ -6,7 +6,8 @@ import ProductModel from '../models/ProductModel.js';
 
 const getProducts = async (req, res) => {
   try {
-    const products = await ProductModel.find({ isDeleted: false }).populate('categoryId').populate('supplierId');
+    const products = await ProductModel.find({ isDeleted: false }).populate('category').populate('supplier');
+    
     
     const suppliers = await SupplierModel.find();
     const categories = await CategoryModel.find();
