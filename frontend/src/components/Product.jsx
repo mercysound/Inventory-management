@@ -181,7 +181,7 @@ const Product = () => {
 
       {loading ? <div>Loading....</div> : (
         <div>
-          <table>
+          <table className='w-full border-collapse border border-gray-200'>
           <thead>
             <tr className='bg-gray-200'>
               <th className='border border-gray-300 p-2'>S/N</th>
@@ -199,8 +199,8 @@ const Product = () => {
               <tr key={product._id}>
                 <td className='border border-gray-300 p-2'>{index + 1}</td>
                 <td className='border border-gray-300 p-2'>{product.name}</td>
-                <td className='border border-gray-300 p-2'>{product.categoryId.name}</td>
-                <td className='border border-gray-300 p-2'>{product.supplierId.name}</td>
+                <td className='border border-gray-300 p-2'>{product.category.name}</td>
+                <td className='border border-gray-300 p-2'>{product.supplier.name}</td>
                 <td className='border border-gray-300 p-2'>{product.price}</td>
                 <td className='border border-gray-300 p-2'>
                   <span className=' rounded-full font-semibold'>{product.stock == 0 ? (

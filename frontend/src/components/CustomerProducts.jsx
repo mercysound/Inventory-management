@@ -82,10 +82,13 @@ const CustomerProducts = () => {
           stock: 0,
           price: 0
         });
-
+        alert("order added successfully")
+        fetchProducts();
       }
     } catch (error) {
       alert("Error", error.message)
+      console.log(error);
+
     }
   }
   const increaseQuantity = (e) => {

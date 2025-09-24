@@ -1,5 +1,6 @@
-import OrderModel from "../models/OrderModel";
-import ProductModel from "../models/ProductModel";
+import { populate } from "dotenv";
+import OrderModel from "../models/OrderModel.js";
+import ProductModel from "../models/ProductModel.js";
 
 const addOrder = async (req, res) =>{
  try {
@@ -30,5 +31,19 @@ const addOrder = async (req, res) =>{
   
  }
 }
+ const getOrders = async (req, res)=>{
+   
+   try {
+     const userId = req.user._id;
+    const orders = await OrderModel.find({customer: userId})
+    .populate({path:'product', select: 'name price', populate:{path: 'category', select: "name"},})
+    .populate('customer', 'name email');
+     
+    return res.status(200).json({success: true, orders});
+  } catch (error) {
+    return res.status(500).json({success: false, error: "Server error in fetching orders"});
+    
+  }
+ }
 
-export {addOrder}
+export {addOrder, getOrders}

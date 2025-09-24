@@ -17,7 +17,7 @@ app.use('/api/category', categoryRoutes)
 app.use('/api/supplier', supplierRoutes)
 app.use('/api/products', productRoutes);
 app.use('/api/users', userRoute);
-app.use('/api/users', orderRouter);
+app.use('/api/orders', orderRouter);
 
 
 

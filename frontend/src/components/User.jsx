@@ -72,6 +72,7 @@ const Users = () => {
       ...prevData, 
       [name]:value
     }));
+    
   }
 
   const handleDelete = async (id) => {
@@ -135,7 +136,7 @@ const Users = () => {
               <div>
                 <input type="password" placeholder='Enter Password' className='border w-full p-3 rounded-md'
                   required
-                  name='email'
+                  name='password'
                   onChange={handleChange}
                 />
               </div>
@@ -154,7 +155,7 @@ const Users = () => {
                 </select>
               </div>
               <div className='flex space-x-2'>
-                <button className='w-full mt-2 rounded-md bg-green-500 text-white p-3 cursor-pointer hover:bg-red-600' type='submit'>Add User</button>
+                <button className='w-full mt-2 rounded-md bg-green-500 text-white p-3 cursor-pointer hover:bg-green-600' type='submit'>Add User</button>
               </div>
             </form>
           </div>

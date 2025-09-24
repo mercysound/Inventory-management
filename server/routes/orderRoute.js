@@ -1,11 +1,11 @@
 import express from 'express';
-import {addOrder} from '../controllers/orderController.js';
 import authMiddleware from '../middleware/authMiddleware.js';
+import {addOrder, getOrders} from '../controllers/orderController.js';
 
 const router = express.Router();
 
 router.post('/add', authMiddleware, addOrder);
-// router.get('/', authMiddleware, getCategories);
+router.get('/', authMiddleware, getOrders);
 // router.put('/:id', authMiddleware, updateCategory);
 // router.delete('/:id', authMiddleware, deleteCategory);
 
