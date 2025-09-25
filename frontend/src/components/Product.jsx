@@ -74,24 +74,22 @@ const Product = () => {
   }
 
   const handleEdit = (product) =>{
-    setOpenModal(true)
     setEditProduct(product._id)
     setFormData({
-    name: product.name,
-    description: product.description,
-    price: product.price,
-    stock: product.stock,
-    categoryId: product.categoryId._id,
-    supplierId: product.supplierId._id,
-  });
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      stock: product.stock,
+      categoryId: product.categoryId._id,
+      supplierId: product.supplierId._id,
+    });
+    setOpenModal(true)
   }
   const handleSubmit = async (e) => {
     e.preventDefault()
     let response
     try {
       if (editProduct) {
-        console.log(editProduct);
-        
         response = await axios.put(`http://localhost:3000/api/products/${editProduct}`,
           formData,
           {
@@ -112,7 +110,6 @@ const Product = () => {
       );
       }
       if (response.data.success) {
-        fetchProducts()
         alert(editProduct ? "Product upadated successfully!" : "Product added succefully!");
         setOpenModal(false)
         setEditProduct(null)
@@ -124,6 +121,7 @@ const Product = () => {
           categoryId: "",
           supplierId: "",
         })
+        fetchProducts()
       } else {
         console.error(editProduct ? "Error updating Product" : "Error adding Product:", response.data);
         alert(editProduct ? "Error updating Product, Please try again" : "Error adding Product, Please try again")
@@ -195,12 +193,12 @@ const Product = () => {
           </thead>
           <tbody> 
             {filteredProducts && filteredProducts.map((product, index) => (
-
+              
               <tr key={product._id}>
                 <td className='border border-gray-300 p-2'>{index + 1}</td>
                 <td className='border border-gray-300 p-2'>{product.name}</td>
-                <td className='border border-gray-300 p-2'>{product.category.name}</td>
-                <td className='border border-gray-300 p-2'>{product.supplier.name}</td>
+                <td className='border border-gray-300 p-2'>{product.categoryId.name}</td>
+                <td className='border border-gray-300 p-2'>{product.supplierId.name}</td>
                 <td className='border border-gray-300 p-2'>{product.price}</td>
                 <td className='border border-gray-300 p-2'>
                   <span className=' rounded-full font-semibold'>{product.stock == 0 ? (
@@ -225,7 +223,7 @@ const Product = () => {
 
       {openModal && (<div className='fixed top-0 left-0 w-full h-full bg-black/50 flex justify-center items-center'>
         <div className="bg-white p-4 rounded shadow-md w-1/3 relative">
-          <h1 className='text-xl font-bold text-lg'>Add Product</h1>
+          <h1 className='text-xl font-bold text-lg'>{editProduct?"Edit Product":"Add Product"}</h1>
           <button className='absolute top-4 right-4 font-bold text-lg cursor-pointer'
             // onClick={closeModal}
             onClick={closeModel}

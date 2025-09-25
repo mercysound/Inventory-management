@@ -116,7 +116,7 @@ const CustomerProducts = () => {
             ))}
           </select>
         </div>
-        <input type="number" placeholder='Search' className='border p-1 bg-white rounded px-4'
+        <input type="text" placeholder='Search' className='border p-1 bg-white rounded px-4'
           onChange={handleSearch}
         />
       </div>
@@ -139,7 +139,7 @@ const CustomerProducts = () => {
               <tr key={product._id}>
                 <td className='border border-gray-300 p-2'>{index + 1}</td>
                 <td className='border border-gray-300 p-2'>{product.name}</td>
-                <td className='border border-gray-300 p-2'>{product.category.name}</td>
+                <td className='border border-gray-300 p-2'>{product.categoryId.name}</td>
                 <td className='border border-gray-300 p-2'>{product.price}</td>
                 <td className='border border-gray-300 p-2'>
                   <span className=' rounded-full font-semibold'>{product.stock == 0 ? (
@@ -183,12 +183,14 @@ const CustomerProducts = () => {
             />
 
             {
-              <p>{orderData.quantity * orderData.price}</p>
+              <p>{orderData.quantity && !isNaN(orderData.quantity)
+                ? Number(orderData.quantity) * orderData.price
+                : 0}</p>
             }
 
             <div className='flex space-x-2'>
               <button className='w-full mt-2 rounded-md bg-green-500 text-white p-3 cursor-pointer hover:bg-red-600' type='submit'>
-                Save Changes
+                Order Product
               </button>
               <button
                 type='button'

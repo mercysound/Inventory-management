@@ -32,8 +32,8 @@ const Sidebar = () => {
   return (
     <div className='flex flex-col h-screen bg-black text-white w-16 md:w-64 fixed'>
       <div className='h-16 flex flex-items justify-center'>
-        <span className='hidden md:block text-xl font-bold'>Inventory MS</span>
-        <span className='md:hidden text-xl font-bold'>IMS</span>
+        <span className='hidden md:block text-xl font-bold'>MELECH SH</span>
+        <span className='md:hidden text-xl font-bold'>MSH</span>
       </div>
 
       <div>

@@ -57,14 +57,10 @@ const CustomerOrders = () => {
               <tr key={order._id}>
                 <td className='border border-gray-300 p-2'>{index + 1}</td>
                 <td className='border border-gray-300 p-2'>{order.product.name}</td>
-                <td className='border border-gray-300 p-2'>{order.product.category.name}</td>
+                <td className='border border-gray-300 p-2'>{order.product.categoryId.name}</td>
                 <td className='border border-gray-300 p-2'>{order.quantity}</td>
                 <td className='border border-gray-300 p-2'>{order.totalPrice}</td>
                 <td className='border border-gray-300 p-2'>{new Date(order.orderDate).toLocaleDateString()}</td>
-                {/* <td className='border border-gray-300 p-2'>
-                  <button className='px-2 py-1 bg-yellow-500 text-white rounded cursor-pointer mr-2' onClick={() => handleEdit(order)}>Edit</button>
-                  <button className='px-2 py-1 bg-red-500 text-white rounded cursor-pointer mr-2' onClick={() => handleDelete(order._id)}>Delete</button>
-                </td> */}
               </tr>
             ))
             }
