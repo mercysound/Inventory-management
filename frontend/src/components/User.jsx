@@ -38,33 +38,47 @@ const Users = () => {
     fetchUsers()
   }, [])
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-      let response = await axios.post(`http://localhost:3000/api/users/add`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('pos-token')}`
-          },
-        }
-      );
-      // }
-      if (response.data.success) {
-        alert("User Added Successful");
-        setFormData({
-          name: "",
-          email: "",
-          password: "",
-          address: "",
-          role: ""
-        })
-        fetchUsers()
-      } else {
-        console.error("Error adding user:");
-        
-        alert("Error adding user, pls try again")
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const response = await axios.post(
+      "http://localhost:3000/api/users/add",
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
+        },
       }
+    );
+
+    // only runs when status is 2xx
+    if (response.data.success) {
+      alert("User Added Successfully");
+      setFormData({
+        name: "",
+        email: "",
+        password: "",
+        address: "",
+        role: "",
+      });
+      fetchUsers();
+    }
+  } catch (error) {
+    // 👇 catch any 4xx/5xx response
+    if (error.response) {
+      // specifically check for the 400 from your backend
+      if (error.response.status === 400) {
+        alert(error.response.data.message); // 👉 "User already exists"
+      } else {
+        alert(`Error: ${error.response.data.message || "Please try again"}`);
+      }
+    } else {
+      // network or unexpected error
+      alert("Network error – please try again");
+      console.error(error);
+    }
   }
+};
 
   const handleChange = (e) =>{
     const {name, value} = e.target;

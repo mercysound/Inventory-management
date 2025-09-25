@@ -16,8 +16,7 @@ const CustomerOrders = () => {
       })
       if (response.data.success) {
         setOrders(response.data.orders);
-        console.log(response.data);
-        
+        setFilteredProducts(response.data.orders);
         // setCategories(response.data.categories);
         // setProducts(response.data.products);
         // setFilteredProducts(response.data.products);
