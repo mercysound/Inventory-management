@@ -127,6 +127,7 @@ const CustomerProducts = () => {
             <tr className='bg-gray-200'>
               <th className='border border-gray-300 p-2'>S/N</th>
               <th className='border border-gray-300 p-2'>Product Name</th>
+              <th className='border border-gray-300 p-2'>Product Type</th>
               <th className='border border-gray-300 p-2'>Category Name</th>
               <th className='border border-gray-300 p-2'>Price</th>
               <th className='border border-gray-300 p-2'>Stock</th>
@@ -139,6 +140,7 @@ const CustomerProducts = () => {
               <tr key={product._id}>
                 <td className='border border-gray-300 p-2'>{index + 1}</td>
                 <td className='border border-gray-300 p-2'>{product.name}</td>
+                <td className='border border-gray-300 p-2'>{product.type}</td>
                 <td className='border border-gray-300 p-2'>{product.categoryId.name}</td>
                 <td className='border border-gray-300 p-2'>{product.price}</td>
                 <td className='border border-gray-300 p-2'>

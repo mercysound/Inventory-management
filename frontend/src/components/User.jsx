@@ -14,7 +14,6 @@ const Users = () => {
   const [loading, setLoading] = useState(true);
   const [filteredUsers, setFilteredUsers] = useState([]);
 
-  const navigate = useNavigate()
 
   const fetchUsers = async () => {
     setLoading(true)

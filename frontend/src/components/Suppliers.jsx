@@ -206,22 +206,22 @@ const Suppliers = () => {
               <h1 className='text-xl font-bold text-lg'>{editSupplier?"Edit Supplier":"Add Supplier"}</h1>
               <button className='absolute top-4 right-4 font-bold text-lg cursor-pointer' onClick={closeModal}>X</button>
               <form action="" className='flex flex-col gap-4 mt-4' onSubmit={handleSubmit}>
-                <input type="text" placeholder='Supplier Name' className='border p-1 bg-white rounded px-4'
+                <input required type="text" placeholder='Supplier Name' className='border p-1 bg-white rounded px-4'
                   name='name'
                   value={formData.name}
                   onChange={handleChange}
                 />
-                <input type="email" placeholder='Supplier Email' className='border p-1 bg-white rounded px-4'
+                <input required type="email" placeholder='Supplier Email' className='border p-1 bg-white rounded px-4'
                   name='email'
                   value={formData.email}
                   onChange={handleChange}
                 />
-                <input type="number" placeholder='Supplier Phone Number' className='border p-1 bg-white rounded px-4'
+                <input required type="number" placeholder='Supplier Phone Number' className='border p-1 bg-white rounded px-4'
                   name='number'
                   value={formData.number}
                   onChange={handleChange}
                 />
-                <input type="text" placeholder='Supplier Address' className='border p-1 bg-white rounded px-4'
+                <input required type="text" placeholder='Supplier Address' className='border p-1 bg-white rounded px-4'
                   name='address'
                   value={formData.address}
                   onChange={handleChange}

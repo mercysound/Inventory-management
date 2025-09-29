@@ -13,6 +13,7 @@ const Product = () => {
 
   const [formData, setFormData] = useState({
     name: "",
+    type: "",
     description: "",
     price: "",
     stock: "",
@@ -65,6 +66,7 @@ const Product = () => {
     setEditProduct(null);
     setFormData({
     name: "",
+    type: "",
     description: "",
     price: "",
     stock: "",
@@ -77,6 +79,7 @@ const Product = () => {
     setEditProduct(product._id)
     setFormData({
       name: product.name,
+      name: product.type,
       description: product.description,
       price: product.price,
       stock: product.stock,
@@ -115,6 +118,7 @@ const Product = () => {
         setEditProduct(null)
         setFormData({
           name: "",
+          type: "",
           description: "",
           price: "",
           stock: "",
@@ -184,6 +188,7 @@ const Product = () => {
             <tr className='bg-gray-200'>
               <th className='border border-gray-300 p-2'>S/N</th>
               <th className='border border-gray-300 p-2'>Product Name</th>
+              <th className='border border-gray-300 p-2'>Product Type</th>
               <th className='border border-gray-300 p-2'>Category Name</th>
               <th className='border border-gray-300 p-2'>Supplier Name </th>
               <th className='border border-gray-300 p-2'>Price</th>
@@ -197,6 +202,7 @@ const Product = () => {
               <tr key={product._id}>
                 <td className='border border-gray-300 p-2'>{index + 1}</td>
                 <td className='border border-gray-300 p-2'>{product.name}</td>
+                <td className='border border-gray-300 p-2'>{product.type}</td>
                 <td className='border border-gray-300 p-2'>{product.categoryId.name}</td>
                 <td className='border border-gray-300 p-2'>{product.supplierId.name}</td>
                 <td className='border border-gray-300 p-2'>{product.price}</td>
@@ -231,22 +237,27 @@ const Product = () => {
           <form action="" className='flex flex-col gap-4 mt-4'
             onSubmit={handleSubmit}
           >
-            <input type="text" placeholder='Product Name' className='border p-1 bg-white rounded px-4'
+            <input required type="text" placeholder='Product Name' className='border p-1 bg-white rounded px-4'
               name='name'
               value={formData.name}
               onChange={handleChange}
             />
-            <input type="text" placeholder='Description' className='border p-1 bg-white rounded px-4'
+            <input required type="text" placeholder='Product Type' className='border p-1 bg-white rounded px-4'
+              name='type'
+              value={formData.type}
+              onChange={handleChange}
+            />
+            <input required type="text" placeholder='Description' className='border p-1 bg-white rounded px-4'
               name='description'
               value={formData.description}
               onChange={handleChange}
             />
-            <input type="number" placeholder='Enter price' className='border p-1 bg-white rounded px-4'
+            <input required type="number" placeholder='Enter price' className='border p-1 bg-white rounded px-4'
               name='price'
               value={formData.price}
               onChange={handleChange}
             />
-            <input type="number" placeholder='Enter stock' className='border p-1 bg-white rounded px-4'
+            <input required type="number" placeholder='Enter stock' className='border p-1 bg-white rounded px-4'
               name='stock'
               min='0'
               value={formData.stock}
@@ -254,8 +265,9 @@ const Product = () => {
             />
 
             <div className='w-full border'>
-              <select name="categoryId" className='w-full p-2' onChange={handleChange} value={formData.categoryId}>
+              <select required name="categoryId" className='w-full p-2' onChange={handleChange} value={formData.categoryId}>
                 <option value="">Select Category</option>
+                {/* <option value="No Category">No Category</option> */}
                 {categories && categories.map((category) => (
                   <option key={category._id} value={category._id}>
                     {category.name}
@@ -265,8 +277,9 @@ const Product = () => {
             </div>
 
             <div className='w-full border'>
-              <select name="supplierId" className='w-full p-2' onChange={handleChange} value={formData.supplierId}>
+              <select required name="supplierId" className='w-full p-2' onChange={handleChange} value={formData.supplierId}>
                 <option value="">Select Supplier</option>
+                {/* <option value="No Supplier">No Supplier</option> */}
                 {suppliers && suppliers.map((supplier) => (
                   <option key={supplier._id} value={supplier._id}>
                     {supplier.name}
