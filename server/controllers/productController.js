@@ -6,11 +6,12 @@ import ProductModel from '../models/ProductModel.js';
 
 const getProducts = async (req, res) => {
   try {
-    const products = await ProductModel.find({ isDeleted: false }).populate('category').populate('supplier');
+    const products = await ProductModel.find({ isDeleted: false }).populate('categoryId').populate('supplierId');
     
     
     const suppliers = await SupplierModel.find();
     const categories = await CategoryModel.find();
+    // console.log(products);
     return res.status(200).json({ success: true, suppliers, categories, products })
   } catch (error) {
     console.error('Error fetching suppliers:', error);
@@ -21,7 +22,7 @@ const getProducts = async (req, res) => {
 
 const addProduct = async (req, res) => {
   try {
-    const { name, description, price, stock, categoryId, supplierId, } = req.body;
+    const { name, description, price, stock, categoryId, supplierId} = req.body;
     // Create a new category
     const newProduct = new ProductModel({
       name,
@@ -29,7 +30,7 @@ const addProduct = async (req, res) => {
       price,
       stock,
       categoryId,
-      supplierId,
+      supplierId
     });
 
     await newProduct.save();

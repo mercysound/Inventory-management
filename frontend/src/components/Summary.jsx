@@ -54,7 +54,7 @@ const Summary = () => {
         </div>
         <div className="bg-purple-500 text-white p-4 rounded-lg shadow-md flex flex-col items-center justify-center">
           <p className='text-lg font-semibold'>Revenue</p>
-          <p className='text-2xl font-bold'>${dashBoardData.revenue}</p>
+          <p className='text-2xl font-bold'>₦{dashBoardData.revenue}</p>
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4  ">
@@ -83,7 +83,7 @@ const Summary = () => {
               <div className='texxt-gray-600'>
                 <p><strong>Name:</strong> {dashBoardData.highestSaleProduct.name} </p>
                 <p><strong>Category:</strong> {dashBoardData.highestSaleProduct.category}</p>
-                <p><strong>Total Unitd Sold:</strong> {dashBoardData.highestSaleProduct.totalQuantity}</p>
+                <p><strong>Total Unit Sold:</strong> {dashBoardData.highestSaleProduct.totalQuantity}</p>
               </div>
             ):(
               <p className='text-gray-=500'>{dashBoardData.highestSaleProduct?.message || "Loading ......."}</p>

@@ -8,6 +8,7 @@ import supplierRoutes from './routes/supplierRoute.js'
 import productRoutes from './routes/productRoute.js'
 import userRoute from './routes/userRoute.js'
 import orderRouter from './routes/orderRoute.js'
+import dashboardRouter from './routes/dashboardRoute.js'
 
 const app = express();
 app.use(cors());
@@ -18,7 +19,7 @@ app.use('/api/supplier', supplierRoutes)
 app.use('/api/products', productRoutes);
 app.use('/api/users', userRoute);
 app.use('/api/orders', orderRouter);
-
+app.use('/api/dashboard', dashboardRouter);
 
 
 

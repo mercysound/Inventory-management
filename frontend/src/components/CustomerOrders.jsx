@@ -17,9 +17,6 @@ const CustomerOrders = () => {
       if (response.data.success) {
         setOrders(response.data.orders);
         setFilteredProducts(response.data.orders);
-        // setCategories(response.data.categories);
-        // setProducts(response.data.products);
-        // setFilteredProducts(response.data.products);
       } else {
         console.error("Error fetching products", response.data.message);
         alert("Error fetching products. Please try again")
@@ -44,12 +41,12 @@ const CustomerOrders = () => {
             <tr className='bg-gray-200'>
               <th className='border border-gray-300 p-2'>S/N</th>
               <th className='border border-gray-300 p-2'>Product Name</th>
-              <th className='border border-gray-300 p-2'>Product Type</th>
               <th className='border border-gray-300 p-2'>Category Name</th>
               <th className='border border-gray-300 p-2'>Quantity</th>
               <th className='border border-gray-300 p-2'>Total Price</th>
+              <th className='border border-gray-300 p-2'>Description</th>
               <th className='border border-gray-300 p-2'>Date</th>
-              {/* <th className='border border-gray-300 p-2'>Action</th> */}
+              <th className='border border-gray-300 p-2'>Time</th>
             </tr>
           </thead>
           <tbody> 
@@ -58,11 +55,12 @@ const CustomerOrders = () => {
               <tr key={order._id}>
                 <td className='border border-gray-300 p-2'>{index + 1}</td>
                 <td className='border border-gray-300 p-2'>{order.product.name}</td>
-                <td className='border border-gray-300 p-2'>{order.product.type}</td>
                 <td className='border border-gray-300 p-2'>{order.product.categoryId.name}</td>
                 <td className='border border-gray-300 p-2'>{order.quantity}</td>
-                <td className='border border-gray-300 p-2'>{order.totalPrice}</td>
+                <td className='border border-gray-300 p-2'>₦{order.totalPrice}</td>
+                <td className='border border-gray-300 p-2'>{order.product.description}</td>
                 <td className='border border-gray-300 p-2'>{new Date(order.orderDate).toLocaleDateString()}</td>
+                <td className='border border-gray-300 p-2'>{new Date(order.orderDate).toLocaleTimeString()}</td>
               </tr>
             ))
             }

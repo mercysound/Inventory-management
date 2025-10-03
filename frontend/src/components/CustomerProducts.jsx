@@ -11,7 +11,8 @@ const CustomerProducts = () => {
     quantity: 1,
     total: 0,
     stock: 0,
-    price: 0
+    price: 0,
+    description: 0
   });
 
   const fetchProducts = async () => {
@@ -48,7 +49,7 @@ const CustomerProducts = () => {
   const handleChangeCategory = (e) => {
     setFilteredProducts(
       products.filter((product) =>
-        product.category._id === e.target.value
+        product.categoryId._id === e.target.value
       )
     )
   }
@@ -127,10 +128,10 @@ const CustomerProducts = () => {
             <tr className='bg-gray-200'>
               <th className='border border-gray-300 p-2'>S/N</th>
               <th className='border border-gray-300 p-2'>Product Name</th>
-              <th className='border border-gray-300 p-2'>Product Type</th>
               <th className='border border-gray-300 p-2'>Category Name</th>
               <th className='border border-gray-300 p-2'>Price</th>
               <th className='border border-gray-300 p-2'>Stock</th>
+              <th className='border border-gray-300 p-2'>Description</th>
               <th className='border border-gray-300 p-2'>Action</th>
             </tr>
           </thead>
@@ -140,17 +141,17 @@ const CustomerProducts = () => {
               <tr key={product._id}>
                 <td className='border border-gray-300 p-2'>{index + 1}</td>
                 <td className='border border-gray-300 p-2'>{product.name}</td>
-                <td className='border border-gray-300 p-2'>{product.type}</td>
                 <td className='border border-gray-300 p-2'>{product.categoryId.name}</td>
-                <td className='border border-gray-300 p-2'>{product.price}</td>
+                <td className='border border-gray-300 p-2'>₦{product.price}</td>
                 <td className='border border-gray-300 p-2'>
                   <span className=' rounded-full font-semibold'>{product.stock == 0 ? (
                     <span className='bg-red-100 text-red-500 '>{product.stock}</span>
                   ) : product.stock < 5 ? (
                     <span className='bg-yellow-100 text-yellow-600 px-2 py-1'>{product.stock}</span>
                   ) : (<span className='bg-green-100 text-green-500 px-2 py-1'>{product.stock}</span>)
-                  }</span>
+                }</span>
                 </td>
+                <td className='border border-gray-300 p-2'>{product.description}</td>
                 <td className='border border-gray-300 p-2'>
                   <button className='px-2 py-1 bg-green-500 hover:bg-green-700 text-white rounded cursor-pointer mr-2'
                     onClick={() => handleOrderChange(product)}
@@ -185,7 +186,7 @@ const CustomerProducts = () => {
             />
 
             {
-              <p>{orderData.quantity && !isNaN(orderData.quantity)
+              <p>₦{orderData.quantity && !isNaN(orderData.quantity)
                 ? Number(orderData.quantity) * orderData.price
                 : 0}</p>
             }

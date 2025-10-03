@@ -34,7 +34,7 @@ const Suppliers = () => {
       })
       setSetsuppliers(response.data.suppliers);
       setFilterSupplier(response.data.suppliers);
-    } catch (error) { 
+    } catch (error) {
       console.error("Error fetching suppliers", error);
     } finally {
       setLoading(false)
@@ -82,7 +82,7 @@ const Suppliers = () => {
             },
           }
         )
-      }else{
+      } else {
         response = await axios.post(`http://localhost:3000/api/supplier/add`,
           formData,
           {
@@ -94,7 +94,7 @@ const Suppliers = () => {
       }
       if (response.data.success) {
         fetchSuppliers()
-        alert(editSupplier?"Supplier upadated successfully!":"Supplier added succefully!");
+        alert(editSupplier ? "Supplier upadated successfully!" : "Supplier added succefully!");
         setAddSupplier(false);
         setEditSupplier(false);
         setFormData({
@@ -104,8 +104,8 @@ const Suppliers = () => {
           address: ""
         })
       } else {
-        console.error(editSupplier?"Error updating Supplier":"Error adding Supplier:", response.data);
-        alert(editSupplier?"Error updating Supplier, Please try again":"Error adding Supplier, Please try again")
+        console.error(editSupplier ? "Error updating Supplier" : "Error adding Supplier:", response.data);
+        alert(editSupplier ? "Error updating Supplier, Please try again" : "Error adding Supplier, Please try again")
       }
     } catch (error) {
       // console.error("Error adding supplier:", error);
@@ -122,7 +122,7 @@ const Suppliers = () => {
     }
   }
 
-  const handleDelete = async (id)=>{
+  const handleDelete = async (id) => {
     try {
       const confirmDelete = confirm("Are you sure you want to delete this supplier")
       if (confirmDelete) {
@@ -133,23 +133,27 @@ const Suppliers = () => {
             },
           }
         )
-        if(response.data.success){
+        if (response.data.success) {
           alert('Supplier deleted successfully!')
           fetchSuppliers();
-        }else{
+        } else {
           console.error("Error deleting supplier", data);
           alert("Error deleting supplier. Please try again")
         }
       }
     } catch (error) {
-      console.error("Error deleting supplier:", error)
+      if (error.response) {
+        alert(error.response.data.message)
+      } else {
+        // console.error("Error deleting category:", error)
         alert("Error deleting supplier. Please try again")
+      }
     }
   }
 
-  const handleSearch = async (e)=>{
+  const handleSearch = async (e) => {
     setFilterSupplier(
-      suppliers.filter((supplier)=>
+      suppliers.filter((supplier) =>
         supplier.name.toLowerCase().includes(e.target.value.toLowerCase())
       )
     )
@@ -160,7 +164,7 @@ const Suppliers = () => {
       <h1 className="text-2xl font-bold">Supplier Management</h1>
       <div className='flex justify-between items-center'>
         <input type="text" placeholder='Search' className='border p-1 bg-white rounded px-4' onChange={handleSearch} />
-        <button className='px-4 py-1.5 bg-blue-500 text-white rounded cursor-pointer' onClick={()=>setAddSupplier(true)}>Add Supplier</button>
+        <button className='px-4 py-1.5 bg-blue-500 text-white rounded cursor-pointer' onClick={() => setAddSupplier(true)}>Add Supplier</button>
       </div>
 
 
@@ -188,7 +192,7 @@ const Suppliers = () => {
                 <td className='border border-gray-300 p-2'>{supplier.address}</td>
                 <td className='border border-gray-300 p-2'>
                   <button className='px-2 py-1 bg-yellow-500 text-white rounded cursor-pointer mr-2' onClick={() => handleEdit(supplier)}>Edit</button>
-                  <button className='px-2 py-1 bg-red-500 text-white rounded cursor-pointer mr-2' onClick={()=>handleDelete(supplier._id)}>Delete</button>
+                  <button className='px-2 py-1 bg-red-500 text-white rounded cursor-pointer mr-2' onClick={() => handleDelete(supplier._id)}>Delete</button>
                 </td>
               </tr>
             ))
@@ -203,7 +207,7 @@ const Suppliers = () => {
         addSupplier && (
           <div className='fixed top-0 left-0 w-full h-full bg-black/50 flex justify-center items-center'>
             <div className="bg-white p-4 rounded shadow-md w-1/3 relative">
-              <h1 className='text-xl font-bold text-lg'>{editSupplier?"Edit Supplier":"Add Supplier"}</h1>
+              <h1 className='text-xl font-bold text-lg'>{editSupplier ? "Edit Supplier" : "Add Supplier"}</h1>
               <button className='absolute top-4 right-4 font-bold text-lg cursor-pointer' onClick={closeModal}>X</button>
               <form action="" className='flex flex-col gap-4 mt-4' onSubmit={handleSubmit}>
                 <input required type="text" placeholder='Supplier Name' className='border p-1 bg-white rounded px-4'
@@ -229,7 +233,7 @@ const Suppliers = () => {
                 {/* <button className='px-4 py-1.5 bg-blue-500 text-white rounded cursor-pointer'>Add Suppier</button> */}
 
                 <div className='flex space-x-2'>
-                  <button className='w-full mt-2 rounded-md bg-green-500 text-white p-3 cursor-pointer hover:bg-red-600' type='submit'>{editSupplier ? "Save Changes " : "Add Supplier" }</button>
+                  <button className='w-full mt-2 rounded-md bg-green-500 text-white p-3 cursor-pointer hover:bg-red-600' type='submit'>{editSupplier ? "Save Changes " : "Add Supplier"}</button>
                   {
                     editSupplier && (
                       <button

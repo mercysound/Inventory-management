@@ -1,4 +1,3 @@
-import { populate } from "dotenv";
 import OrderModel from "../models/OrderModel.js";
 import ProductModel from "../models/ProductModel.js";
 
@@ -35,8 +34,12 @@ const addOrder = async (req, res) =>{
    
    try {
      const userId = req.user._id;
-    const orders = await OrderModel.find({customer: userId})
-    .populate({path:'product', select: 'name price', populate:{path: 'category', select: "name"},})
+     let query = {};
+     if (req.user.role === "customer") {
+      query= {customer: userId}
+     }
+    const orders = await OrderModel.find(query)
+    .populate({path:'product', select: 'name description price', populate:{path: 'categoryId', select: "name"},})
     .populate('customer', 'name email');
      
     return res.status(200).json({success: true, orders});

@@ -13,21 +13,12 @@ const Product = () => {
 
   const [formData, setFormData] = useState({
     name: "",
-    type: "",
     description: "",
     price: "",
     stock: "",
     categoryId: "",
     supplierId: "",
   });
-
-  // const handleSearch = async (e)=>{
-  //   setFilterSupplier(
-  //     suppliers.filter((supplier)=>
-  //       supplier.name.toLowerCase().includes(e.target.value.toLowerCase())
-  //     )
-  //   )
-  // }
   const fetchProducts = async () => {
     try {
       const response = await axios.get('http://localhost:3000/api/products', {
@@ -66,7 +57,6 @@ const Product = () => {
     setEditProduct(null);
     setFormData({
     name: "",
-    type: "",
     description: "",
     price: "",
     stock: "",
@@ -79,7 +69,6 @@ const Product = () => {
     setEditProduct(product._id)
     setFormData({
       name: product.name,
-      name: product.type,
       description: product.description,
       price: product.price,
       stock: product.stock,
@@ -118,7 +107,6 @@ const Product = () => {
         setEditProduct(null)
         setFormData({
           name: "",
-          type: "",
           description: "",
           price: "",
           stock: "",
@@ -188,11 +176,11 @@ const Product = () => {
             <tr className='bg-gray-200'>
               <th className='border border-gray-300 p-2'>S/N</th>
               <th className='border border-gray-300 p-2'>Product Name</th>
-              <th className='border border-gray-300 p-2'>Product Type</th>
               <th className='border border-gray-300 p-2'>Category Name</th>
               <th className='border border-gray-300 p-2'>Supplier Name </th>
               <th className='border border-gray-300 p-2'>Price</th>
               <th className='border border-gray-300 p-2'>Stock</th>
+              <th className='border border-gray-300 p-2'>Product description</th>
               <th className='border border-gray-300 p-2'>Action</th>
             </tr>
           </thead>
@@ -202,18 +190,18 @@ const Product = () => {
               <tr key={product._id}>
                 <td className='border border-gray-300 p-2'>{index + 1}</td>
                 <td className='border border-gray-300 p-2'>{product.name}</td>
-                <td className='border border-gray-300 p-2'>{product.type}</td>
                 <td className='border border-gray-300 p-2'>{product.categoryId.name}</td>
                 <td className='border border-gray-300 p-2'>{product.supplierId.name}</td>
-                <td className='border border-gray-300 p-2'>{product.price}</td>
+                <td className='border border-gray-300 p-2'>₦{product.price}</td>
                 <td className='border border-gray-300 p-2'>
                   <span className=' rounded-full font-semibold'>{product.stock == 0 ? (
                     <span className='bg-red-100 text-red-500 '>{product.stock}</span>
                   ) : product.stock < 5 ? (
                     <span className='bg-yellow-100 text-yellow-600 px-2 py-1'>{product.stock}</span>
                   ) : (<span className='bg-green-100 text-green-500 px-2 py-1'>{product.stock}</span>)
-                  }</span>
+                }</span>
                 </td>
+                <td className='border border-gray-300 p-2'>{product.description}</td>
                 <td className='border border-gray-300 p-2'>
                   <button className='px-2 py-1 bg-yellow-500 text-white rounded cursor-pointer mr-2' onClick={() => handleEdit(product)}>Edit</button>
                   <button className='px-2 py-1 bg-red-500 text-white rounded cursor-pointer mr-2' onClick={() => handleDelete(product._id)}>Delete</button>
@@ -240,11 +228,6 @@ const Product = () => {
             <input required type="text" placeholder='Product Name' className='border p-1 bg-white rounded px-4'
               name='name'
               value={formData.name}
-              onChange={handleChange}
-            />
-            <input required type="text" placeholder='Product Type' className='border p-1 bg-white rounded px-4'
-              name='type'
-              value={formData.type}
               onChange={handleChange}
             />
             <input required type="text" placeholder='Description' className='border p-1 bg-white rounded px-4'
@@ -279,7 +262,7 @@ const Product = () => {
             <div className='w-full border'>
               <select required name="supplierId" className='w-full p-2' onChange={handleChange} value={formData.supplierId}>
                 <option value="">Select Supplier</option>
-                {/* <option value="No Supplier">No Supplier</option> */}
+                <option value="No Supplier">No Supplier</option>
                 {suppliers && suppliers.map((supplier) => (
                   <option key={supplier._id} value={supplier._id}>
                     {supplier.name}
@@ -289,7 +272,7 @@ const Product = () => {
             </div>
 
             <div className='flex space-x-2'>
-              <button className='w-full mt-2 rounded-md bg-green-500 text-white p-3 cursor-pointer hover:bg-red-600' type='submit'>{editProduct?"Save Changes ":"Add Product" }</button>
+              <button className='w-full mt-2 rounded-md bg-green-500 text-white p-3 cursor-pointer hover:bg-green-600' type='submit'>{editProduct?"Save Changes ":"Add Product" }</button>
               <button
                 type='button'
                 className='w-full mt-2 rounded-md bg-red-500 text-white p-3 cursor-pointer hover:bg-red-600'
