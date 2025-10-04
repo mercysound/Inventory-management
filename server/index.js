@@ -10,7 +10,12 @@ import userRoute from './routes/userRoute.js'
 import orderRouter from './routes/orderRoute.js'
 import dashboardRouter from './routes/dashboardRoute.js'
 
+//app config
 const app = express();
+const port = process.env.PORT || 3000;
+
+//middleware
+
 app.use(cors());
 app.use(express.json());
 app.use('/api/auth', authRoutes);
@@ -23,8 +28,8 @@ app.use('/api/dashboard', dashboardRouter);
 
 
 
-app.listen(process.env.PORT, () => {
+app.listen(port, () => {
   connectDB()
-  console.log('Server is running on http://localhost:3000');
+  console.log(`Server is running on http://localhost:${port}`);
 }
 );
