@@ -70,7 +70,6 @@ const getData = async (req, res)=>{
   const lowStock = await ProductModel.find({stock: {$gt: 0, $lt:5}})
   .select("name stock")
   .populate("categoryId", "name");
-  console.log(ordersToday);
 
   const dashboardData = {
     totalProducts,

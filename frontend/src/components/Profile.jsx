@@ -1,6 +1,7 @@
 import axios from 'axios'
 import React, { useEffect } from 'react'
 import { useState } from 'react'
+import { BASE_URL } from '../App'
 
 const Profile = () => {
   const [user, setUser] = useState({
@@ -12,7 +13,7 @@ const Profile = () => {
   const [edit, setEdit] = useState(false);
   const fetchUser = async () => {
     try {
-      const response = await axios("http://localhost:3000/api/users/profile",
+      const response = await axios.get(`${BASE_URL}/api/users/profile`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
@@ -39,7 +40,7 @@ const Profile = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.put("http://localhost:3000/api/users/profile", user,
+      const response = await axios.put(`${BASE_URL}/api/users/profile`, user,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("pos-token")}`,

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { BASE_URL } from '../App';
 
 const Suppliers = () => {
   const [editSupplier, setEditSupplier] = useState(null);
@@ -27,7 +28,7 @@ const Suppliers = () => {
   const fetchSuppliers = async () => {
     try {
       setLoading(true)
-      const response = await axios.get('http://localhost:3000/api/supplier', {
+      const response = await axios.get(`${BASE_URL}/api/supplier`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('pos-token')}`
         },
@@ -74,7 +75,7 @@ const Suppliers = () => {
     let response
     try {
       if (editSupplier) {
-        response = await axios.put(`http://localhost:3000/api/supplier/${editSupplier}`,
+        response = await axios.put(`${BASE_URL}/api/supplier/${editSupplier}`,
           formData,
           {
             headers: {
@@ -83,7 +84,7 @@ const Suppliers = () => {
           }
         )
       } else {
-        response = await axios.post(`http://localhost:3000/api/supplier/add`,
+        response = await axios.post(`${BASE_URL}/api/supplier/add`,
           formData,
           {
             headers: {
@@ -126,7 +127,7 @@ const Suppliers = () => {
     try {
       const confirmDelete = confirm("Are you sure you want to delete this supplier")
       if (confirmDelete) {
-        const response = await axios.delete(`http://localhost:3000/api/supplier/${id}`,
+        const response = await axios.delete(`${BASE_URL}/api/supplier/${id}`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("pos-token")}`

@@ -1,5 +1,7 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react'
+import { useAuth } from '../context/AuthContext';
+import { BASE_URL } from '../App';
 
 const Summary = () => {
   const [dashBoardData, setDashboardData] = useState({
@@ -17,7 +19,7 @@ const Summary = () => {
   const fetchDashbordData = async ()=>{
     try {
       setLoading(true)
-      const response = await axios.get("http://localhost:3000/api/dashboard", {
+      const response = await axios.get(`${BASE_URL}/api/dashboard`, {
          headers: {
               Authorization: `Bearer ${localStorage.getItem('pos-token')}`
             },

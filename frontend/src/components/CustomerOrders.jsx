@@ -2,6 +2,8 @@ import axios from 'axios';
 import React from 'react'
 import { useEffect } from 'react';
 import { useState } from 'react';
+import { BASE_URL } from '../App';
+
 
 const CustomerOrders = () => {
     const [orders, setOrders] = useState([]);
@@ -9,7 +11,7 @@ const CustomerOrders = () => {
     
    const fetchOrders = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/orders', {
+      const response = await axios.get(`${BASE_URL}/api/orders`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('pos-token')}`
         },

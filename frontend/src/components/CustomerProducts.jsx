@@ -1,5 +1,6 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react'
+import { BASE_URL } from '../App';
 
 const CustomerProducts = () => {
   const [categories, setCategories] = useState([]);
@@ -17,7 +18,7 @@ const CustomerProducts = () => {
 
   const fetchProducts = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/products', {
+      const response = await axios.get(`${BASE_URL}api/products`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('pos-token')}`
         },
@@ -69,7 +70,7 @@ const CustomerProducts = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      const response = await axios.post('http://localhost:3000/api/orders/add', orderData, {
+      const response = await axios.post(`${BASE_URL}/api/orders/add`, orderData, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('pos-token')}`
         },

@@ -1,13 +1,46 @@
-# Node.js dependencies
-# Ignore all node_modules folders
-**/node_modules/
 
-# Environment variables
-# Ignore all .env files
-**/.env
+# =========================
+# Global .gitignore for MERN projects
+# =========================
+
+# Node modules (frontend + server)
+node_modules/
+frontend/node_modules/
+server/node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment files (frontend + server)
+.env
+frontend/.env
+server/.env
 
 # Logs
-*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-.env
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE/editor settings
+.vscode/
+.idea/
+
+# Cache files
+*.log
+*.cache
+*.tmp
+
+# Optional: if using coverage or test reports
+coverage/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
 

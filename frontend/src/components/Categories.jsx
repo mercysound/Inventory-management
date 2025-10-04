@@ -1,6 +1,7 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router';
+import { BASE_URL } from '../App';
 
 const Categories = () => {
   const [categoryName, setCategoryName] = useState("");
@@ -14,7 +15,7 @@ const Categories = () => {
     setLoading(true)
     try {
 
-      const response = await axios.get('http://localhost:3000/api/category', {
+      const response = await axios.get(`${BASE_URL}/api/category`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
         }
@@ -46,7 +47,7 @@ const Categories = () => {
       let response;
 
       if (editCategory) {
-        response = await axios.put(`http://localhost:3000/api/category/${editCategory}`,
+        response = await axios.put(`${BASE_URL}/api/category/${editCategory}`,
           { categoryName, categoryDescription },
           {
             headers: {
@@ -55,7 +56,7 @@ const Categories = () => {
           }
         );
       } else {
-        response = await axios.post(`http://localhost:3000/api/category/add`,
+        response = await axios.post(`${BASE_URL}/api/category/add`,
           { categoryName, categoryDescription },
           {
             headers: {
@@ -93,7 +94,7 @@ const Categories = () => {
     const confirmDelete = window.confirm("Are you sure you want to delete this category?")
     if (confirmDelete) {
       try {
-        const response = await axios.delete(`http://localhost:3000/api/category/${id}`,
+        const response = await axios.delete(`${BASE_URL}/api/category/${id}`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("pos-token")}`

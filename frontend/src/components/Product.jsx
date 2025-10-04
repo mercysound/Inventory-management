@@ -1,6 +1,7 @@
 import axios from 'axios';
 import React, { useState } from 'react'
 import { useEffect } from 'react';
+import { BASE_URL } from '../App';
 
 const Product = () => {
   const [openModal, setOpenModal] = useState(false);
@@ -21,7 +22,7 @@ const Product = () => {
   });
   const fetchProducts = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/products', {
+      const response = await axios.get(`${BASE_URL}/api/products`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('pos-token')}`
         },
@@ -82,7 +83,7 @@ const Product = () => {
     let response
     try {
       if (editProduct) {
-        response = await axios.put(`http://localhost:3000/api/products/${editProduct}`,
+        response = await axios.put(`${BASE_URL}/api/products/${editProduct}`,
           formData,
           {
             headers: {
@@ -92,7 +93,7 @@ const Product = () => {
         )
       }
       else{
-      response = await axios.post(`http://localhost:3000/api/products/add`,
+      response = await axios.post(`${BASE_URL}/api/products/add`,
         formData,
         {
           headers: {
@@ -129,7 +130,7 @@ const Product = () => {
     try {
       const confirmDelete = confirm("Are you sure you want to delete this Product")
       if (confirmDelete) {
-        const response = await axios.delete(`http://localhost:3000/api/products/${id}`,
+        const response = await axios.delete(`${BASE_URL}/api/products/${id}`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("pos-token")}`

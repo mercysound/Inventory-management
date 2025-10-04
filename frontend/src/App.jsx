@@ -13,6 +13,7 @@ import CustomerProducts from './components/CustomerProducts.jsx';
 import CustomerOrders from './components/CustomerOrders.jsx';
 import Profile from './components/Profile.jsx';
 import Summary from './components/Summary.jsx';
+export const BASE_URL = import.meta.env.VITE_API_URL; // Use to import base url frontend .env
 
 function App () {
 

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router';
+import { BASE_URL } from '../App';
 
 const Users = () => {
   const [formData, setFormData] = useState({
@@ -19,7 +19,7 @@ const Users = () => {
     setLoading(true)
     try {
 
-      const response = await axios.get('http://localhost:3000/api/users', {
+      const response = await axios.get(`${BASE_URL}/api/users`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
         }
@@ -41,7 +41,7 @@ const Users = () => {
   e.preventDefault();
   try {
     const response = await axios.post(
-      "http://localhost:3000/api/users/add",
+      `${BASE_URL}/api/users/add`,
       formData,
       {
         headers: {
@@ -92,7 +92,7 @@ const Users = () => {
     const confirmDelete = window.confirm("Are you sure you want to delete this User?")
     if (confirmDelete) {
       try {
-        const response = await axios.delete(`http://localhost:3000/api/users/${id}`,
+        const response = await axios.delete(`${BASE_URL}/api/users/${id}`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("pos-token")}`
