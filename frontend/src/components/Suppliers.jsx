@@ -234,7 +234,7 @@ const Suppliers = () => {
                 {/* <button className='px-4 py-1.5 bg-blue-500 text-white rounded cursor-pointer'>Add Suppier</button> */}
 
                 <div className='flex space-x-2'>
-                  <button className='w-full mt-2 rounded-md bg-green-500 text-white p-3 cursor-pointer hover:bg-red-600' type='submit'>{editSupplier ? "Save Changes " : "Add Supplier"}</button>
+                  <button className='w-full mt-2 rounded-md bg-green-500 text-white p-3 cursor-pointer hover:bg-green-600' type='submit'>{editSupplier ? "Save Changes " : "Add Supplier"}</button>
                   {
                     editSupplier && (
                       <button

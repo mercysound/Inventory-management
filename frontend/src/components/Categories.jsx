@@ -118,7 +118,7 @@ const Categories = () => {
       }
     }
   }
-  if (loading) return <div>........</div>
+  if (loading) return <div>Loading ........</div>
   return (
     <div className='py-4'>
       <h1 className='text-2xl font-bold mb-8 ml-3'>Category Management</h1>
@@ -142,7 +142,7 @@ const Categories = () => {
                 />
               </div>
               <div className='flex space-x-2'>
-                <button className='w-full mt-2 rounded-md bg-green-500 text-white p-3 cursor-pointer hover:bg-red-600' type='submit'>{editCategory ? "Save Changes " : "Add Category"}</button>
+                <button className='w-full mt-2 rounded-md bg-green-500 text-white p-3 cursor-pointer hover:bg-green-600' type='submit'>{editCategory ? "Save Changes " : "Add Category"}</button>
                 {
                   editCategory && (
                     <button

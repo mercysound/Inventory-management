@@ -212,7 +212,7 @@ const Product = () => {
             }
           </tbody>
         </table>
-        {filteredProducts.length === 0 && <div>No records</div>}
+        {filteredProducts && filteredProducts.length === 0 && <div>No records</div>}
         </div>
       )}
 
@@ -263,7 +263,6 @@ const Product = () => {
             <div className='w-full border'>
               <select required name="supplierId" className='w-full p-2' onChange={handleChange} value={formData.supplierId}>
                 <option value="">Select Supplier</option>
-                <option value="No Supplier">No Supplier</option>
                 {suppliers && suppliers.map((supplier) => (
                   <option key={supplier._id} value={supplier._id}>
                     {supplier.name}

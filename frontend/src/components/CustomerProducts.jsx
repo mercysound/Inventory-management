@@ -18,7 +18,7 @@ const CustomerProducts = () => {
 
   const fetchProducts = async () => {
     try {
-      const response = await axios.get(`${BASE_URL}api/products`, {
+      const response = await axios.get(`${BASE_URL}/api/products`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('pos-token')}`
         },
@@ -193,7 +193,7 @@ const CustomerProducts = () => {
             }
 
             <div className='flex space-x-2'>
-              <button className='w-full mt-2 rounded-md bg-green-500 text-white p-3 cursor-pointer hover:bg-red-600' type='submit'>
+              <button className='w-full mt-2 rounded-md bg-green-500 text-white p-3 cursor-pointer hover:bg-green-600' type='submit'>
                 Order Product
               </button>
               <button
