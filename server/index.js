@@ -1,35 +1,47 @@
-// const express = require("express")
 import express from "express";
-import  cors from "cors";
+import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
 import connectDB from "./db/connection.js";
-import authRoutes from './routes/auth.js'
-import categoryRoutes from './routes/categoryRoute.js'
-import supplierRoutes from './routes/supplierRoute.js'
-import productRoutes from './routes/productRoute.js'
-import userRoute from './routes/userRoute.js'
-import orderRouter from './routes/orderRoute.js'
-import dashboardRouter from './routes/dashboardRoute.js'
 
-//app config
+import authRoutes from "./routes/auth.js";
+import categoryRoutes from "./routes/categoryRoute.js";
+import supplierRoutes from "./routes/supplierRoute.js";
+import productRoutes from "./routes/productRoute.js";
+import userRoute from "./routes/userRoute.js";
+import orderRouter from "./routes/orderRoute.js";
+import dashboardRouter from "./routes/dashboardRoute.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// App config
 const app = express();
 const port = process.env.PORT || 3000;
 
-//middleware
-
+// Middleware
 app.use(cors());
 app.use(express.json());
-app.use('/api/auth', authRoutes);
-app.use('/api/category', categoryRoutes)
-app.use('/api/supplier', supplierRoutes)
-app.use('/api/products', productRoutes);
-app.use('/api/users', userRoute);
-app.use('/api/orders', orderRouter);
-app.use('/api/dashboard', dashboardRouter);
 
+// API routes
+app.use("/api/auth", authRoutes);
+app.use("/api/category", categoryRoutes);
+app.use("/api/supplier", supplierRoutes);
+app.use("/api/products", productRoutes);
+app.use("/api/users", userRoute);
+app.use("/api/orders", orderRouter);
+app.use("/api/dashboard", dashboardRouter);
 
+// Serve frontend static files (Vite build)
+app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
+// Catch-all route for React Router
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
+});
+
+// Start server
 app.listen(port, () => {
-  connectDB()
-  console.log(`Server is running on http://localhost:${port}`);
-}
-);
+  connectDB();
+  console.log(`✅ Server running on http://localhost:${port}`);
+});
