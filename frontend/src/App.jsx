@@ -14,45 +14,49 @@ import CustomerOrders from './components/CustomerOrders.jsx';
 import Profile from './components/Profile.jsx';
 import Summary from './components/Summary.jsx';
 export const BASE_URL = import.meta.env.VITE_API_URL; // Use to import base url frontend .env
+import { ToastContainer } from 'react-toastify';
 
-function App () {
+function App() {
 
   return (
-    <Router>
-      <Routes>
-        <Route path='/' element={<Root />} />
-        <Route path='/admin-dashboard' element={
-          <ProtectedRoutes requireRole={["admin"]}>
-            <Dashboard/>
-          </ProtectedRoutes>
-        }
-        >
-          <Route index element={<Summary/>} />
-          <Route path='categories' element={<Categories/>} />
-          <Route path='products' element={<Product/>} />
-          <Route path='suppliers' element={<Suppliers/>} />
-          <Route path='orders' element={<CustomerOrders/>} />
-          <Route path='profile' element={<Profile/>} />
-          <Route path='users' element={<Users/>} />
-          <Route path='logout' element={<Logout/>} />
-        </Route>
-        <Route 
-        path='/customer-dashboard' 
-        element={<Dashboard />}
-        >
-        <Route
-        index element={<CustomerProducts/>}></Route>
-        <Route
-        path='orders' element={<CustomerOrders/>}></Route>
-        <Route
-        path='logout' element={<Logout/>}></Route>
-        <Route
-        path='profile' element={<Profile/>}></Route>
-        </Route>
-        <Route path='/login' element={<Login />} />
-        <Route path='/unathorized' element={<p className='font-bold text-3xl mt-20 ml-20'>Uanthorized</p>} />
-      </Routes>
-    </Router>
+    <>
+      <ToastContainer />
+      <Router>
+        <Routes>
+          <Route path='/' element={<Root />} />
+          <Route path='/admin-dashboard' element={
+            <ProtectedRoutes requireRole={["admin"]}>
+              <Dashboard />
+            </ProtectedRoutes>
+          }
+          >
+            <Route index element={<Summary />} />
+            <Route path='categories' element={<Categories />} />
+            <Route path='products' element={<Product />} />
+            <Route path='suppliers' element={<Suppliers />} />
+            <Route path='orders' element={<CustomerOrders />} />
+            <Route path='profile' element={<Profile />} />
+            <Route path='users' element={<Users />} />
+            <Route path='logout' element={<Logout />} />
+          </Route>
+          <Route
+            path='/customer-dashboard'
+            element={<Dashboard />}
+          >
+            <Route
+              index element={<CustomerProducts />}></Route>
+            <Route
+              path='orders' element={<CustomerOrders />}></Route>
+            <Route
+              path='logout' element={<Logout />}></Route>
+            <Route
+              path='profile' element={<Profile />}></Route>
+          </Route>
+          <Route path='/login' element={<Login />} />
+          <Route path='/unathorized' element={<p className='font-bold text-3xl mt-20 ml-20'>Uanthorized</p>} />
+        </Routes>
+      </Router>
+    </>
   )
 }
 

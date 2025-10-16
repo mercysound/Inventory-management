@@ -30,7 +30,7 @@ const Profile = () => {
       }
     } catch (error) {
       console.error("Error fetching user profile:", error);
-      alert("error fetching user profile. Please try again.")
+      toast.error("error fetching user profile. Please try again.")
     }
   }
   useEffect(() => {
@@ -47,14 +47,14 @@ const Profile = () => {
           },
         });
       if (response.data.success) {
-        alert("profile updated successfully")
+        toast.success("profile updated successfully")
         setEdit(false)
       }else{
-        alert("Failed to update profile")
+        toast.error("Failed to update profile")
       }
     } catch (error) {
       console.error("Error fetching user profile:", error);
-      alert("Error updating profile. Pls try again.")
+      toast.error("Error updating profile. Pls try again.")
     }
   }
 

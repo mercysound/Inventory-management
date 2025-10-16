@@ -52,7 +52,7 @@ const Users = () => {
 
     // only runs when status is 2xx
     if (response.data.success) {
-      alert("User Added Successfully");
+      toast.success("User Added Successfully");
       setFormData({
         name: "",
         email: "",
@@ -67,13 +67,13 @@ const Users = () => {
     if (error.response) {
       // specifically check for the 400 from your backend
       if (error.response.status === 400) {
-        alert(error.response.data.message); // 👉 "User already exists"
+        toast.error(error.response.data.message); // 👉 "User already exists"
       } else {
-        alert(`Error: ${error.response.data.message || "Please try again"}`);
+        toast.error(`Error: ${error.response.data.message || "Please try again"}`);
       }
     } else {
       // network or unexpected error
-      alert("Network error – please try again");
+      toast.error("Network error – please try again");
       console.error(error);
     }
   }
@@ -100,15 +100,15 @@ const Users = () => {
           }
         );
         if (response.data.success) {
-          alert("User deleted successfully!")
+          toast.success("User deleted successfully!")
           fetchUsers(); // Refresh the users  list after deletion
         } else {
           console.error("Error deleting user");
-          alert("Error deleting user. Please try again")
+          toast.error("Error deleting user. Please try again")
         }
       } catch (error) {
         console.error("Error deleting category:", error)
-        alert("Error deleting user. Please try again")
+        toast.error("Error deleting user. Please try again")
 
       }
     }

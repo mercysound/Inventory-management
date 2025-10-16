@@ -2,8 +2,8 @@ import dotenv from "dotenv";
 dotenv.config();
 import express from "express";
 import cors from "cors";
-import path from "path";
-import { fileURLToPath } from "url";
+// import path from "path";
+// import { fileURLToPath } from "url";
 import connectDB from "./db/connection.js";
 
 import authRoutes from "./routes/auth.js";
@@ -14,8 +14,8 @@ import userRoute from "./routes/userRoute.js";
 import orderRouter from "./routes/orderRoute.js";
 import dashboardRouter from "./routes/dashboardRoute.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+  // const __filename = fileURLToPath(import.meta.url);
+  // const __dirname = path.dirname(__filename);
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -52,13 +52,13 @@ app.use("/api/users", userRoute);
 app.use("/api/orders", orderRouter);
 app.use("/api/dashboard", dashboardRouter);
 
-// Serve frontend
-app.use(express.static(path.join(__dirname, "../frontend/dist")));
+// // Serve frontend
+// app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
-// Catch-all for React Router
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
-});
+// // Catch-all for React Router
+// app.get("*", (req, res) => {
+//   res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
+// });
 
 // Start server
 app.listen(port, () => {

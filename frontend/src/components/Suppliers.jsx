@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { BASE_URL } from '../App';
+import { toast } from 'react-toastify';
 
 const Suppliers = () => {
   const [editSupplier, setEditSupplier] = useState(null);
@@ -95,7 +96,7 @@ const Suppliers = () => {
       }
       if (response.data.success) {
         fetchSuppliers()
-        alert(editSupplier ? "Supplier upadated successfully!" : "Supplier added succefully!");
+        toast.success(editSupplier ? "Supplier upadated successfully!" : "Supplier added succefully!");
         setAddSupplier(false);
         setEditSupplier(false);
         setFormData({
@@ -106,19 +107,19 @@ const Suppliers = () => {
         })
       } else {
         console.error(editSupplier ? "Error updating Supplier" : "Error adding Supplier:", response.data);
-        alert(editSupplier ? "Error updating Supplier, Please try again" : "Error adding Supplier, Please try again")
+        toast.error(editSupplier ? "Error updating Supplier, Please try again" : "Error adding Supplier, Please try again")
       }
     } catch (error) {
       // console.error("Error adding supplier:", error);
       // alert(error.response.data.message," Please try again")
       // alert("Error adding. Please try agains.")
       if (error.response?.status === 400) {
-        alert("Supplier already exists");
+        toast.error("Supplier already exists");
       } else if (error.response?.status === 401) {
-        alert("Session expired, please log in again");
+        toast.error("Session expired, please log in again");
         navigate("/login");
       } else {
-        alert("Something went wrong");
+        toast.error("Something went wrong");
       }
     }
   }
@@ -135,19 +136,19 @@ const Suppliers = () => {
           }
         )
         if (response.data.success) {
-          alert('Supplier deleted successfully!')
+          toast.success('Supplier deleted successfully!')
           fetchSuppliers();
         } else {
           console.error("Error deleting supplier", data);
-          alert("Error deleting supplier. Please try again")
+          toast.error("Error deleting supplier. Please try again")
         }
       }
     } catch (error) {
       if (error.response) {
-        alert(error.response.data.message)
+        toast.error(error.response.data.message)
       } else {
         // console.error("Error deleting category:", error)
-        alert("Error deleting supplier. Please try again")
+        toast.error("Error deleting supplier. Please try again")
       }
     }
   }

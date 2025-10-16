@@ -2,6 +2,7 @@ import axios from 'axios';
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router';
 import { BASE_URL } from '../App';
+import { toast } from 'react-toastify';
 
 const Categories = () => {
   const [categoryName, setCategoryName] = useState("");
@@ -27,7 +28,6 @@ const Categories = () => {
       if (error.response && error.response.status === 401) {
         if (error.response.data.message === "Token has expired, please login again") {
           localStorage.removeItem("token");
-          // alert("gone")
           navigate("/login");
         }
       }
@@ -70,13 +70,13 @@ const Categories = () => {
         setCategoryDescription("");
         setEditCategory(null);
         fetchCagories();
-        alert(editCategory ? "Category Updated Successful" : "Category Added Successful")
+        toast.success(editCategory ? "Category Updated Successful" : "Category Added Successful")
       } else {
-        alert(editCategory ? "Error Updating Category, pls try again" : "Error addding category, pls try again")
+        toast.error(editCategory ? "Error Updating Category, pls try again" : "Error addding category, pls try again")
       }
     } catch (error) {
       console.error("Category request error:", error)
-      alert("Something went wrong, Please try again.")
+      toast.success("Something went wrong, Please try again.")
     }
   }
 
@@ -102,18 +102,18 @@ const Categories = () => {
           }
         );
         if (response.data.success) {
-          alert("Category deleted successfully!")
+          toast.success("Category deleted successfully!")
           fetchCagories(); // Refresh the categories list after deletion
         } else {
           console.error("Error deleting category", data);
-          alert("Error deleting category. Please try again")
+          toast.error("Error deleting category. Please try again")
         }
       } catch (error) {
         if(error.response){
-          alert(error.response.data.message)
+          toast.error(error.response.data.message)
         }else{
           // console.error("Error deleting category:", error)
-          alert("Error deleting category. Please try again")
+          toast.error("Error deleting category. Please try again")
         }
       }
     }

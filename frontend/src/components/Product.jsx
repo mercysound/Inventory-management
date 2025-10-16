@@ -2,6 +2,7 @@ import axios from 'axios';
 import React, { useState } from 'react'
 import { useEffect } from 'react';
 import { BASE_URL } from '../App';
+import { toast } from 'react-toastify';
 
 const Product = () => {
   const [openModal, setOpenModal] = useState(false);
@@ -34,7 +35,7 @@ const Product = () => {
         setFilteredProducts(response.data.products);
       } else {
         console.error("Error fetching products", response.data.message);
-        alert("Error fetching products. Please try again")
+        toast.error("Error fetching products. Please try again")
 
       }
     } catch (error) {
@@ -103,7 +104,7 @@ const Product = () => {
       );
       }
       if (response.data.success) {
-        alert(editProduct ? "Product upadated successfully!" : "Product added succefully!");
+        toast.success(editProduct ? "Product updated successfully!" : "Product added succefully!");
         setOpenModal(false)
         setEditProduct(null)
         setFormData({
@@ -117,12 +118,10 @@ const Product = () => {
         fetchProducts()
       } else {
         console.error(editProduct ? "Error updating Product" : "Error adding Product:", response.data);
-        alert(editProduct ? "Error updating Product, Please try again" : "Error adding Product, Please try again")
+        toast.error(editProduct ? "Error updating Product, Please try again" : "Error adding Product, Please try again")
       }
     } catch (error) {
       console.error("Error adding product:", error);
-      // alert(error.response.data.message, " Please try again")
-      // alert("Error adding. Please try agains.")
     }
   }
   
@@ -138,16 +137,16 @@ const Product = () => {
           }
         )
         if(response.data.success){
-          alert('Products deleted successfully!')
+          toast.success('Products deleted successfully!')
           fetchProducts();
         }else{
           console.error("Error deleting Products", data);
-          alert("Error deleting Products. Please try again")
+          toast.error("Error deleting Products. Please try again")
         }
       }
     } catch (error) {
       console.error("Error deleting Products:", error)
-        alert("Error deleting Products. Please try again")
+        toast.error("Error deleting Products. Please try again")
     }
   }
 
