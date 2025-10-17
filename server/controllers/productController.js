@@ -88,3 +88,4 @@ const deleteProduct = async (req, res) => {
 }
 
 export { getProducts, addProduct, updateProduct, deleteProduct }
+

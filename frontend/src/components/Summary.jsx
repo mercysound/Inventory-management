@@ -1,7 +1,9 @@
-import axios from 'axios';
+// import axios from 'axios';
+import axiosInstance from '../utils/axiosInstance';
 import React, { useEffect, useState } from 'react'
-import { useAuth } from '../context/AuthContext';
-import { BASE_URL } from '../App';
+// import { useAuth } from '../context/AuthContext';
+// import { BASE_URL } from '../App';
+import { toast } from 'react-toastify';
 
 const Summary = () => {
   const [dashBoardData, setDashboardData] = useState({
@@ -19,15 +21,17 @@ const Summary = () => {
   const fetchDashbordData = async ()=>{
     try {
       setLoading(true)
-      const response = await axios.get(`${BASE_URL}/api/dashboard`, {
-         headers: {
-              Authorization: `Bearer ${localStorage.getItem('pos-token')}`
-            },
-      })
+      // const response = await axios.get(`${BASE_URL}/api/dashboard`, {
+      //    headers: {
+      //         Authorization: `Bearer ${localStorage.getItem('pos-token')}`
+      //       },
+      // })
+      const response = await axiosInstance.get(`api/dashboard`);
       setDashboardData(response.data.dashboardData);
     } catch (error) {
-      alert(error.message)
-      console.error("Errr")
+      toast.error(error.message)
+      // console.error("Errr")
+      console.error(error)
     }finally{
       setLoading(false)
     }

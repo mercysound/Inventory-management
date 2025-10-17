@@ -125,7 +125,7 @@ const Product = () => {
     }
   }
   
-  const handleDelete = async (id )=>{
+  const handleDelete = async (id)=>{
     try {
       const confirmDelete = confirm("Are you sure you want to delete this Product")
       if (confirmDelete) {
