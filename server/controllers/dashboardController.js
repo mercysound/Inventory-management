@@ -3,12 +3,13 @@ import ProductModel from "../models/ProductModel.js"
 
 const getData = async (req, res)=>{
   try {
-    const totalProducts = await ProductModel.countDocuments();
+    const totalProducts = await ProductModel.find({ isDeleted: false }).countDocuments();
 
   const stockResult = await ProductModel.aggregate([
+    { $match: { isDeleted: false } }, // filter only non-deleted orders
     {$group: {_id:null, totalStock: {$sum: "$stock"}}}
-  ])
-
+  ]);
+  
   
   const totalStock = stockResult[0]?.totalStock || 0;
 
@@ -22,8 +23,10 @@ const getData = async (req, res)=>{
   });
 
   const revenueResult = await OrderModel.aggregate([
+    // { $match: { isDeleted: false } }, // filter only non-deleted orders
     {$group:{_id:null, totalRevenue: {$sum: '$totalPrice'}}}
-  ])
+  ]);
+  
 
   const revenue = revenueResult[0]?.totalRevenue || 0;
 
@@ -67,7 +70,9 @@ const getData = async (req, res)=>{
   const highestSaleProduct = highestSaleResult[0] || {message: "No sale data available"};
 
   // low sale stock
-  const lowStock = await ProductModel.find({stock: {$gt: 0, $lt:5}})
+  const lowStock = await ProductModel.find({ 
+    isDeleted: false,
+    stock: {$gt: 0, $lt:5}})
   .select("name stock")
   .populate("categoryId", "name");
 

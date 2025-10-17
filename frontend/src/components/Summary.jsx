@@ -60,6 +60,8 @@ const Summary = () => {
         </div>
         <div className="bg-purple-500 text-white p-4 rounded-lg shadow-md flex flex-col items-center justify-center">
           <p className='text-lg font-semibold'>Revenue</p>
+          <p className='text-lg font-semibold'>{console.log(dashBoardData.revenue)
+          }</p>
           <p className='text-2xl font-bold'>₦{dashBoardData.revenue}</p>
         </div>
       </div>
