@@ -3,15 +3,17 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router';
 import Root from './utils/Root.jsx';
 import Login from './pages/Login/Login.jsx';
 import ProtectedRoutes from './utils/ProtectedRoutes.jsx';
-import Dashboard from './pages/Login/Dashboard.jsx';
-import Categories from './components/Categories.jsx';
-import Suppliers from './components/Suppliers.jsx';
-import Product from './components/Product.jsx';
+import Dashboard from './pages/login/Dashboard.jsx';
+// import Categories from './components/Categories.jsx';
+import Categories from './components/category/Category.jsx';
+import Suppliers from './components/supplier/Suppliers.jsx';
+import Product from './components/product/Product.jsx';
+import Profile from './components/profile/Profile.jsx';
 import Logout from './components/Logout.jsx';
-import Users from './components/User.jsx';
-import CustomerProducts from './components/CustomerProducts.jsx';
-import CustomerOrders from './components/CustomerOrders.jsx';
-import Profile from './components/Profile.jsx';
+import Users from './components/user/Users.jsx';
+import CustomerProducts from './components/customerProduct/CustomerProducts.jsx';
+import CustomerOrders from './components/orders/CustomerOrders.jsx';
+
 import Summary from './components/Summary.jsx';
 export const BASE_URL = import.meta.env.VITE_API_URL; // Use to import base url frontend .env
 import { ToastContainer } from 'react-toastify';
@@ -53,7 +55,7 @@ function App() {
               path='profile' element={<Profile />}></Route>
           </Route>
           <Route path='/login' element={<Login />} />
-          <Route path='/unathorized' element={<p className='font-bold text-3xl mt-20 ml-20'>Uanthorized</p>} />
+          <Route path='/unauthorized' element={<p className='font-bold text-3xl mt-20 ml-20'>Uanthorized</p>} />
         </Routes>
       </Router>
     </>
