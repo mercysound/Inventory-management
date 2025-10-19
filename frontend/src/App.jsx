@@ -4,7 +4,6 @@ import Root from './utils/Root.jsx';
 import Login from './pages/Login/Login.jsx';
 import ProtectedRoutes from './utils/ProtectedRoutes.jsx';
 import Dashboard from './pages/Dashboard.jsx';
-// import Categories from './components/Categories.jsx';
 import Categories from './components/category/Category.jsx';
 import Suppliers from './components/supplier/Suppliers.jsx';
 import Product from './components/product/Product.jsx';
@@ -13,8 +12,9 @@ import Logout from './components/Logout.jsx';
 import Users from './components/user/Users.jsx';
 import CustomerProducts from './components/customerProduct/CustomerProducts.jsx';
 import CustomerOrders from './components/orders/CustomerOrders.jsx';
-
 import Summary from './components/Summary.jsx';
+
+
 export const BASE_URL = import.meta.env.VITE_API_URL; // Use to import base url frontend .env
 import { ToastContainer } from 'react-toastify';
 

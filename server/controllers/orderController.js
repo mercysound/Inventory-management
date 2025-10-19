@@ -18,7 +18,7 @@ const addOrder = async (req, res) =>{
     }
 
     const orderObj = new OrderModel({
-      customer: userId, 
+      userOrdering: userId, 
       product: productId,
       quantity,
       totalPrice: total
@@ -35,12 +35,14 @@ const addOrder = async (req, res) =>{
    try {
      const userId = req.user._id;
      let query = {};
-     if (req.user.role === "customer") {
-      query= {customer: userId}
+     if (req.user.role === "staff") {
+      query= {userOrdering: userId}
      }
     const orders = await OrderModel.find(query)
     .populate({path:'product', select: 'name description price', populate:{path: 'categoryId', select: "name"},})
-    .populate('customer', 'name email');
+    .populate('userOrdering', 'name email role');
+    console.log(orders);
+    
      
     return res.status(200).json({success: true, orders});
   } catch (error) {

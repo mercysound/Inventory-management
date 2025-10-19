@@ -17,6 +17,7 @@ const CustomerOrders = () => {
 
       if (response.data.success) {
         setOrders(response.data.orders);
+        console.log(response.data);
       } else {
         console.error("Error fetching orders:", response.data.message);
       }

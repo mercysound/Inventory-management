@@ -58,7 +58,7 @@ const UsersForm = ({ formData, handleChange, handleSubmit }) => {
           >
             <option value="">Select Role</option>
             <option value="admin">Admin</option>
-            <option value="customer">Customer</option>
+            <option value="staff">Staff</option>
           </select>
         </div>
         <div className="flex space-x-2">

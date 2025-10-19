@@ -10,13 +10,14 @@ const CustomerOrdersTable = ({ orders }) => {
           <thead>
             <tr className="bg-gray-200">
               <th className="border border-gray-300 p-2">S/N</th>
-              <th className="border border-gray-300 p-2">Product Name</th>
-              <th className="border border-gray-300 p-2">Category Name</th>
-              <th className="border border-gray-300 p-2">Quantity</th>
+              <th className="border border-gray-300 p-2">Product</th>
+              <th className="border border-gray-300 p-2">Category</th>
+              <th className="border border-gray-300 p-2">Qty</th>
               <th className="border border-gray-300 p-2">Total Price</th>
               <th className="border border-gray-300 p-2">Description</th>
-              <th className="border border-gray-300 p-2">Date</th>
-              <th className="border border-gray-300 p-2">Time</th>
+              <th className="border border-gray-300 p-2">Day</th>
+              <th className="border border-gray-300 p-2">Transaction By</th>
+              {/* <th className="border border-gray-300 p-2">Time</th> */}
             </tr>
           </thead>
           <tbody>
@@ -37,10 +38,12 @@ const CustomerOrdersTable = ({ orders }) => {
                   {order.product?.description}
                 </td>
                 <td className="border border-gray-300 p-2">
-                  {new Date(order.orderDate).toLocaleDateString()}
+                  {new Date(order.orderDate).toLocaleDateString()} <br />
+                  {new Date(order.orderDate).toLocaleTimeString()}
                 </td>
                 <td className="border border-gray-300 p-2">
-                  {new Date(order.orderDate).toLocaleTimeString()}
+                  <p>Role: {order.userOrdering?.role}</p>
+                  <p>Name: {order.userOrdering?.name}</p>
                 </td>
               </tr>
             ))}
