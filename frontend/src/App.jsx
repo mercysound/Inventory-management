@@ -1,7 +1,7 @@
 import './App.css';
 import { BrowserRouter as Router, Routes, Route } from 'react-router';
 import Root from './utils/Root.jsx';
-import Login from './pages/Login/Login.jsx';
+import Login from './pages/login/Login.jsx';
 import ProtectedRoutes from './utils/ProtectedRoutes.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Categories from './components/category/Category.jsx';

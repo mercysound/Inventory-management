@@ -137,12 +137,16 @@ const CustomerProducts = () => {
                       {product.description}
                     </td>
                     <td className="border p-2 text-center">
-                      <button
+                      {product.stock < 1?(
+                        <button className="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm">Unavailable</button>
+                      ):(
+                        <button
                         onClick={() => handleOrderChange(product)}
                         className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
                       >
                         Order
                       </button>
+                      )}
                     </td>
                   </tr>
                 ))
