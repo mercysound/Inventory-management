@@ -54,7 +54,7 @@ function App() {
             <Route
               path='profile' element={<Profile />}></Route>
           </Route>
-          <Route path='/login' element={<Login />} />
+          <Route path='/login' element={<Login/>} />
           <Route path='/unauthorized' element={<p className='font-bold text-3xl mt-20 ml-20'>Uanthorized</p>} />
         </Routes>
       </Router>

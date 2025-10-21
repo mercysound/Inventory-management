@@ -35,7 +35,7 @@ const Sidebar = () => {
         <span className='hidden md:block text-xl font-bold'>MELECH SH</span>
         <span className='md:hidden text-xl font-bold'>MSH</span>
       </div>
-
+ 
       <div>
         <ul className='space-y-2 p-2'>
           {menuLinks.map((item)=>(
