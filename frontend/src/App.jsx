@@ -13,6 +13,7 @@ import Users from './components/user/Users.jsx';
 import CustomerProducts from './components/customerProduct/CustomerProducts.jsx';
 import CustomerOrders from './components/orders/CustomerOrders.jsx';
 import Summary from './components/Summary.jsx';
+import PurchaseHistory from './components/purchase/PurchaseHistory.jsx';
 
 
 export const BASE_URL = import.meta.env.VITE_API_URL; // Use to import base url frontend .env
@@ -37,13 +38,18 @@ function App() {
             <Route path='products' element={<Product />} />
             <Route path='suppliers' element={<Suppliers />} />
             <Route path='orders' element={<CustomerOrders />} />
+            <Route path='purchase-history' element={<PurchaseHistory/>} />
+
             <Route path='profile' element={<Profile />} />
             <Route path='users' element={<Users />} />
             <Route path='logout' element={<Logout />} />
           </Route>
-          <Route
-            path='/customer-dashboard'
-            element={<Dashboard />}
+
+          <Route path='/customer-dashboard' element={
+            <ProtectedRoutes requireRole={["staff"]}>
+              <Dashboard />
+            </ProtectedRoutes>
+          }
           >
             <Route
               index element={<CustomerProducts />}></Route>

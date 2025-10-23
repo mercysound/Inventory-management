@@ -6,17 +6,38 @@ const OrderModal = ({ orderData, setOrderData, closeModal, refreshProducts }) =>
   const [loading, setLoading] = useState(false);
 
   const handleQuantityChange = (e) => {
-    const quantity = parseInt(e.target.value) || 1;
-    if (quantity > orderData.stock) {
-      toast.warning("Not enough stock available");
-      return;
-    }
-    setOrderData((prev) => ({
-      ...prev,
-      quantity,
-      total: quantity * prev.price,
-    }));
-  };
+  const value = e.target.value;
+
+  // Allow empty value while typing
+  if (value === "") {
+    setOrderData((prev) => ({ ...prev, quantity: "", total: 0 }));
+    return;
+  }
+
+  const quantity = parseInt(value);
+
+  // Prevent invalid input
+  if (isNaN(quantity)) return;
+
+    // Validate minimum
+  if(quantity < 1){
+    toast.warning("Order must be more than 1");
+    return;
+  }
+
+  // Stock validation
+  if (quantity > orderData.stock) {
+    toast.warning("Not enough stock available");
+    return;
+  }
+
+  setOrderData((prev) => ({
+    ...prev,
+    quantity,
+    total: quantity * prev.price,
+  }));
+};
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,10 +73,11 @@ const OrderModal = ({ orderData, setOrderData, closeModal, refreshProducts }) =>
             type="number"
             name="quantity"
             value={orderData.quantity}
-            min="0"
+            min="1"
             onChange={handleQuantityChange}
             className="border border-gray-300 rounded p-2 w-full"
             placeholder="Quantity"
+            required
           />
 
           <p className="text-gray-700 font-semibold">
