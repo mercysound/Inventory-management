@@ -20,24 +20,30 @@ import dashboardRouter from "./routes/dashboardRoute.js";
 const app = express();
 const port = process.env.PORT || 3000;
 
-// ✅ Dynamic CORS based on environment
-const allowedOrigins =
-  process.env.NODE_ENV === "production"
-    ? ["https://inventory-management-r2y8.onrender.com"]
-    : ["http://localhost:5173"];
+// ✅ Dynamic origin detection (auto works in dev + production)
+const allowedOrigins = [
+  "http://localhost:5173",             // your local frontend (Vite)
+  "https://yourfrontend.onrender.com", // your deployed frontend
+];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    } else {
-      return callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-})); ///
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.log("❌ CORS blocked request from:", origin);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true, // allows cookies or tokens to be sent
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+  })
+);
+
 
 // Middleware
 // app.use(cors());

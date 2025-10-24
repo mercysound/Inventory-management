@@ -35,6 +35,7 @@ const OrderModal = ({ orderData, setOrderData, closeModal, refreshProducts }) =>
     ...prev,
     quantity,
     total: quantity * prev.price,
+    price: prev.price
   }));
 };
 
