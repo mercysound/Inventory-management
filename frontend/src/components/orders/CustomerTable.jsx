@@ -1,39 +1,77 @@
 import React from "react";
 
-const CustomerTable = ({ orders }) => {
-  if (!orders || orders.length === 0)
-    return <p className="text-center text-gray-500">No orders available.</p>;
+const CustomerTable = ({ orders = [], onReduceQty, onRemoveOrder }) => {
+  if (!orders.length)
+    return <p className="text-center text-gray-500">No orders found.</p>;
+
+  // ✅ Calculate grand total
+  const grandTotal = orders.reduce(
+    (sum, order) => sum + order.quantity * order.price,
+    0
+  );
 
   return (
     <div className="overflow-x-auto rounded-lg border border-gray-200">
-      <table className="min-w-full divide-y divide-gray-200 text-sm text-gray-700">
-        <thead className="bg-indigo-50 text-indigo-700 font-semibold">
+      <table className="min-w-full border-collapse text-sm text-gray-700">
+        <thead className="bg-indigo-600 text-white">
           <tr>
-            <th className="px-4 py-2 text-left">#</th>
-            <th className="px-4 py-2 text-left">Product</th>
-            <th className="px-4 py-2 text-left">Category</th>
-            <th className="px-4 py-2 text-right">Quantity</th>
-            <th className="px-4 py-2 text-right">Unit Price (₦)</th>
-            <th className="px-4 py-2 text-right">Total (₦)</th>
+            <th className="py-2 px-3 text-left">#</th>
+            <th className="py-2 px-3 text-left">Product</th>
+            <th className="py-2 px-3 text-left">Quantity</th>
+            <th className="py-2 px-3 text-left">Price</th>
+            <th className="py-2 px-3 text-left">Total</th>
+            <th className="py-2 px-3 text-center">Actions</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
-          {orders.map((order, idx) => (
-            <tr key={order._id || idx} className="hover:bg-gray-50">
-              <td className="px-4 py-2">{idx + 1}</td>
-              <td className="px-4 py-2">{order.product?.name || "—"}</td>
-              <td className="px-4 py-2">
-                {order.product?.categoryId?.name || "—"}
+        <tbody>
+          {orders.map((order, index) => (
+            
+            <tr
+            key={order._id}
+            className={`${
+              index % 2 === 0 ? "bg-gray-50" : "bg-white"
+            } border-b`}
+            >
+              <td className="py-2 px-3">{index + 1}</td>
+              {/* {console.log(order)} */}
+              <td className="py-2 px-3 capitalize">
+                {order.product?.name || order.productId?.name || "N/A"}
               </td>
-              <td className="px-4 py-2 text-right">{order.quantity}</td>
-              <td className="px-4 py-2 text-right">{order.price?.toLocaleString()}</td>
-              <td className="px-4 py-2 text-right">
-                {order.totalPrice?.toLocaleString()}
+              <td className="py-2 px-3">{order.quantity}</td>
+              <td className="py-2 px-3">
+                ₦{order.price?.toLocaleString() ?? 0}
+              </td>
+              <td className="py-2 px-3">
+                ₦{(order.quantity * order.price).toLocaleString()}
+              </td>
+              <td className="py-2 px-3 text-center space-x-2">
+                <button
+                  onClick={() => onReduceQty(order._id)}
+                  className="px-2 py-1 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md text-xs"
+                >
+                  Reduce Qty
+                </button>
+                <button
+                  onClick={() => onRemoveOrder(order._id)}
+                  className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs"
+                >
+                  Delete
+                </button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+
+      {/* ✅ Total summary section */}
+      <div className="flex justify-end items-center bg-gray-100 px-6 py-3 border-t border-gray-300">
+        <span className="text-gray-800 font-semibold mr-2 text-base">
+          Grand Total:
+        </span>
+        <span className="text-indigo-700 font-bold text-lg">
+          ₦{grandTotal.toLocaleString()}
+        </span>
+      </div>
     </div>
   );
 };
