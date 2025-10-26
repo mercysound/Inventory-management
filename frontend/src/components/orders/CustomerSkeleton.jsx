@@ -1,11 +1,14 @@
+// frontend/src/components/orders/CustomerSkeleton.jsx
 import React from "react";
 
 const CustomerSkeleton = () => {
   return (
-    <div className="animate-pulse bg-gray-100 rounded-lg p-4">
-      <div className="h-5 bg-gray-300 rounded w-3/4 mb-3"></div>
-      <div className="h-5 bg-gray-300 rounded w-1/2 mb-3"></div>
-      <div className="h-5 bg-gray-300 rounded w-full mb-3"></div>
+    <div className="animate-pulse rounded-md p-4 border border-gray-200 bg-white">
+      <div className="h-4 bg-gray-200 rounded w-1/3 mb-4" />
+      <div className="space-y-2">
+        <div className="h-6 bg-gray-200 rounded" />
+        <div className="h-6 bg-gray-200 rounded w-3/4" />
+      </div>
     </div>
   );
 };

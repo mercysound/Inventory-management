@@ -1,12 +1,17 @@
+// frontend/src/components/orders/CustomerTable.jsx
 import React from "react";
 
-const CustomerTable = ({ orders = [], onReduceQty, onRemoveOrder }) => {
+const CustomerTable = ({
+  orders = [],
+  onReduceQty,
+  onRemoveOrder,
+  onClearAll,
+}) => {
   if (!orders.length)
     return <p className="text-center text-gray-500">No orders found.</p>;
 
-  // ✅ Calculate grand total
   const grandTotal = orders.reduce(
-    (sum, order) => sum + order.quantity * order.price,
+    (sum, order) => sum + (order.totalPrice ?? order.quantity * order.price),
     0
   );
 
@@ -25,24 +30,18 @@ const CustomerTable = ({ orders = [], onReduceQty, onRemoveOrder }) => {
         </thead>
         <tbody>
           {orders.map((order, index) => (
-            
             <tr
-            key={order._id}
-            className={`${
-              index % 2 === 0 ? "bg-gray-50" : "bg-white"
-            } border-b`}
+              key={order._id}
+              className={`${index % 2 === 0 ? "bg-gray-50" : "bg-white"} border-b`}
             >
               <td className="py-2 px-3">{index + 1}</td>
-              {/* {console.log(order)} */}
               <td className="py-2 px-3 capitalize">
                 {order.product?.name || order.productId?.name || "N/A"}
               </td>
               <td className="py-2 px-3">{order.quantity}</td>
+              <td className="py-2 px-3">₦{(order.price ?? 0).toLocaleString()}</td>
               <td className="py-2 px-3">
-                ₦{order.price?.toLocaleString() ?? 0}
-              </td>
-              <td className="py-2 px-3">
-                ₦{(order.quantity * order.price).toLocaleString()}
+                ₦{((order.totalPrice ?? order.quantity * order.price) ?? 0).toLocaleString()}
               </td>
               <td className="py-2 px-3 text-center space-x-2">
                 <button
@@ -63,14 +62,22 @@ const CustomerTable = ({ orders = [], onReduceQty, onRemoveOrder }) => {
         </tbody>
       </table>
 
-      {/* ✅ Total summary section */}
-      <div className="flex justify-end items-center bg-gray-100 px-6 py-3 border-t border-gray-300">
-        <span className="text-gray-800 font-semibold mr-2 text-base">
-          Grand Total:
-        </span>
-        <span className="text-indigo-700 font-bold text-lg">
-          ₦{grandTotal.toLocaleString()}
-        </span>
+      <div className="flex justify-between items-center bg-gray-100 px-6 py-3 border-t border-gray-300">
+        <div>
+          <button
+            onClick={onClearAll}
+            className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm"
+          >
+            Clear All Orders
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <span className="text-gray-800 font-semibold mr-2 text-base">Grand Total:</span>
+          <span className="text-indigo-700 font-bold text-lg">
+            ₦{grandTotal.toLocaleString()}
+          </span>
+        </div>
       </div>
     </div>
   );
