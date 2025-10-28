@@ -1,3 +1,4 @@
+import AllOrdersPlacedModel from "../models/AllOrdersPlacedModel.js";
 import OrderModel from "../models/OrderModel.js";
 import ProductModel from "../models/ProductModel.js"
 
@@ -15,14 +16,16 @@ const getData = async (req, res)=>{
 
   //start of day
   const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0)
-  const endOfDay = new Date();
-  endOfDay.setHours(23, 59, 59, 999);
-  const ordersToday = await OrderModel.countDocuments({
-    orderDate:{$gte: startOfDay, $lte: endOfDay}
-  });
+startOfDay.setHours(0, 0, 0, 0);
 
-  const revenueResult = await OrderModel.aggregate([
+const endOfDay = new Date();
+endOfDay.setHours(23, 59, 59, 999);
+
+const ordersToday = await AllOrdersPlacedModel.countDocuments({
+  createdAt: { $gte: startOfDay, $lte: endOfDay },
+});
+
+  const revenueResult = await AllOrdersPlacedModel.aggregate([
     // { $match: { isDeleted: false } }, // filter only non-deleted orders
     {$group:{_id:null, totalRevenue: {$sum: '$totalPrice'}}}
   ]);
@@ -35,37 +38,25 @@ const getData = async (req, res)=>{
   .populate('categoryId', 'name')
 
   // high sale product
-  const highestSaleResult = await OrderModel.aggregate([
-    {$group: {_id: '$product', totalQuantity: {$sum: '$quantity'} }},
-    {$sort: {totalQuantity: -1}},
-    {$limit: 1},
-    {
-      $lookup:{
-        from: "products",
-        localField: '_id',
-        foreignField: '_id',
-        as: "product"
-      }
-    },
-    {$unwind: "$product"},
-    {
-      $lookup:{
-        from: "categories",
-        localField: "product.categoryId",
-        foreignField: "_id",
-        as: "product.categoryId"
-      }
-    },
-    {$unwind: "$product.categoryId"},
-    {
-      $project: {
-        name: "$product.name",
-        category: '$product.categoryId.name',
-        totalQuantity: 1,
-      }
-    }
-
-  ])
+const highestSaleResult = await AllOrdersPlacedModel.aggregate([
+      { $unwind: "$productList" }, // flatten productList array
+      {
+        $group: {
+          _id: "$productList",
+          totalQuantity: { $sum: "$allQuantity" },
+        },
+      },
+      { $sort: { totalQuantity: -1 } },
+      { $limit: 1 },
+      {
+        $project: {
+          _id: 0,
+          name: "$_id", // match frontend key
+          totalQuantity: 1,
+          category: "N/A", // default category
+        },
+      },
+    ]);
 
   const highestSaleProduct = highestSaleResult[0] || {message: "No sale data available"};
 

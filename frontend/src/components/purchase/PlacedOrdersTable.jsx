@@ -11,12 +11,12 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, deleteOrder, updating
 
       {/* Desktop / Tablet View */}
       <div className="hidden md:block overflow-x-auto">
-        <table className="min-w-full text-sm text-gray-700">
+        <table className="min-w-full text-sm text-gray-700 border-collapse">
           <thead className="bg-gray-100 uppercase font-semibold text-gray-600">
             <tr>
               <th className="p-3 text-left">#</th>
               <th className="p-3 text-left">Buyer</th>
-              <th className="p-3 text-left">USER</th>
+              <th className="p-3 text-left">User</th>
               <th className="p-3 text-left">Products</th>
               <th className="p-3 text-left">Total</th>
               <th className="p-3 text-left">Payment</th>
@@ -28,16 +28,33 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, deleteOrder, updating
             {orders.map((order, i) => (
               <tr
                 key={order._id}
-                className="border-t hover:bg-gray-50 transition duration-200"
+                className="border-t hover:bg-gray-50 transition duration-200 align-top"
               >
                 <td className="p-3">{i + 1}</td>
                 <td className="p-3">{order.buyerName}</td>
                 <td className="p-3">{order.userOrdering?.name || "Unknown"}</td>
-                <td className="p-3 truncate max-w-[250px]">
-                  {order.productList.join(", ")}
+
+                {/* ✅ Product list with quantity */}
+                <td className="p-3">
+                  <ul className="list-disc list-inside space-y-1">
+                    {order.productList &&
+                      order.productList.map((product, idx) => {
+                        const name =
+                          typeof product === "string"
+                            ? product
+                            : product?.name || "Unnamed";
+                        const qty = product?.quantity || 1;
+                        return (
+                          <li key={idx}>
+                            {name} ×{qty}
+                          </li>
+                        );
+                      })}
+                  </ul>
                 </td>
+
                 <td className="p-3 font-semibold text-gray-800">
-                  ₦{order.totalPrice.toLocaleString()}
+                  ₦{order.totalPrice?.toLocaleString() || 0}
                 </td>
                 <td className="p-3">{order.paymentMethod}</td>
                 <td className="p-3">
@@ -112,16 +129,33 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, deleteOrder, updating
                 {order.userOrdering?.name || "Unknown"}
               </p>
               <p>
-                <span className="font-semibold">Products:</span>{" "}
-                {order.productList.join(", ")}
+                <span className="font-semibold">Products:</span>
               </p>
+
+              {/* ✅ Mobile product list with quantity */}
+              <ul className="list-disc list-inside ml-3">
+                {order.productList &&
+                  order.productList.map((product, idx) => {
+                    const name =
+                      typeof product === "string"
+                        ? product
+                        : product?.name || "Unnamed";
+                    const qty = product?.quantity || 1;
+                    return (
+                      <li key={idx}>
+                        {name} ×{qty}
+                      </li>
+                    );
+                  })}
+              </ul>
+
               <p>
                 <span className="font-semibold">Payment:</span>{" "}
                 {order.paymentMethod}
               </p>
               <p>
                 <span className="font-semibold">Total:</span>{" "}
-                ₦{order.totalPrice.toLocaleString()}
+                ₦{order.totalPrice?.toLocaleString() || 0}
               </p>
             </div>
 
