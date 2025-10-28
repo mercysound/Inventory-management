@@ -13,6 +13,7 @@ import productRoutes from "./routes/productRoute.js";
 import userRoute from "./routes/userRoute.js";
 import orderRouter from "./routes/orderRoute.js";
 import dashboardRouter from "./routes/dashboardRoute.js";
+import allOrdersPlacedRoutes from "./routes/allOrdersPlacedRoutes.js";
 
   // const __filename = fileURLToPath(import.meta.url);
   // const __dirname = path.dirname(__filename);
@@ -57,6 +58,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/users", userRoute);
 app.use("/api/orders", orderRouter);
 app.use("/api/dashboard", dashboardRouter);
+app.use("/api/placed-orders", allOrdersPlacedRoutes);
 
 // // Serve frontend
 // app.use(express.static(path.join(__dirname, "../frontend/dist")));

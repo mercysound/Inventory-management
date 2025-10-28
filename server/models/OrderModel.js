@@ -1,4 +1,3 @@
-// server/models/OrderModel.js
 import mongoose from "mongoose";
 
 const orderSchema = new mongoose.Schema({
@@ -8,9 +7,18 @@ const orderSchema = new mongoose.Schema({
   price: { type: Number, required: true },
   totalPrice: { type: Number, required: true },
   orderDate: { type: Date, default: Date.now },
-  paymentMethod: { type: String }, // saved when order is completed
-  buyerName: { type: String },
-  deliveryStatus: { type: String },
+  productDescription: { type: String },
+
+  // New fields
+  // paymentMethod: { type: String, default: null }, // e.g. "Cash", "POS"
+  // paymentStatus: { 
+  //   type: String, 
+  //   enum: ["Unpaid", "Paid"], 
+  //   default: "Unpaid" 
+  // }, // <-- this ensures orders start as Unpaid
+
+  // buyerName: { type: String },
+  // deliveryStatus: { type: String, default: "pending" },
 });
 
 const OrderModel = mongoose.model("Order", orderSchema);

@@ -22,6 +22,7 @@ const CustomerTable = ({
           <tr>
             <th className="py-2 px-3 text-left">#</th>
             <th className="py-2 px-3 text-left">Product</th>
+            <th className="py-2 px-3 text-left">Description</th>
             <th className="py-2 px-3 text-left">Quantity</th>
             <th className="py-2 px-3 text-left">Price</th>
             <th className="py-2 px-3 text-left">Total</th>
@@ -37,6 +38,9 @@ const CustomerTable = ({
               <td className="py-2 px-3">{index + 1}</td>
               <td className="py-2 px-3 capitalize">
                 {order.product?.name || order.productId?.name || "N/A"}
+              </td>
+              <td className="py-2 px-3 capitalize">
+                {order.product?.description  || "N/A"}
               </td>
               <td className="py-2 px-3">{order.quantity}</td>
               <td className="py-2 px-3">₦{(order.price ?? 0).toLocaleString()}</td>

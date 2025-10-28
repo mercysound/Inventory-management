@@ -13,11 +13,12 @@ import Users from './components/user/Users.jsx';
 import CustomerProducts from './components/customerProduct/CustomerProducts.jsx';
 import CustomerOrders from './components/orders/CustomerOrders.jsx';
 import Summary from './components/Summary.jsx';
-import PurchaseHistory from './components/purchase/PurchaseHistory.jsx';
+// import PurchaseHistory from './components/purchase/PurchaseHistory.jsx';
 
 
 export const BASE_URL = import.meta.env.VITE_API_URL; // Use to import base url frontend .env
 import { ToastContainer } from 'react-toastify';
+import PlacedOrders from './components/purchase/PlacedOrders.jsx';
 
 function App() {
 
@@ -37,8 +38,10 @@ function App() {
             <Route path='categories' element={<Categories />} />
             <Route path='products' element={<Product />} />
             <Route path='suppliers' element={<Suppliers />} />
-            <Route path='orders' element={<CustomerOrders />} />
-            <Route path='purchase-history' element={<PurchaseHistory/>} />
+            {/* <Route path='orders' element={<CustomerOrders />} /> */}
+            {/* <Route path='purchase-history' element={<PurchaseHistory/>} /> */}
+            <Route path="placed-orders" element={<PlacedOrders />} />
+
 
             <Route path='profile' element={<Profile />} />
             <Route path='users' element={<Users />} />

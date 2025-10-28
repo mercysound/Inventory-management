@@ -1,8 +1,8 @@
-// server/controllers/orderController.js
 import PDFDocument from "pdfkit";
 import OrderModel from "../models/OrderModel.js";
 import ProductModel from "../models/ProductModel.js";
 import AllOrdersPlacedModel from "../models/AllOrdersPlacedModel.js";
+
 
 /**
  * addOrder - add a single product to current user's cart (order)
@@ -22,6 +22,7 @@ const addOrder = async (req, res) => {
       quantity,
       totalPrice: total,
       price,
+      // paymentStatus: "Unpaid", // Default state
     });
     await orderObj.save();
     return res.status(200).json({ success: true, message: "Order added successfully" });
@@ -49,8 +50,6 @@ const getOrders = async (req, res) => {
         select: "name description price categoryId",
         populate: { path: "categoryId", select: "name" },
       })
-      .populate("userOrdering", "name email role")
-      .sort({ orderDate: -1 });
 
     const sanitizedOrders = orders.map((o) => ({
       _id: o._id,
@@ -58,11 +57,38 @@ const getOrders = async (req, res) => {
       quantity: o.quantity,
       totalPrice: o.totalPrice ?? 0,
       orderDate: o.orderDate,
-      userOrdering: o.userOrdering,
       price: o.price,
-      paymentMethod: o.paymentMethod,
-      buyerName: o.buyerName,
-      deliveryStatus: o.deliveryStatus,
+    }));
+
+    return res.status(200).json({ success: true, orders: sanitizedOrders });
+  } catch (error) {
+    console.error("getOrders error:", error);
+    return res.status(500).json({ success: false, error: "Server error in fetching orders" });
+  }
+};
+const getPlacedOrders = async (req, res) => {
+  try {
+    // const userId = req.user._id;
+    // let query = {};
+
+    // if (req.user.role === "staff") {
+    //   query = { userOrdering: userId };
+    // }
+
+    const orders = await AllOrdersPlacedModel.find(query)
+      .populate({
+        path: "product",
+        select: "name description price categoryId",
+        populate: { path: "categoryId", select: "name" },
+      })
+
+    const sanitizedPlacedOrders = orders.map((o) => ({
+      _id: o._id,
+      product: o.product,
+      quantity: o.quantity,
+      totalPrice: o.totalPrice ?? 0,
+      orderDate: o.orderDate,
+      price: o.price,
     }));
 
     return res.status(200).json({ success: true, orders: sanitizedOrders });
@@ -73,137 +99,255 @@ const getOrders = async (req, res) => {
 };
 
 /**
- * completeOrder - saves payment and other summary fields to user's active Order docs
- *                and also creates AllOrdersPlaced summary document.
+ * completeOrder - saves payment and summary, marks paymentStatus as Paid
  */
 const completeOrder = async (req, res) => {
   try {
-    const { paymentMethod, buyerName, userOrdering, productList, allQuantity, deliveryStatus, totalPrice } = req.body;
-
-    if (!paymentMethod) return res.status(400).json({ success: false, message: "Payment method required" });
-
-    // Update all active orders for current user
-    const update = {
+    const {
       paymentMethod,
       buyerName,
+      productList,
+      allQuantity,
       deliveryStatus,
-    };
+      totalPrice,
+      productDescription,
+    } = req.body;
 
-    const result = await OrderModel.updateMany({ userOrdering: req.user._id }, { $set: update });
+    const userId = req.user._id;
 
-    // Create a placed-order summary record
+    if (!paymentMethod)
+      return res
+        .status(400)
+        .json({ success: false, message: "Payment method required" });
+
+    // ✅ Fetch all current user orders (to get product + quantity info)
+    const userOrders = await OrderModel.find({ userOrdering: userId }).populate(
+      "product"
+    );
+
+    if (!userOrders || userOrders.length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "No orders found for this user" });
+    }
+
+    // ✅ Reduce product stock for each order item
+    for (const order of userOrders) {
+      const product = order.product;
+      const qty = order.quantity || 0;
+
+      if (!product) continue;
+
+      // Ensure product stock doesn’t go negative
+      if (product.stock < qty) {
+        return res.status(400).json({
+          success: false,
+          message: `Not enough stock for ${product.name}. Available: ${product.stock}`,
+        });
+      }
+
+      product.stock -= qty;
+      await product.save();
+    }
+
+    // ✅ Create record of completed orders in AllOrdersPlacedModel
     const placed = new AllOrdersPlacedModel({
-      userOrdering: userOrdering || req.user.name || req.user._id,
+      userOrdering: userId,
       buyerName: buyerName || "Unknown",
       productList: productList || [],
+      productDescription: productDescription || [],
       allQuantity: allQuantity || 0,
       paymentMethod,
       deliveryStatus: deliveryStatus || "pending",
       totalPrice: totalPrice || 0,
+      paymentStatus: "Paid",
     });
     await placed.save();
 
-    return res.json({ success: true, message: "Payment method saved and order completed", modifiedCount: result.modifiedCount });
+    // ✅ Clear user’s temporary orders (optional — if you want)
+    await OrderModel.deleteMany({ userOrdering: userId });
+
+    return res.json({
+      success: true,
+      message: "Order completed successfully and product stock updated.",
+    });
   } catch (error) {
     console.error("completeOrder error:", error);
-    return res.status(500).json({ success: false, message: "Error updating orders", error: error.message });
+    return res.status(500).json({
+      success: false,
+      message: "Error completing order",
+      error: error.message,
+    });
   }
 };
 
 /**
  * generateInvoice - produce a PDF invoice for current user's active orders.
- * Accepts query params:
- *  - customerName
- *  - paymentMethod
- *
- * Requires token either in Authorization header or ?token=... (optionalAuthMiddleware)
  */
 const generateInvoice = async (req, res) => {
   try {
     const customerName = req.query.customerName || "Guest Customer";
     const paymentMethod = req.query.paymentMethod || "Not Specified";
+    let paymentStatus = req.query.paymentStatus || "Unpaid";
 
-    // If user is staff, only their orders; admins see all orders.
-    const query = req.user?.role === "staff" ? { userOrdering: req.user._id } : {};
+    // ✅ Try to fetch user's live orders first
+    const query = req.user ? { userOrdering: req.user._id } : {};
+    let orders = await OrderModel.find(query).populate("product");
 
-    const orders = await OrderModel.find(query).populate("product");
+    // ✅ If no orders found (after completion), fetch the most recent completed order
+    if (!orders || orders.length === 0) {
+      const lastOrder = await AllOrdersPlacedModel.findOne()
+        .sort({ createdAt: -1 })
+        .lean();
+
+      if (lastOrder) {
+        orders = lastOrder.productList.map((name, index) => ({
+          product: { name, description: lastOrder.productDescription[index] || "No Description" },
+          quantity: lastOrder.allQuantity,
+          price: lastOrder.totalPrice / lastOrder.allQuantity,
+          totalPrice: lastOrder.totalPrice,
+        }));
+
+        paymentStatus = lastOrder.paymentStatus || "Paid";
+      }
+    }
+
     if (!orders || orders.length === 0) {
       return res.status(404).json({ success: false, message: "No orders found" });
     }
 
-    const totalAmount = orders.reduce((acc, o) => acc + (o.totalPrice || o.quantity * o.price), 0);
+    // ====== COMPUTE TOTAL ======
+    const totalAmount = orders.reduce(
+      (acc, o) => acc + (o.totalPrice || o.quantity * o.price),
+      0
+    );
 
+    paymentStatus =
+      paymentStatus === "Paid" ||
+      orders.some((o) => o.paymentStatus === "Paid")
+        ? "Paid"
+        : "Unpaid";
+
+    // ====== PDF GENERATION ======
     const doc = new PDFDocument({ margin: 40 });
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "inline; filename=invoice.pdf");
     doc.pipe(res);
 
-    // Header
-    doc.fontSize(22).fillColor("#1E3A8A").font("Helvetica-Bold").text("📦 GADGET STORE", { align: "center" });
-    doc.fontSize(14).fillColor("#444").font("Helvetica").text("Official Sales Invoice", { align: "center" });
+    // ===== HEADER =====
+    doc
+      .fontSize(22)
+      .fillColor("#1E3A8A")
+      .font("Helvetica-Bold")
+      .text("📦 GADGET STORE", { align: "center" });
+    doc
+      .fontSize(14)
+      .fillColor("#444")
+      .font("Helvetica")
+      .text("Official Sales Invoice", { align: "center" });
     doc.moveDown(1.2);
 
-    // Customer info
-    doc.fontSize(12).fillColor("#000").font("Helvetica")
+    // ===== CUSTOMER INFO =====
+    doc
+      .fontSize(12)
+      .fillColor("#000")
+      .font("Helvetica")
       .text(`Customer Name: ${customerName}`)
       .moveDown(0.2)
       .text(`Invoice Date: ${new Date().toLocaleString()}`)
       .moveDown(0.2)
-      .text(`Payment Method: ${paymentMethod}`);
+      .text(`Payment Method: ${paymentMethod}`)
+      .moveDown(0.2)
+      .text(`Payment Status: ${paymentStatus}`);
     doc.moveDown(1);
 
-    // Table header
+    // ===== TABLE COLUMN CONFIG =====
+    const columns = {
+      no: { x: 45, width: 30, align: "left" },
+      product: { x: 80, width: 110, align: "left" },
+      description: { x: 200, width: 130, align: "left" },
+      qty: { x: 340, width: 40, align: "center" },
+      price: { x: 390, width: 70, align: "right" },
+      total: { x: 480, width: 80, align: "right" },
+    };
+
+    // ===== TABLE HEADER =====
     const startY = doc.y;
     doc.rect(40, startY, 520, 25).fill("#1E3A8A").stroke();
-    doc.fillColor("#FFF").fontSize(12).font("Helvetica-Bold")
-      .text("No", 50, startY + 8)
-      .text("Product", 100, startY + 8)
-      .text("Qty", 320, startY + 8)
-      .text("Price (₦)", 380, startY + 8)
-      .text("Total (₦)", 470, startY + 8);
-    doc.fillColor("#000");
-    doc.moveDown();
+    doc.fillColor("#FFF").fontSize(12).font("Helvetica-Bold");
 
-    // Rows
+    doc.text("No", columns.no.x, startY + 8, { width: columns.no.width, align: columns.no.align });
+    doc.text("Product", columns.product.x, startY + 8, { width: columns.product.width, align: columns.product.align });
+    doc.text("Description", columns.description.x, startY + 8, { width: columns.description.width, align: columns.description.align });
+    doc.text("Qty", columns.qty.x, startY + 8, { width: columns.qty.width, align: columns.qty.align });
+    doc.text("Price (₦)", columns.price.x, startY + 8, { width: columns.price.width, align: columns.price.align });
+    doc.text("Total (₦)", columns.total.x, startY + 8, { width: columns.total.width, align: columns.total.align });
+
+    // ===== TABLE BODY =====
+    doc.fillColor("#000");
     let y = startY + 25;
+
     orders.forEach((order, index) => {
-      const rowHeight = 24;
+      const productName = order.product?.name || "N/A";
+      const description = order.product?.description || "N/A";
+      const quantity = String(order.quantity || 1);
+      const price = (order.price ?? 0).toLocaleString();
+      const total = (
+        order.totalPrice ?? order.quantity * order.price
+      ).toLocaleString();
+
+      const descHeight = doc.heightOfString(description, {
+        width: columns.description.width,
+      });
+      const rowHeight = Math.max(26, descHeight + 10);
+
       const fill = index % 2 === 0 ? "#F9FAFB" : "#FFFFFF";
       doc.rect(40, y, 520, rowHeight).fill(fill).stroke();
 
-      doc.fillColor("#000").fontSize(11).font("Helvetica");
-      doc.text(index + 1, 50, y + 7);
-      doc.text(order.product?.name || "N/A", 100, y + 7, { width: 200 });
-      doc.text(String(order.quantity), 330, y + 7, { width: 30 });
-      doc.text((order.price ?? 0).toLocaleString(), 380, y + 7, { width: 70, align: "right" });
-      doc.text((order.totalPrice ?? (order.quantity * order.price)).toLocaleString(), 470, y + 7, { width: 80, align: "right" });
+      doc.fillColor("#000").fontSize(10).font("Helvetica");
+      doc.text(index + 1, columns.no.x, y + 8, { width: columns.no.width, align: columns.no.align });
+      doc.text(productName, columns.product.x, y + 8, { width: columns.product.width, align: columns.product.align });
+      doc.text(description, columns.description.x, y + 8, { width: columns.description.width, align: columns.description.align });
+      doc.text(quantity, columns.qty.x, y + 8, { width: columns.qty.width, align: columns.qty.align });
+      doc.text(price, columns.price.x, y + 8, { width: columns.price.width, align: columns.price.align });
+      doc.text(total, columns.total.x, y + 8, { width: columns.total.width, align: columns.total.align });
 
       y += rowHeight;
     });
 
-    // Total
+    // ===== TOTAL =====
     y += 16;
     doc.moveTo(40, y).lineTo(560, y).stroke();
     y += 10;
-    doc.fontSize(13).fillColor("#000").font("Helvetica-Bold")
+    doc
+      .fontSize(13)
+      .fillColor("#000")
+      .font("Helvetica-Bold")
       .text("Total Amount:", 360, y)
-      .text(`₦${totalAmount.toLocaleString()}`, 460, y, { width: 100, align: "right" });
-    doc.moveDown(2);
+      .text(`₦${totalAmount.toLocaleString()}`, 460, y, {
+        width: 100,
+        align: "right",
+      });
 
-    // Footer
-    doc.fontSize(10).fillColor("gray").font("Helvetica")
+    // ===== FOOTER =====
+    doc.moveDown(2);
+    doc
+      .fontSize(10)
+      .fillColor("gray")
+      .font("Helvetica")
       .text("Thank you for shopping with Gadget Store!", 40, doc.y + 10)
       .text("Generated automatically — no signature required", 40, doc.y + 25);
 
     doc.end();
   } catch (error) {
     console.error("generateInvoice error:", error);
-    return res.status(500).json({ success: false, message: "Error generating invoice", error: error.message });
+    res.status(500).json({ success: false, message: "Error generating invoice" });
   }
 };
 
+
 /**
- * reduceOrder - decrease quantity for an order (route uses /orders/reduce/:orderId)
+ * reduceOrder - decrease quantity
  */
 const reduceOrder = async (req, res) => {
   try {
@@ -226,7 +370,7 @@ const reduceOrder = async (req, res) => {
 };
 
 /**
- * deleteOrderItem - delete item
+ * deleteOrderItem - delete single item
  */
 const deleteOrderItem = async (req, res) => {
   try {
