@@ -239,7 +239,7 @@ const generateInvoice = async (req, res) => {
       .fontSize(22)
       .fillColor("#1E3A8A")
       .font("Helvetica-Bold")
-      .text("📦 GADGET STORE", { align: "center" });
+      .text("MELECH STORE", { align: "center" });
     doc
       .fontSize(14)
       .fillColor("#444")
@@ -368,7 +368,43 @@ const reduceOrder = async (req, res) => {
     return res.status(500).json({ success: false, message: "Error reducing order", error: error.message });
   }
 };
+const increaseOrderQuantity = async (req, res) => {
+  try {
+    const { orderId } = req.params;
 
+    const order = await OrderModel.findById(orderId).populate("product");
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    const product = await ProductModel.findById(order.product._id);
+    if (!product) {
+      return res.status(404).json({ success: false, message: "Product not found" });
+    }
+
+    // Prevent going beyond available stock
+    if (order.quantity >= product.stock) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot increase quantity beyond available stock.",
+      });
+    }
+
+    // Update order
+    order.quantity += 1;
+    order.totalPrice = order.price * order.quantity;
+    await order.save();
+
+    res.json({
+      success: true,
+      message: "Quantity increased successfully",
+      updatedOrder: order,
+    });
+  } catch (error) {
+    console.error("Error increasing order quantity:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
 /**
  * deleteOrderItem - delete single item
  */
@@ -405,4 +441,5 @@ export {
   reduceOrder,
   deleteOrderItem,
   clearUserOrders,
+  increaseOrderQuantity
 };

@@ -1,8 +1,8 @@
-// frontend/src/components/orders/CustomerTable.jsx
 import React from "react";
 
 const CustomerTable = ({
   orders = [],
+  onIncreaseQty,
   onReduceQty,
   onRemoveOrder,
   onClearAll,
@@ -23,7 +23,7 @@ const CustomerTable = ({
             <th className="py-2 px-3 text-left">#</th>
             <th className="py-2 px-3 text-left">Product</th>
             <th className="py-2 px-3 text-left">Description</th>
-            <th className="py-2 px-3 text-left">Quantity</th>
+            <th className="py-2 px-3 text-center">Quantity</th>
             <th className="py-2 px-3 text-left">Price</th>
             <th className="py-2 px-3 text-left">Total</th>
             <th className="py-2 px-3 text-center">Actions</th>
@@ -40,19 +40,25 @@ const CustomerTable = ({
                 {order.product?.name || order.productId?.name || "N/A"}
               </td>
               <td className="py-2 px-3 capitalize">
-                {order.product?.description  || "N/A"}
+                {order.product?.description || "N/A"}
               </td>
-              <td className="py-2 px-3">{order.quantity}</td>
-              <td className="py-2 px-3">₦{(order.price ?? 0).toLocaleString()}</td>
+              <td className="py-2 px-3 text-center">{order.quantity}</td>
+              <td className="py-2 px-3">₦{order.price.toLocaleString()}</td>
               <td className="py-2 px-3">
-                ₦{((order.totalPrice ?? order.quantity * order.price) ?? 0).toLocaleString()}
+                ₦{(order.totalPrice ?? order.quantity * order.price).toLocaleString()}
               </td>
               <td className="py-2 px-3 text-center space-x-2">
                 <button
                   onClick={() => onReduceQty(order._id)}
                   className="px-2 py-1 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md text-xs"
                 >
-                  Reduce Qty
+                  −
+                </button>
+                <button
+                  onClick={() => onIncreaseQty(order._id)}
+                  className="px-2 py-1 bg-green-500 hover:bg-green-600 text-white rounded-md text-xs"
+                >
+                  +
                 </button>
                 <button
                   onClick={() => onRemoveOrder(order._id)}
@@ -67,17 +73,14 @@ const CustomerTable = ({
       </table>
 
       <div className="flex justify-between items-center bg-gray-100 px-6 py-3 border-t border-gray-300">
-        <div>
-          <button
-            onClick={onClearAll}
-            className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm"
-          >
-            Clear All Orders
-          </button>
-        </div>
-
+        <button
+          onClick={onClearAll}
+          className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm"
+        >
+          Clear All Orders
+        </button>
         <div className="flex items-center gap-3">
-          <span className="text-gray-800 font-semibold mr-2 text-base">Grand Total:</span>
+          <span className="text-gray-800 font-semibold text-base">Grand Total:</span>
           <span className="text-indigo-700 font-bold text-lg">
             ₦{grandTotal.toLocaleString()}
           </span>
