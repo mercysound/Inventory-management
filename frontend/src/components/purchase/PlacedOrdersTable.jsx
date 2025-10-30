@@ -2,6 +2,9 @@ import React from "react";
 import { FaTrashAlt } from "react-icons/fa";
 
 const PlacedOrdersTable = ({ orders, updateDeliveryStatus, deleteOrder, updating }) => {
+  // Calculate grand total of all orders
+  const grandTotal = orders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+
   return (
     <div className="w-full bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
       {/* Header */}
@@ -9,18 +12,19 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, deleteOrder, updating
         Placed Orders
       </div>
 
-      {/* Desktop / Tablet View */}
+      {/* Desktop View */}
       <div className="hidden md:block overflow-x-auto">
         <table className="min-w-full text-sm text-gray-700 border-collapse">
           <thead className="bg-gray-100 uppercase font-semibold text-gray-600">
             <tr>
               <th className="p-3 text-left">#</th>
               <th className="p-3 text-left">Buyer</th>
-              <th className="p-3 text-left">User</th>
+              <th className="p-3 text-left">Staff</th>
               <th className="p-3 text-left">Products</th>
               <th className="p-3 text-left">Total</th>
               <th className="p-3 text-left">Payment</th>
               <th className="p-3 text-left">Status</th>
+              <th className="p-3 text-left">Date & Time</th>
               <th className="p-3 text-left">Actions</th>
             </tr>
           </thead>
@@ -31,25 +35,28 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, deleteOrder, updating
                 className="border-t hover:bg-gray-50 transition duration-200 align-top"
               >
                 <td className="p-3">{i + 1}</td>
-                <td className="p-3">{order.buyerName}</td>
+                <td className="p-3 font-medium text-gray-800">{order.buyerName}</td>
                 <td className="p-3">{order.userOrdering?.name || "Unknown"}</td>
 
-                {/* ✅ Product list with quantity */}
+                {/* Products with description */}
                 <td className="p-3">
-                  <ul className="list-disc list-inside space-y-1">
-                    {order.productList &&
-                      order.productList.map((product, idx) => {
-                        const name =
-                          typeof product === "string"
-                            ? product
-                            : product?.name || "Unnamed";
-                        const qty = product?.quantity || 1;
-                        return (
-                          <li key={idx}>
-                            {name} ×{qty}
-                          </li>
-                        );
-                      })}
+                  <ul className="space-y-3">
+                    {order.productList?.map((item, idx) => (
+                      <li key={idx} className="border-b border-gray-100 pb-2 last:border-none">
+                        <p className="font-semibold text-gray-800">
+                          {item?.productId?.name || "Unnamed"}{" "}
+                          <span className="text-gray-500 text-sm">
+                            ({item?.productId?.categoryId?.name || "No Category"})
+                          </span>{" "}
+                          ×{item?.quantity || 1}
+                        </p>
+                        {item?.productId?.description && (
+                          <p className="text-gray-500 text-sm pl-3 italic">
+                            {item.productId.description}
+                          </p>
+                        )}
+                      </li>
+                    ))}
                   </ul>
                 </td>
 
@@ -70,6 +77,15 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, deleteOrder, updating
                     {order.deliveryStatus}
                   </span>
                 </td>
+                <td className="p-3 text-gray-600">
+                  {new Date(order.createdAt).toLocaleDateString()}{" "}
+                  <span className="text-xs text-gray-400">
+                    {new Date(order.createdAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </td>
                 <td className="p-3 flex items-center gap-2">
                   <select
                     value={order.deliveryStatus}
@@ -83,7 +99,6 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, deleteOrder, updating
                     <option value="in transit">In Transit</option>
                     <option value="delivered">Delivered</option>
                   </select>
-
                   <button
                     onClick={() => deleteOrder(order._id)}
                     disabled={updating}
@@ -95,11 +110,20 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, deleteOrder, updating
                 </td>
               </tr>
             ))}
+
+            {/* Footer total row */}
+            <tr className="bg-gray-50 font-bold text-gray-800 border-t">
+              <td colSpan="4" className="p-3 text-right">
+                Grand Total:
+              </td>
+              <td className="p-3 text-indigo-600">₦{grandTotal.toLocaleString()}</td>
+              <td colSpan="4"></td>
+            </tr>
           </tbody>
         </table>
       </div>
 
-      {/* Mobile View (Cards) */}
+      {/* Mobile View */}
       <div className="md:hidden p-3 space-y-4">
         {orders.map((order, i) => (
           <div
@@ -128,25 +152,25 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, deleteOrder, updating
                 <span className="font-semibold">Staff:</span>{" "}
                 {order.userOrdering?.name || "Unknown"}
               </p>
-              <p>
-                <span className="font-semibold">Products:</span>
-              </p>
 
-              {/* ✅ Mobile product list with quantity */}
-              <ul className="list-disc list-inside ml-3">
-                {order.productList &&
-                  order.productList.map((product, idx) => {
-                    const name =
-                      typeof product === "string"
-                        ? product
-                        : product?.name || "Unnamed";
-                    const qty = product?.quantity || 1;
-                    return (
-                      <li key={idx}>
-                        {name} ×{qty}
-                      </li>
-                    );
-                  })}
+              <p className="font-semibold">Products:</p>
+              <ul className="ml-3 space-y-2">
+                {order.productList?.map((item, idx) => (
+                  <li key={idx}>
+                    <p className="font-medium text-gray-800">
+                      {item?.productId?.name || "Unnamed"}{" "}
+                      <span className="text-gray-500 text-xs">
+                        ({item?.productId?.categoryId?.name || "No Category"})
+                      </span>{" "}
+                      ×{item?.quantity || 1}
+                    </p>
+                    {item?.productId?.description && (
+                      <p className="text-gray-500 text-xs pl-3 italic">
+                        {item.productId.description}
+                      </p>
+                    )}
+                  </li>
+                ))}
               </ul>
 
               <p>
@@ -154,8 +178,15 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, deleteOrder, updating
                 {order.paymentMethod}
               </p>
               <p>
-                <span className="font-semibold">Total:</span>{" "}
-                ₦{order.totalPrice?.toLocaleString() || 0}
+                <span className="font-semibold">Total:</span> ₦
+                {order.totalPrice?.toLocaleString() || 0}
+              </p>
+              <p className="text-xs text-gray-400">
+                {new Date(order.createdAt).toLocaleDateString()} •{" "}
+                {new Date(order.createdAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </p>
             </div>
 
@@ -183,14 +214,14 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, deleteOrder, updating
             </div>
           </div>
         ))}
-      </div>
 
-      {/* Empty State */}
-      {orders.length === 0 && (
-        <div className="text-center text-gray-500 py-10">
-          <p className="text-base sm:text-lg">No orders found 😕</p>
-        </div>
-      )}
+        {/* Mobile grand total */}
+        {orders.length > 0 && (
+          <div className="text-center font-bold text-indigo-600 mt-4">
+            Total of all orders: ₦{grandTotal.toLocaleString()}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

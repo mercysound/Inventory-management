@@ -166,8 +166,11 @@ const CustomerOrders = () => {
     }
   };
 
+  const cagoryList = orders.map((o) => o.product?.categoryId.name || "Unnamed"); 
+    console.log(cagoryList)
+
   // ✅ Complete Order
- const completeOrder = async () => {
+const completeOrder = async () => {
   try {
     if (!paymentMethod) {
       alert("Please select a payment method first.");
@@ -180,16 +183,18 @@ const CustomerOrders = () => {
 
     setProcessing(true);
 
+    // ✅ compute required totals
     const allQuantity = orders.reduce((sum, o) => sum + (o.quantity || 0), 0);
     const totalPrice = orders.reduce(
       (sum, o) => sum + (o.totalPrice ?? o.quantity * o.price),
       0
     );
+
     const productList = orders.map((o) => o.product?.name || "Unnamed");
     const productDescription = orders.map((o) => o.product?.description || "No Desc");
     const deliveryStatus = "pending";
 
-    // ✅ Complete order and record payment as "Paid"
+    // ✅ Send complete data to backend
     const res = await axiosInstance.post("/orders/payment", {
       paymentMethod,
       buyerName: customerName || "Unknown",
@@ -204,7 +209,7 @@ const CustomerOrders = () => {
     if (res.data.success) {
       toast.success("Order completed successfully!");
 
-      // ✅ Download invoice automatically
+      // ✅ Automatically download invoice
       try {
         const query = new URLSearchParams({
           format: "pdf",
@@ -229,11 +234,9 @@ const CustomerOrders = () => {
         toast.error("Order saved, but failed to auto-download invoice.");
       }
 
-      // ✅ Clear all orders after invoice download
+      // ✅ Clear all after completion
       await clearAllSilently();
       await fetchOrders();
-
-      // ✅ Reset input fields after completion
       setCustomerName("");
       setPaymentMethod("");
     } else {
@@ -246,6 +249,7 @@ const CustomerOrders = () => {
     setProcessing(false);
   }
 };
+
 
   return (
     <div className="max-w-6xl mx-auto bg-white shadow-lg rounded-2xl p-6 mt-8 border border-gray-200">

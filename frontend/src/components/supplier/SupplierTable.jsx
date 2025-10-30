@@ -1,93 +1,103 @@
 import React from "react";
+import { motion } from "framer-motion";
+import { FaEdit, FaTrash } from "react-icons/fa";
 
 const SupplierTable = ({ suppliers, handleEdit, handleDelete }) => {
   if (suppliers.length === 0)
-    return <div className="text-center py-4 text-gray-600">No record found</div>;
+    return (
+      <div className="text-center py-6 text-gray-600 bg-gray-50 rounded-lg shadow-sm">
+        No suppliers found 😔
+      </div>
+    );
 
   return (
     <div className="mt-4">
-      {/* TABLE VIEW (for md screens and above) */}
+      {/* TABLE VIEW (Desktop) */}
       <div className="hidden md:block overflow-x-auto">
-        <table className="min-w-full border-collapse border border-gray-200 text-sm md:text-base">
+        <table className="min-w-full border-collapse border border-gray-200 rounded-lg overflow-hidden">
           <thead>
-            <tr className="bg-gray-200 text-left">
-              <th className="border border-gray-300 p-2">S/N</th>
-              <th className="border border-gray-300 p-2">Name</th>
-              <th className="border border-gray-300 p-2">Email</th>
-              <th className="border border-gray-300 p-2">Phone</th>
-              <th className="border border-gray-300 p-2">Address</th>
-              <th className="border border-gray-300 p-2">Action</th>
+            <tr className="bg-blue-600 text-white text-left">
+              <th className="p-3">S/N</th>
+              <th className="p-3">Name</th>
+              <th className="p-3">Email</th>
+              <th className="p-3">Phone</th>
+              <th className="p-3">Address</th>
+              <th className="p-3 text-center">Action</th>
             </tr>
           </thead>
           <tbody>
             {suppliers.map((supplier, index) => (
-              <tr
+              <motion.tr
                 key={supplier._id}
-                className="hover:bg-gray-50 transition-colors duration-200"
+                className="border-t hover:bg-gray-50 transition-colors duration-150"
+                whileHover={{ scale: 1.01 }}
               >
-                <td className="border border-gray-300 p-2">{index + 1}</td>
-                <td className="border border-gray-300 p-2">{supplier.name}</td>
-                <td className="border border-gray-300 p-2">{supplier.email}</td>
-                <td className="border border-gray-300 p-2">{supplier.number}</td>
-                <td className="border border-gray-300 p-2">{supplier.address}</td>
-                <td className="border border-gray-300 p-2">
-                  <div className="flex gap-2 flex-wrap">
+                <td className="p-3 text-gray-700">{index + 1}</td>
+                <td className="p-3 font-semibold text-gray-800">{supplier.name}</td>
+                <td className="p-3 text-gray-700">{supplier.email}</td>
+                <td className="p-3 text-gray-700">{supplier.number}</td>
+                <td className="p-3 text-gray-700">{supplier.address}</td>
+                <td className="p-3 text-center">
+                  <div className="flex justify-center gap-3">
                     <button
-                      className="px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+                      className="flex items-center gap-1 px-3 py-1.5 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
                       onClick={() => handleEdit(supplier)}
                     >
-                      Edit
+                      <FaEdit /> Edit
                     </button>
                     <button
-                      className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                      className="flex items-center gap-1 px-3 py-1.5 bg-red-500 text-white rounded-md hover:bg-red-600"
                       onClick={() => handleDelete(supplier._id)}
                     >
-                      Delete
+                      <FaTrash /> Delete
                     </button>
                   </div>
                 </td>
-              </tr>
+              </motion.tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      {/* CARD VIEW (for mobile screens) */}
-      <div className="grid grid-cols-1 gap-3 md:hidden">
+      {/* CARD VIEW (Mobile) */}
+      <div className="grid grid-cols-1 gap-4 md:hidden">
         {suppliers.map((supplier, index) => (
-          <div
+          <motion.div
             key={supplier._id}
-            className="border border-gray-300 rounded-lg p-3 bg-white shadow-sm"
+            className="p-4 bg-white rounded-lg shadow-md border border-gray-100"
+            whileHover={{ scale: 1.02 }}
           >
             <div className="flex justify-between items-center mb-2">
-              <h3 className="font-semibold text-base">{supplier.name}</h3>
-              <span className="text-xs text-gray-500">#{index + 1}</span>
+              <h3 className="font-semibold text-gray-800 text-lg">
+                {supplier.name}
+              </h3>
+              <span className="text-sm text-gray-400">#{index + 1}</span>
             </div>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-gray-600">
               <span className="font-medium">Email:</span> {supplier.email}
             </p>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-gray-600">
               <span className="font-medium">Phone:</span> {supplier.number}
             </p>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-gray-600">
               <span className="font-medium">Address:</span> {supplier.address}
             </p>
 
             <div className="flex gap-2 mt-3">
               <button
-                className="flex-1 px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+                className="flex-1 px-2 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
                 onClick={() => handleEdit(supplier)}
               >
                 Edit
               </button>
               <button
-                className="flex-1 px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                className="flex-1 px-2 py-2 bg-red-500 text-white rounded hover:bg-red-600"
                 onClick={() => handleDelete(supplier._id)}
               >
                 Delete
               </button>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
     </div>

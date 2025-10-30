@@ -1,11 +1,11 @@
-// src/components/Category/Category.jsx
 import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router";
-import axiosInstance from "../../utils/axiosInstance"; // ✅ use your axiosInstance
+import { useNavigate } from "react-router-dom";
+import axiosInstance from "../../utils/axiosInstance";
 import CategoryForm from "./CategoryForm";
 import CategoryTable from "./CategoryTable";
 import CategorySkeleton from "./CategorySkeleton";
+import { motion } from "framer-motion";
 
 const Category = () => {
   const [categoryName, setCategoryName] = useState("");
@@ -19,7 +19,7 @@ const Category = () => {
     try {
       setLoading(true);
       const response = await axiosInstance.get(`/category`);
-      setCategories(response.data.categories);
+      setCategories(response.data.categories || []);
     } catch (error) {
       console.error("Error fetching categories", error);
       if (error.response?.status === 401) {
@@ -103,9 +103,17 @@ const Category = () => {
   if (loading) return <CategorySkeleton />;
 
   return (
-    <div className="py-4">
-      <h1 className="text-2xl font-bold mb-8 ml-3">Category Management</h1>
-      <div className="flex flex-col lg:flex-row gap-4">
+    <motion.div
+      className="p-4 md:p-6"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
+      <h1 className="text-3xl font-bold mb-8 text-gray-800">
+        Category Management
+      </h1>
+
+      <div className="flex flex-col lg:flex-row gap-6">
         <CategoryForm
           categoryName={categoryName}
           categoryDescription={categoryDescription}
@@ -121,8 +129,9 @@ const Category = () => {
           onDelete={handleDelete}
         />
       </div>
-    </div>
+    </motion.div>
   );
 };
 
 export default Category;
+  

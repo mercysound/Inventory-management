@@ -1,6 +1,8 @@
-import axiosInstance from '../utils/axiosInstance';
-import React, { useEffect, useState } from 'react';
-import { toast } from 'react-toastify';
+import axiosInstance from "../utils/axiosInstance";
+import React, { useEffect, useState } from "react";
+import { toast } from "react-toastify";
+import { FaBoxOpen, FaCubes, FaMoneyBillWave, FaShoppingCart } from "react-icons/fa";
+import { motion } from "framer-motion";
 
 const Summary = () => {
   const [dashBoardData, setDashboardData] = useState({
@@ -32,93 +34,77 @@ const Summary = () => {
     fetchDashbordData();
   }, []);
 
-  // =============================
-  // 🦴 Skeleton Loader
-  // =============================
   if (loading) {
     return (
-      <div role="status" className="p-5 animate-pulse">
-        <h2 className="text-3xl font-bold mb-6 bg-gray-300 h-8 w-48 rounded"></h2>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 my-6">
-          {[1, 2, 3, 4].map((_, i) => (
-            <div
-              key={i}
-              className="bg-gray-200 p-4 rounded-xl shadow-md flex flex-col items-center justify-center h-28"
-            >
-              <div className="bg-gray-300 h-5 w-32 rounded mb-3"></div>
-              <div className="bg-gray-400 h-6 w-20 rounded"></div>
-            </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map((_, i) => (
-            <div
-              key={i}
-              className="bg-white p-4 rounded-xl shadow-md flex flex-col justify-between"
-            >
-              <div className="bg-gray-300 h-6 w-40 rounded mb-3"></div>
-              <div className="space-y-2">
-                <div className="bg-gray-200 h-4 rounded w-full"></div>
-                <div className="bg-gray-200 h-4 rounded w-5/6"></div>
-                <div className="bg-gray-200 h-4 rounded w-4/6"></div>
-                <div className="bg-gray-200 h-4 rounded w-3/6"></div>
-              </div>
-            </div>
-          ))}
-        </div>
+      <div className="p-8 text-center text-gray-500 animate-pulse">
+        Loading dashboard data...
       </div>
     );
   }
 
-  // =============================
-  // 🌈 Main Dashboard UI
-  // =============================
+  const { totalProducts, totalStock, ordersToday, revenue, outOfStock, highestSaleProduct, lowStock } =
+    dashBoardData;
+
   return (
     <div className="p-5 min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
-      <h2 className="text-3xl font-extrabold text-gray-800 mb-6">📊 Dashboard Overview</h2>
+      <h2 className="text-3xl font-extrabold text-gray-800 mb-6 text-center md:text-left">
+        📊 Dashboard Overview
+      </h2>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 my-6">
-        <div className="bg-blue-500 hover:bg-blue-600 transition-all duration-300 text-white p-5 rounded-xl shadow-lg flex flex-col items-center justify-center">
-          <p className="text-sm font-medium opacity-80">Total Products</p>
-          <p className="text-3xl font-bold mt-1">{dashBoardData.totalProducts}</p>
-        </div>
-
-        <div className="bg-green-500 hover:bg-green-600 transition-all duration-300 text-white p-5 rounded-xl shadow-lg flex flex-col items-center justify-center">
-          <p className="text-sm font-medium opacity-80">Total Stock</p>
-          <p className="text-3xl font-bold mt-1">{dashBoardData.totalStock}</p>
-        </div>
-
-        <div className="bg-yellow-500 hover:bg-yellow-600 transition-all duration-300 text-white p-5 rounded-xl shadow-lg flex flex-col items-center justify-center">
-          <p className="text-sm font-medium opacity-80">Orders Today</p>
-          <p className="text-3xl font-bold mt-1">{dashBoardData.ordersToday}</p>
-        </div>
-
-        <div className="bg-purple-500 hover:bg-purple-600 transition-all duration-300 text-white p-5 rounded-xl shadow-lg flex flex-col items-center justify-center">
-          <p className="text-sm font-medium opacity-80">Revenue</p>
-          <p className="text-3xl font-bold mt-1">₦{dashBoardData.revenue}</p>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {[
+          {
+            title: "Total Products",
+            value: totalProducts,
+            icon: <FaBoxOpen className="text-3xl" />,
+            color: "bg-blue-500",
+          },
+          {
+            title: "Total Stock",
+            value: totalStock,
+            icon: <FaCubes className="text-3xl" />,
+            color: "bg-green-500",
+          },
+          {
+            title: "Orders Today",
+            value: ordersToday,
+            icon: <FaShoppingCart className="text-3xl" />,
+            color: "bg-yellow-500",
+          },
+          {
+            title: "Revenue",
+            value: `₦${revenue.toLocaleString()}`,
+            icon: <FaMoneyBillWave className="text-3xl" />,
+            color: "bg-purple-500",
+          },
+        ].map((card, i) => (
+          <motion.div
+            key={i}
+            whileHover={{ scale: 1.05 }}
+            className={`${card.color} text-white p-5 rounded-xl shadow-lg flex flex-col items-center justify-center transition-all`}
+          >
+            <div className="mb-2">{card.icon}</div>
+            <p className="text-sm font-medium opacity-90">{card.title}</p>
+            <p className="text-3xl font-bold mt-1">{card.value}</p>
+          </motion.div>
+        ))}
       </div>
 
-      {/* Detailed Sections */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+      {/* Detailed Insight Sections */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Out of Stock */}
-        <div className="bg-white p-5 rounded-xl shadow-md hover:shadow-lg transition-all">
-          <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+        <div className="bg-white p-5 rounded-xl shadow-md hover:shadow-xl transition-all">
+          <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
             🚫 Out of Stock Products
           </h3>
-          {dashBoardData.outOfStock.length > 0 ? (
+          {outOfStock.length > 0 ? (
             <ul className="space-y-2 max-h-56 overflow-y-auto">
-              {dashBoardData.outOfStock.map((product, index) => (
-                <li
-                  key={index}
-                  className="border-b border-gray-100 pb-2 text-gray-700"
-                >
+              {outOfStock.map((product, index) => (
+                <li key={index} className="border-b border-gray-100 pb-2">
                   <p className="font-medium">{product.name}</p>
                   <p className="text-sm text-gray-500">
-                    Category: {product.categoryId.name}
+                    Category: {product.categoryId?.name || "N/A"}
                   </p>
                 </li>
               ))}
@@ -129,39 +115,36 @@ const Summary = () => {
         </div>
 
         {/* Highest Sale Product */}
-        <div className="bg-white p-5 rounded-xl shadow-md hover:shadow-lg transition-all">
-          <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+        <div className="bg-white p-5 rounded-xl shadow-md hover:shadow-xl transition-all">
+          <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
             🏆 Highest Sale Product
           </h3>
-          {dashBoardData.highestSaleProduct?.name ? (
+          {highestSaleProduct?.name ? (
             <div className="text-gray-700 space-y-1">
-              <p><strong>Name:</strong> {dashBoardData.highestSaleProduct.name}</p>
-              <p><strong>Category:</strong> {dashBoardData.highestSaleProduct.category}</p>
-              <p><strong>Total Unit Sold:</strong> {dashBoardData.highestSaleProduct.totalQuantity}</p>
+              <p><strong>Name:</strong> {highestSaleProduct.name}</p>
+              <p><strong>Category:</strong> {highestSaleProduct.category}</p>
+              <p><strong>Total Unit Sold:</strong> {highestSaleProduct.totalQuantity}</p>
             </div>
           ) : (
             <p className="text-gray-500 text-sm">
-              {dashBoardData.highestSaleProduct?.message || "No data available"}
+              {highestSaleProduct?.message || "No sale data available"}
             </p>
           )}
         </div>
 
         {/* Low Stock */}
-        <div className="bg-white p-5 rounded-xl shadow-md hover:shadow-lg transition-all">
-          <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+        <div className="bg-white p-5 rounded-xl shadow-md hover:shadow-xl transition-all">
+          <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
             ⚠️ Low Stock Products
           </h3>
-          {dashBoardData.lowStock.length > 0 ? (
+          {lowStock.length > 0 ? (
             <ul className="space-y-2 max-h-56 overflow-y-auto">
-              {dashBoardData.lowStock.map((product, index) => (
-                <li
-                  key={index}
-                  className="border-b border-gray-100 pb-2 text-gray-700"
-                >
-                  <strong>{product.name}</strong> — {product.stock} left{" "}
-                  <span className="text-sm text-gray-500">
-                    ({product.categoryId.name})
-                  </span>
+              {lowStock.map((product, index) => (
+                <li key={index} className="border-b border-gray-100 pb-2">
+                  <p className="font-medium">{product.name}</p>
+                  <p className="text-sm text-gray-500">
+                    {product.stock} left ({product.categoryId?.name || "N/A"})
+                  </p>
                 </li>
               ))}
             </ul>

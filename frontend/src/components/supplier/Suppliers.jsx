@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import axiosInstance from "../../utils/axiosInstance";
 import { toast } from "react-toastify";
+import { motion } from "framer-motion";
 import SupplierTable from "./SupplierTable";
 import SupplierForm from "./SupplierForm";
 import SupplierSkeleton from "./SupplierSkeleton";
+import { FaUserPlus, FaSearch } from "react-icons/fa";
 
 const Suppliers = () => {
   const [suppliers, setSuppliers] = useState([]);
@@ -98,32 +100,45 @@ const Suppliers = () => {
   };
 
   return (
-    <div className="w-full h-full flex flex-col gap-4 p-4">
-      <h1 className="text-2xl font-bold">Supplier Management</h1>
+    <div className="w-full h-full flex flex-col gap-6 p-4 sm:p-6 bg-gradient-to-b from-gray-50 to-white rounded-lg shadow-md">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 tracking-wide">
+          Supplier Management
+        </h1>
 
-      <div className="flex justify-between items-center">
-        <input
-          type="text"
-          placeholder="Search"
-          className="border p-1 bg-white rounded px-4"
-          onChange={handleSearch}
-        />
-        <button
-          className="px-4 py-1.5 bg-blue-500 text-white rounded cursor-pointer"
-          onClick={() => setOpenModal(true)}
-        >
-          Add Supplier
-        </button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-none">
+            <FaSearch className="absolute left-3 top-3 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search supplier..."
+              className="w-full pl-9 pr-4 py-2 border rounded-lg shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none"
+              onChange={handleSearch}
+            />
+          </div>
+          <button
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            onClick={() => setOpenModal(true)}
+          >
+            <FaUserPlus /> <span className="hidden sm:inline">Add Supplier</span>
+          </button>
+        </div>
       </div>
 
       {loading ? (
         <SupplierSkeleton />
       ) : (
-        <SupplierTable
-          suppliers={filterSupplier}
-          handleEdit={handleEdit}
-          handleDelete={handleDelete}
-        />
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <SupplierTable
+            suppliers={filterSupplier}
+            handleEdit={handleEdit}
+            handleDelete={handleDelete}
+          />
+        </motion.div>
       )}
 
       {openModal && (
