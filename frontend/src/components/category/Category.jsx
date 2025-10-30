@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import axiosInstance from "../../utils/axiosInstance";
 import CategoryForm from "./CategoryForm";
 import CategoryTable from "./CategoryTable";
 import CategorySkeleton from "./CategorySkeleton";
-import { motion } from "framer-motion";
 
 const Category = () => {
   const [categoryName, setCategoryName] = useState("");
@@ -19,7 +18,7 @@ const Category = () => {
     try {
       setLoading(true);
       const response = await axiosInstance.get(`/category`);
-      setCategories(response.data.categories || []);
+      setCategories(response.data.categories);
     } catch (error) {
       console.error("Error fetching categories", error);
       if (error.response?.status === 401) {
@@ -56,7 +55,9 @@ const Category = () => {
 
       if (response.data.success) {
         toast.success(
-          editCategory ? "Category Updated Successfully!" : "Category Added Successfully!"
+          editCategory
+            ? "Category Updated Successfully!"
+            : "Category Added Successfully!"
         );
         setCategoryName("");
         setCategoryDescription("");
@@ -103,15 +104,8 @@ const Category = () => {
   if (loading) return <CategorySkeleton />;
 
   return (
-    <motion.div
-      className="p-4 md:p-6"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-    >
-      <h1 className="text-3xl font-bold mb-8 text-gray-800">
-        Category Management
-      </h1>
+    <div className="py-6 px-4 md:px-6">
+      <h1 className="text-2xl font-bold mb-6 text-gray-800">📂 Category Management</h1>
 
       <div className="flex flex-col lg:flex-row gap-6">
         <CategoryForm
@@ -123,15 +117,15 @@ const Category = () => {
           onChangeName={(e) => setCategoryName(e.target.value)}
           onChangeDescription={(e) => setCategoryDescription(e.target.value)}
         />
+
         <CategoryTable
           categories={categories}
           onEdit={handleEdit}
           onDelete={handleDelete}
         />
       </div>
-    </motion.div>
+    </div>
   );
 };
 
 export default Category;
-  

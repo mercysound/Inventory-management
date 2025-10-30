@@ -24,6 +24,7 @@ const port = process.env.PORT || 3000;
 // ✅ Dynamic origin detection (auto works in dev + production)
 const allowedOrigins = [
   "http://localhost:5173",             // your local frontend (Vite)
+  "http://localhost:3000",
   "https://yourfrontend.onrender.com", // your deployed frontend
 ];
 

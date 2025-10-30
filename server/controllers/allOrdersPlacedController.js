@@ -1,17 +1,30 @@
 import AllOrdersPlacedModel from "../models/AllOrdersPlacedModel.js";
 
-// ✅ Get all placed orders
+// ✅ Get all placed orders (with nested product + category population)
 export const getAllPlacedOrders = async (req, res) => {
   try {
     const orders = await AllOrdersPlacedModel.find()
-      .populate("userOrdering", "name email")
+      .populate({
+        path: "userOrdering",
+        select: "name email",
+      })
+      .populate({
+        path: "productList.productId",
+        populate: { path: "categoryId", select: "name" },
+      })
       .sort({ createdAt: -1 });
+
     res.json({ success: true, orders });
   } catch (error) {
     console.error("getAllPlacedOrders error:", error);
-    res.status(500).json({ success: false, message: "Error fetching placed orders" });
+    res.status(500).json({
+      success: false,
+      message: "Error fetching placed orders",
+      error: error.message,
+    });
   }
 };
+
 
 // ✅ Update delivery status
 export const updateDeliveryStatus = async (req, res) => {
@@ -35,7 +48,29 @@ export const updateDeliveryStatus = async (req, res) => {
     });
   } catch (error) {
     console.error("updateDeliveryStatus error:", error);
-    res.status(500).json({ success: false, message: "Error updating delivery status" });
+    res.status(500).json({
+      success: false,
+      message: "Error updating delivery status",
+    });
+  }
+};
+
+// ✅ Delete single placed order
+export const deletePlacedOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await AllOrdersPlacedModel.findByIdAndDelete(id);
+
+    if (!deleted)
+      return res.status(404).json({ success: false, message: "Order not found" });
+
+    res.json({ success: true, message: "Order deleted successfully" });
+  } catch (error) {
+    console.error("deletePlacedOrder error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error deleting order",
+    });
   }
 };
 
@@ -43,25 +78,15 @@ export const updateDeliveryStatus = async (req, res) => {
 export const clearAllPlacedOrders = async (req, res) => {
   try {
     await AllOrdersPlacedModel.deleteMany({});
-    res.json({ success: true, message: "All placed orders cleared successfully" });
+    res.json({
+      success: true,
+      message: "All placed orders cleared successfully",
+    });
   } catch (error) {
     console.error("clearAllPlacedOrders error:", error);
-    res.status(500).json({ success: false, message: "Error clearing orders" });
-  }
-};
-// ✅ Delete single placed order
-export const deletePlacedOrder = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const deleted = await AllOrdersPlacedModel.findByIdAndDelete(id);
-
-    if (!deleted) {
-      return res.status(404).json({ success: false, message: "Order not found" });
-    }
-
-    res.json({ success: true, message: "Order deleted successfully" });
-  } catch (error) {
-    console.error("deletePlacedOrder error:", error);
-    res.status(500).json({ success: false, message: "Error deleting order" });
+    res.status(500).json({
+      success: false,
+      message: "Error clearing orders",
+    });
   }
 };

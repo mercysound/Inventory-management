@@ -1,5 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
+import { Pencil, PlusCircle } from "lucide-react";
 
 const CategoryForm = ({
   categoryName,
@@ -12,51 +13,48 @@ const CategoryForm = ({
 }) => {
   return (
     <motion.div
-      className="lg:w-1/3 w-full"
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.3 }}
+      className="lg:w-1/3"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
     >
-      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-        <h2 className="text-center text-2xl font-semibold mb-4 text-gray-800">
-          {editCategory ? "Edit Category" : "Add Category"}
+      <div className="bg-white shadow-lg rounded-xl p-5 border border-gray-100">
+        <h2 className="text-xl font-semibold mb-4 text-center text-gray-700">
+          {editCategory ? "✏️ Edit Category" : "➕ Add New Category"}
         </h2>
+        <form className="space-y-4" onSubmit={onSubmit}>
+          <input
+            type="text"
+            placeholder="Category Name"
+            className="border w-full p-3 rounded-md focus:ring-2 focus:ring-blue-400 outline-none"
+            required
+            value={categoryName}
+            onChange={onChangeName}
+          />
 
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <input
-              type="text"
-              placeholder="Category Name"
-              className="w-full border border-gray-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 rounded-lg p-3 outline-none transition"
-              required
-              value={categoryName}
-              onChange={onChangeName}
-            />
-          </div>
-          <div>
-            <textarea
-              placeholder="Category Description"
-              className="w-full border border-gray-300 focus:border-indigo-500 focus:ring focus:ring-indigo-200 rounded-lg p-3 outline-none transition"
-              rows={3}
-              required
-              value={categoryDescription}
-              onChange={onChangeDescription}
-            ></textarea>
-          </div>
+          <input
+            type="text"
+            placeholder="Category Description"
+            className="border w-full p-3 rounded-md focus:ring-2 focus:ring-blue-400 outline-none"
+            required
+            value={categoryDescription}
+            onChange={onChangeDescription}
+          />
 
           <div className="flex gap-2">
             <button
+              className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition-all duration-200"
               type="submit"
-              className="w-full py-3 rounded-lg bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-semibold shadow-md hover:opacity-90 transition"
             >
+              {editCategory ? <Pencil size={18} /> : <PlusCircle size={18} />}
               {editCategory ? "Save Changes" : "Add Category"}
             </button>
 
             {editCategory && (
               <button
                 type="button"
+                className="flex-1 bg-gray-500 text-white p-3 rounded-md hover:bg-gray-600 transition-all duration-200"
                 onClick={onCancel}
-                className="w-full py-3 rounded-lg bg-gray-300 text-gray-800 font-semibold hover:bg-gray-400 transition"
               >
                 Cancel
               </button>
