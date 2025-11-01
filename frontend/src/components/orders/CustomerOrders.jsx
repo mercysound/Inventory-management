@@ -3,6 +3,7 @@ import CustomerTable from "./CustomerTable";
 import CustomerSkeleton from "./CustomerSkeleton";
 import axiosInstance from "../../utils/axiosInstance";
 import { toast } from "react-toastify";
+import { motion } from "framer-motion";
 
 const PAYMENT_OPTIONS = ["Cash", "Card", "POS", "Bank Transfer"];
 
@@ -13,7 +14,6 @@ const CustomerOrders = () => {
   const [customerName, setCustomerName] = useState("");
   const [processing, setProcessing] = useState(false);
 
-  // ✅ Fetch Orders
   const fetchOrders = async () => {
     try {
       const res = await axiosInstance.get("/orders");
@@ -22,7 +22,6 @@ const CustomerOrders = () => {
       const found = data.find((o) => o.paymentMethod)?.paymentMethod;
       if (found) setPaymentMethod(found);
     } catch (err) {
-      console.error("Error fetching orders:", err);
       toast.error("Failed to fetch orders.");
     } finally {
       setLoading(false);
@@ -30,288 +29,191 @@ const CustomerOrders = () => {
   };
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+  fetchOrders();
 
-  // ✅ Increase Quantity (with stock limit)
+  const handler = () => {
+    fetchOrders();
+  };
+  window.addEventListener("ordersUpdated", handler);
+
+  return () => {
+    window.removeEventListener("ordersUpdated", handler);
+  };
+}, []);
+
   const handleIncreaseQty = async (orderId) => {
     try {
       const res = await axiosInstance.post(`/orders/increase/${orderId}`);
       if (res.data.success) {
         toast.success("Quantity increased");
         fetchOrders();
-      } else {
-        toast.warning(res.data.message || "Cannot increase further");
       }
-    } catch (error) {
-      console.error("Error increasing quantity:", error);
-      toast.error(error.response?.data?.message || "Failed to increase quantity");
+    } catch {
+      toast.error("Failed to increase quantity");
     }
   };
 
-  // ✅ Reduce Quantity
   const handleReduceQty = async (orderId) => {
     try {
       const res = await axiosInstance.post(`/orders/reduce/${orderId}`);
-      if (res.data.success) {
-        setOrders((prev) =>
-          prev
-            .map((order) =>
-              order._id === orderId
-                ? {
-                    ...order,
-                    quantity: Math.max(order.quantity - 1, 0),
-                    totalPrice: (order.quantity - 1) * order.price,
-                  }
-                : order
-            )
-            .filter((o) => o.quantity > 0)
-        );
-      }
-    } catch (error) {
-      console.error("Error reducing:", error);
-      toast.error("Failed to reduce item.");
+      if (res.data.success) fetchOrders();
+    } catch {
+      toast.error("Failed to reduce item");
     }
   };
 
-  // ✅ Delete Order
   const handleDeleteOrder = async (orderId) => {
-    if (!window.confirm("Are you sure you want to delete this item?")) return;
+    if (!window.confirm("Delete this item?")) return;
     try {
       const res = await axiosInstance.delete(`/orders/remove/${orderId}`);
       if (res.data.success) {
         setOrders((prev) => prev.filter((o) => o._id !== orderId));
-        toast.success("Item deleted.");
+        toast.success("Item deleted");
       }
-    } catch (error) {
-      console.error("delete error:", error);
-      toast.error("Failed to delete item.");
+    } catch {
+      toast.error("Failed to delete item");
     }
   };
 
-  // ✅ Clear All Orders
   const handleClearAll = async () => {
-    if (!window.confirm("Clear all current orders? This cannot be undone.")) return;
+    if (!window.confirm("Clear all orders?")) return;
     try {
       const res = await axiosInstance.delete("/orders/clear");
-      if (res.data.success) {
-        setOrders([]);
-        toast.success(res.data.message || "Orders cleared.");
-      }
-    } catch (error) {
-      console.error("clear error:", error);
-      toast.error("Failed to clear orders.");
+      if (res.data.success) setOrders([]);
+    } catch {
+      toast.error("Failed to clear orders");
     }
   };
 
-  // ✅ Silent Clear (after completion)
-  const clearAllSilently = async () => {
-    try {
-      await axiosInstance.delete("/orders/clear");
-      setOrders([]);
-    } catch (error) {
-      console.error("Auto clear error:", error);
-    }
-  };
-
-  // ✅ View Invoice
-  const handleViewInvoice = () => {
-    const token = localStorage.getItem("pos-token");
-    if (!token) {
-      alert("Please login again.");
-      return;
-    }
-    if (!orders || orders.length === 0) {
-      toast.error("No orders to view.");
-      return;
-    }
-    const query = new URLSearchParams({
-      format: "pdf",
-      token,
-      customerName: customerName || "Guest Customer",
-      paymentMethod: paymentMethod || "Not Specified",
-    }).toString();
-    window.open(`${import.meta.env.VITE_API_URL}/orders/invoice?${query}`, "_blank");
-  };
-
-  // ✅ Download Invoice
   const handleDownloadInvoice = async () => {
     try {
       setProcessing(true);
-      if (!orders || orders.length === 0) {
-        toast.error("No orders.");
-        return;
-      }
+      if (!orders.length) return toast.error("No orders.");
 
       const query = new URLSearchParams({
         format: "pdf",
-        customerName: customerName || "Guest Customer",
+        customerName: customerName || "Guest",
         paymentMethod: paymentMethod || "Not Specified",
       }).toString();
 
       const response = await axiosInstance.get(`/orders/invoice?${query}`, {
         responseType: "blob",
       });
-
       const blob = new Blob([response.data], { type: "application/pdf" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
       link.download = `Invoice_${customerName || "Guest"}.pdf`;
       link.click();
-    } catch (error) {
-      console.error("download invoice error:", error);
-      toast.error("Failed to download invoice.");
+      toast.success("Invoice downloaded");
+    } catch {
+      toast.error("Failed to download invoice");
     } finally {
       setProcessing(false);
     }
   };
 
-  const cagoryList = orders.map((o) => o.product?.categoryId.name || "Unnamed"); 
-    console.log(cagoryList)
-
-  // ✅ Complete Order
-const completeOrder = async () => {
-  try {
-    if (!paymentMethod) {
-      alert("Please select a payment method first.");
-      return;
-    }
-    if (!orders || orders.length === 0) {
-      toast.error("No orders to complete.");
-      return;
-    }
+  const completeOrder = async () => {
+    if (!paymentMethod) return alert("Select payment method first.");
+    if (!orders.length) return toast.error("No orders.");
 
     setProcessing(true);
+    try {
+      const allQuantity = orders.reduce((sum, o) => sum + (o.quantity || 0), 0);
+      const totalPrice = orders.reduce(
+        (sum, o) => sum + (o.totalPrice ?? o.quantity * o.price),
+        0
+      );
+      const productList = orders.map((o) => o.product?.name || "Unnamed");
+      const productDescription = orders.map(
+        (o) => o.product?.description || "No Desc"
+      );
 
-    // ✅ compute required totals
-    const allQuantity = orders.reduce((sum, o) => sum + (o.quantity || 0), 0);
-    const totalPrice = orders.reduce(
-      (sum, o) => sum + (o.totalPrice ?? o.quantity * o.price),
-      0
-    );
+      const res = await axiosInstance.post("/orders/payment", {
+        paymentMethod,
+        buyerName: customerName || "Unknown",
+        productList,
+        allQuantity,
+        deliveryStatus: "pending",
+        totalPrice,
+        paymentStatus: "Paid",
+        productDescription,
+      });
 
-    const productList = orders.map((o) => o.product?.name || "Unnamed");
-    const productDescription = orders.map((o) => o.product?.description || "No Desc");
-    const deliveryStatus = "pending";
-
-    // ✅ Send complete data to backend
-    const res = await axiosInstance.post("/orders/payment", {
-      paymentMethod,
-      buyerName: customerName || "Unknown",
-      productList,
-      allQuantity,
-      deliveryStatus,
-      totalPrice,
-      paymentStatus: "Paid",
-      productDescription,
-    });
-
-    if (res.data.success) {
-      toast.success("Order completed successfully!");
-
-      // ✅ Automatically download invoice
-      try {
-        const query = new URLSearchParams({
-          format: "pdf",
-          customerName: customerName || "Guest Customer",
-          paymentMethod: paymentMethod || "Not Specified",
-          paymentStatus: "Paid",
-        }).toString();
-
-        const response = await axiosInstance.get(`/orders/invoice?${query}`, {
-          responseType: "blob",
-        });
-
-        const blob = new Blob([response.data], { type: "application/pdf" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `Invoice_${customerName || "Guest"}.pdf`;
-        link.click();
-
-        toast.success("Invoice downloaded automatically.");
-      } catch (downloadError) {
-        console.error("Invoice download error:", downloadError);
-        toast.error("Order saved, but failed to auto-download invoice.");
+      if (res.data.success) {
+        toast.success("Order completed successfully!");
+        handleDownloadInvoice();
+        await axiosInstance.delete("/orders/clear");
+        setOrders([]);
+        setCustomerName("");
+        setPaymentMethod("");
       }
-
-      // ✅ Clear all after completion
-      await clearAllSilently();
-      await fetchOrders();
-      setCustomerName("");
-      setPaymentMethod("");
-    } else {
-      toast.error(res.data.message || "Failed to complete order");
+    } catch {
+      toast.error("Error completing order");
+    } finally {
+      setProcessing(false);
     }
-  } catch (error) {
-    console.error("completeOrder error:", error);
-    toast.error("Error completing order.");
-  } finally {
-    setProcessing(false);
-  }
-};
-
+  };
 
   return (
-    <div className="max-w-6xl mx-auto bg-white shadow-lg rounded-2xl p-6 mt-8 border border-gray-200">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="max-w-6xl mx-auto bg-white/80 backdrop-blur-md border border-gray-200 shadow-xl rounded-2xl p-6 mt-8"
+    >
       <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">
         🧾 Customer Orders Summary
       </h2>
 
-     {/* 🔹 Top Controls */}
-<div className="w-full bg-white/60 backdrop-blur-sm p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
-  <div className="flex flex-col lg:flex-row justify-between items-center gap-4">
-    
-    {/* 🔸 Customer Input + Payment Select */}
-    <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-      <input
-        type="text"
-        placeholder="Enter customer name"
-        value={customerName}
-        onChange={(e) => setCustomerName(e.target.value)}
-        className="w-full sm:w-64 px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all duration-200"
-      />
+      {/* Top Controls */}
+      <div className="bg-white/70 backdrop-blur-sm border border-gray-100 rounded-xl p-4 mb-6 shadow-sm">
+        <div className="flex flex-col lg:flex-row justify-between items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+            <input
+              type="text"
+              placeholder="Enter customer name"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              className="w-full sm:w-64 px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 transition-all"
+            />
 
-      <select
-        value={paymentMethod}
-        onChange={(e) => setPaymentMethod(e.target.value)}
-        className="w-full sm:w-56 px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all duration-200"
-      >
-        <option value="">-- Select Payment Method --</option>
-        {PAYMENT_OPTIONS.map((opt) => (
-          <option key={opt} value={opt}>
-            {opt}
-          </option>
-        ))}
-      </select>
-    </div>
+            <select
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              className="w-full sm:w-56 px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 transition-all"
+            >
+              <option value="">-- Select Payment Method --</option>
+              {PAYMENT_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </div>
 
-    {/* 🔸 Action Buttons */}
-    <div className="flex flex-wrap justify-center lg:justify-end gap-3 w-full lg:w-auto">
-      <button
-        onClick={completeOrder}
-        disabled={processing}
-        className="flex items-center justify-center px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition-all duration-200 disabled:opacity-60"
-      >
-        {processing ? "Saving..." : "Complete Order"}
-      </button>
-
-      <button
-        onClick={handleViewInvoice}
-        className="flex items-center justify-center px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg shadow-md transition-all duration-200"
-      >
-        View Invoice
-      </button>
-
-      <button
-        onClick={handleDownloadInvoice}
-        disabled={processing}
-        className="flex items-center justify-center px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md transition-all duration-200 disabled:opacity-60"
-      >
-        {processing ? "Downloading..." : "Download Invoice"}
-      </button>
-    </div>
-  </div>
-</div>
+          <div className="flex flex-wrap justify-center lg:justify-end gap-3 w-full lg:w-auto">
+            <button
+              onClick={completeOrder}
+              disabled={processing}
+              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition-all disabled:opacity-60"
+            >
+              {processing ? "Saving..." : "Complete Order"}
+            </button>
+            <button
+              onClick={handleDownloadInvoice}
+              disabled={processing}
+              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md transition-all disabled:opacity-60"
+            >
+              {processing ? "Downloading..." : "Download Invoice"}
+            </button>
+            <button
+              onClick={handleClearAll}
+              className="px-5 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-all"
+            >
+              Clear All
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Orders Table */}
       {loading ? (
@@ -329,7 +231,7 @@ const completeOrder = async () => {
           onClearAll={handleClearAll}
         />
       )}
-    </div>
+    </motion.div>
   );
 };
 

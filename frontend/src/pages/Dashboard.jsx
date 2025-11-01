@@ -19,7 +19,7 @@ const Dashboard = () => {
           isOpen ? "ml-64" : "ml-0"
         }`}
       >
-        {/* Top Bar for Mobile */}
+        {/* Mobile Top Bar */}
         <div className="md:hidden flex items-center justify-between p-4 bg-gray-900 text-white shadow-md">
           <button onClick={toggleSidebar} className="p-2 rounded hover:bg-gray-800">
             <FaBars size={20} />
@@ -27,7 +27,7 @@ const Dashboard = () => {
           <span className="font-bold">MELECH SH Dashboard</span>
         </div>
 
-        {/* Outlet Content */}
+        {/* Nested Route Outlet */}
         <main className="flex-1 bg-gray-100 p-4 md:p-6 overflow-y-auto">
           <Outlet />
         </main>

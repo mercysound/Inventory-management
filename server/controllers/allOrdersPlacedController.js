@@ -1,5 +1,4 @@
 import AllOrdersPlacedModel from "../models/AllOrdersPlacedModel.js";
-import CompletedOrderHistoryModel from "../models/CompletedOrderHistoryModel.js";
 
 // ✅ Get all placed orders
 export const getAllPlacedOrders = async (req, res) => {
@@ -20,7 +19,6 @@ export const getAllPlacedOrders = async (req, res) => {
 };
 
 // ✅ Update delivery status
-// ✅ Update delivery status
 export const updateDeliveryStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -30,17 +28,12 @@ export const updateDeliveryStatus = async (req, res) => {
       id,
       { deliveryStatus },
       { new: true }
-    ).populate({
-      path: "productList.productId",
-      select: "name categoryId description",
-      populate: { path: "categoryId", select: "name" }
-    });
+    );
 
     if (!updated)
       return res.status(404).json({ success: false, message: "Order not found" });
 
-    // ✅ Automatically move delivered orders to CompletedOrderHistory
-    if (deliveryStatus === "delivered") {
+     if (deliveryStatus === "delivered") {
       await CompletedOrderHistoryModel.create({
         userOrdering: updated.userOrdering._id,
         buyerName: updated.buyerName,
@@ -50,9 +43,6 @@ export const updateDeliveryStatus = async (req, res) => {
         allQuantity: updated.allQuantity,
         productList: updated.productList,
       });
-
-      // Delete from placed orders
-      await AllOrdersPlacedModel.findByIdAndDelete(id);
     }
 
     res.json({
@@ -65,7 +55,6 @@ export const updateDeliveryStatus = async (req, res) => {
     res.status(500).json({ success: false, message: "Error updating delivery status" });
   }
 };
-
 
 // ✅ Clear all placed orders
 export const clearAllPlacedOrders = async (req, res) => {

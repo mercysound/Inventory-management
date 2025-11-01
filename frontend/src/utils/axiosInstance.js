@@ -12,7 +12,7 @@ axiosInstance.interceptors.request.use(
     const token = localStorage.getItem("pos-token"); // your token key
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-    }
+    } 
     return config;
   },
   (error) => Promise.reject(error)

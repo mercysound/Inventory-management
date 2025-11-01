@@ -17,59 +17,52 @@ const Users = () => {
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    try {
-      const response = await axiosInstance.get("/users", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
-        },
-      });
-      setUsers(response.data.users);
-      setFilteredUsers(response.data.users);
-    } catch (error) {
-      console.error("Error fetching users", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+ const fetchUsers = async () => {
+  setLoading(true);
+  try {
+    const response = await axiosInstance.get("/users");
+    setUsers(response.data.users);
+    setFilteredUsers(response.data.users);
+  } catch (error) {
+    console.error("Error fetching users", error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchUsers();
   }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await axiosInstance.post("/users/add", formData, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
-        },
-      });
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const response = await axiosInstance.post("/users/add", formData);
 
-      if (response.data.success) {
-        toast.success("User added successfully!");
-        setFormData({
-          name: "",
-          email: "",
-          password: "",
-          address: "",
-          role: "",
-        });
-        fetchUsers();
-      }
-    } catch (error) {
-      if (error.response) {
-        if (error.response.status === 400) {
-          toast.error(error.response.data.message || "User already exists");
-        } else {
-          toast.error(error.response.data.message || "Error adding user");
-        }
-      } else {
-        toast.error("Network error – please try again");
-      }
+    if (response.data.success) {
+      toast.success("User added successfully!");
+      setFormData({
+        name: "",
+        email: "",
+        password: "",
+        address: "",
+        role: "",
+      });
+      fetchUsers();
     }
-  };
+  } catch (error) {
+    if (error.response) {
+      if (error.response.status === 400) {
+        toast.error(error.response.data.message || "User already exists");
+      } else {
+        toast.error(error.response.data.message || "Error adding user");
+      }
+    } else {
+      toast.error("Network error – please try again");
+    }
+  }
+};
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -79,29 +72,23 @@ const Users = () => {
     }));
   };
 
-  const handleDelete = async (id) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this user?"
-    );
-    if (!confirmDelete) return;
+ const handleDelete = async (id) => {
+  if (!window.confirm("Are you sure you want to delete this user?")) return;
 
-    try {
-      const response = await axiosInstance.delete(`/users/${id}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("pos-token")}`,
-        },
-      });
-      if (response.data.success) {
-        toast.success("User deleted successfully!");
-        fetchUsers();
-      } else {
-        toast.error("Error deleting user. Please try again");
-      }
-    } catch (error) {
-      console.error("Error deleting user:", error);
+  try {
+    const response = await axiosInstance.delete(`/users/${id}`);
+    if (response.data.success) {
+      toast.success("User deleted successfully!");
+      fetchUsers();
+    } else {
       toast.error("Error deleting user. Please try again");
     }
-  };
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    toast.error("Error deleting user. Please try again");
+  }
+};
+
 
   const handleSearch = (e) => {
     setFilteredUsers(

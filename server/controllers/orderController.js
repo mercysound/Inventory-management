@@ -33,6 +33,77 @@ const addOrder = async (req, res) => {
 };
 
 /**
+ * getOrderByProduct - returns the current user's order for the given product (if any)
+ */
+const getOrderByProduct = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { productId } = req.params;
+
+    const order = await OrderModel.findOne({
+      userOrdering: userId,
+      product: productId,
+    });
+
+    if (!order) {
+      return res.status(200).json({ success: true, order: null });
+    }
+
+    return res.status(200).json({ success: true, order });
+  } catch (error) {
+    console.error("getOrderByProduct error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+/**
+ * updateOrder - update quantity/total of an existing order (makes sure stock is available)
+ */
+const updateOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { quantity, total, price } = req.body;
+
+    const order = await OrderModel.findById(orderId).populate("product");
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    // Make sure current user owns this order
+    if (String(order.userOrdering) !== String(req.user._id)) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
+
+    // Validate quantity
+    const qty = Number(quantity);
+    if (!qty || qty < 1) {
+      return res.status(400).json({ success: false, message: "Quantity must be at least 1" });
+    }
+
+    // Re-check product stock
+    const product = await ProductModel.findById(order.product._id);
+    if (!product) {
+      return res.status(404).json({ success: false, message: "Product not found" });
+    }
+
+    if (qty > product.stock) {
+      return res.status(400).json({ success: false, message: "Not enough stock available" });
+    }
+
+    order.quantity = qty;
+    // If total provided use it; otherwise compute from price * qty
+    order.totalPrice = total || (price || order.price) * qty;
+    // ensure price is set correctly on order
+    order.price = price || order.price;
+    await order.save();
+
+    return res.status(200).json({ success: true, message: "Order updated", updatedOrder: order });
+  } catch (error) {
+    console.error("updateOrder error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+/**
  * getOrders - return orders for current user (staff) or all for admin
  */
 const getOrders = async (req, res) => {
@@ -167,175 +238,160 @@ const completeOrder = async (req, res) => {
 /**
  * generateInvoice - produce a PDF invoice for current user's active orders.
  */
-
-const generateInvoice = async (req, res) => {
+ const generateInvoice = async (req, res) => {
   try {
     const customerName = req.query.customerName || "Guest Customer";
     const paymentMethod = req.query.paymentMethod || "Not Specified";
-    let paymentStatus = req.query.paymentStatus || "Unpaid";
+    let paymentStatus = "Unpaid";
 
-    // ✅ Try to fetch user's live orders first
+    // STEP 1: Try to get user's active orders
     const query = req.user ? { userOrdering: req.user._id } : {};
     let orders = await OrderModel.find(query).populate({
       path: "product",
+      select: "name description price categoryId",
       populate: { path: "categoryId", select: "name" },
     });
 
-    // ✅ If no live orders, fetch most recent completed order
+    // STEP 2: If no active orders, use last completed order
     if (!orders || orders.length === 0) {
-      const lastOrder = await AllOrdersPlacedModel.findOne()
+      const lastOrder = await AllOrdersPlacedModel.findOne(
+        req.user ? { userOrdering: req.user._id } : {}
+      )
         .populate({
           path: "productList.productId",
+          select: "name description price categoryId",
           populate: { path: "categoryId", select: "name" },
         })
         .sort({ createdAt: -1 })
         .lean();
 
       if (lastOrder) {
-        // ✅ Convert productList structure into the same shape your PDF expects
         orders = lastOrder.productList.map((item) => ({
           product: {
-            name: item.productId?.name || "Unknown Product",
-            description: item.productId?.description || "No Description",
-            category: item.productId?.categoryId?.name || "Uncategorized",
+            name: item.productId?.name || "Unknown",
+            description: item.productId?.description || "No description",
+            categoryName: item.productId?.categoryId?.name || "N/A",
           },
           quantity: item.quantity,
           price: item.price,
           totalPrice: item.totalPrice,
         }));
-
         paymentStatus = "Paid";
       }
+    } else {
+      orders = orders.map((o) => ({
+        product: {
+          name: o.product?.name,
+          description: o.product?.description,
+          categoryName: o.product?.categoryId?.name || "N/A",
+        },
+        quantity: o.quantity,
+        price: o.price,
+        totalPrice: o.totalPrice,
+      }));
     }
 
     if (!orders || orders.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "No orders found to generate invoice" });
+      return res.status(404).json({
+        success: false,
+        message: "No orders found to generate invoice",
+      });
     }
 
-    // ====== COMPUTE TOTAL ======
+    // STEP 3: Calculate total
     const totalAmount = orders.reduce(
-      (acc, o) => acc + (o.totalPrice || o.quantity * o.price),
+      (sum, o) => sum + (o.totalPrice || o.price * o.quantity),
       0
     );
 
-    // ====== PDF GENERATION ======
+    // STEP 4: Create PDF
     const doc = new PDFDocument({ margin: 40 });
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "inline; filename=invoice.pdf");
     doc.pipe(res);
 
-    // ===== HEADER =====
-    doc
-      .fontSize(22)
-      .fillColor("#1E3A8A")
-      .font("Helvetica-Bold")
-      .text("MELECH STORE", { align: "center" });
-    doc
-      .fontSize(14)
-      .fillColor("#444")
-      .font("Helvetica")
-      .text("Official Sales Invoice", { align: "center" });
-    doc.moveDown(1.2);
-
-    // ===== CUSTOMER INFO =====
-    doc
-      .fontSize(12)
-      .fillColor("#000")
-      .font("Helvetica")
-      .text(`Customer Name: ${customerName}`)
-      .moveDown(0.2)
-      .text(`Invoice Date: ${new Date().toLocaleString()}`)
-      .moveDown(0.2)
-      .text(`Payment Method: ${paymentMethod}`)
-      .moveDown(0.2)
-      .text(`Payment Status: ${paymentStatus}`);
+    // Header
+    doc.fontSize(20).fillColor("#1E3A8A").text("MELECH STORE", { align: "center" });
+    doc.fontSize(12).fillColor("#000").text("Sales Invoice", { align: "center" });
     doc.moveDown(1);
 
-    // ===== TABLE HEADERS =====
-    const columns = {
-      no: { x: 40, width: 30 },
-      product: { x: 80, width: 110 },
-      category: { x: 190, width: 100 },
-      description: { x: 290, width: 120 },
-      qty: { x: 410, width: 40 },
-      price: { x: 460, width: 70 },
-      total: { x: 530, width: 70 },
+    // Customer Info
+    doc.fontSize(11).fillColor("#000").text(`Customer: ${customerName}`);
+    doc.text(`Payment Method: ${paymentMethod}`);
+    doc.text(`Payment Status: ${paymentStatus}`);
+    doc.text(`Date: ${new Date().toLocaleString()}`);
+    doc.moveDown(1);
+
+    // Column layout
+    const cols = {
+      product: 45,
+      category: 160,
+      description: 260,
+      qty: 390,
+      price: 430,
+      total: 500,
     };
 
+    // Table Header
     const startY = doc.y;
-    doc.rect(40, startY, 560, 25).fill("#1E3A8A").stroke();
-    doc.fillColor("#FFF").fontSize(11).font("Helvetica-Bold");
-    doc.text("No", columns.no.x, startY + 8);
-    doc.text("Product", columns.product.x, startY + 8);
-    doc.text("Category", columns.category.x, startY + 8);
-    doc.text("Description", columns.description.x, startY + 8);
-    doc.text("Qty", columns.qty.x, startY + 8);
-    doc.text("Price (₦)", columns.price.x, startY + 8);
-    doc.text("Total (₦)", columns.total.x, startY + 8);
+    doc.fontSize(11).fillColor("#FFF").rect(40, startY, 520, 20).fill("#1E3A8A").stroke();
+    doc.fillColor("#FFF").font("Helvetica-Bold");
+    doc.text("Product", cols.product, startY + 5);
+    doc.text("Category", cols.category, startY + 5);
+    doc.text("Description", cols.description, startY + 5);
+    doc.text("Qty", cols.qty, startY + 5);
+    doc.text("Price", cols.price, startY + 5);
+    doc.text("Total", cols.total, startY + 5);
 
-    // ===== TABLE BODY =====
-    doc.fillColor("#000");
+    // Table Rows
+    doc.fillColor("#000").font("Helvetica");
     let y = startY + 25;
 
-    orders.forEach((order, index) => {
-      const name = order.product?.name || "N/A";
-      const category = order.product?.category || "N/A";
-      const description = order.product?.description || "N/A";
-      const quantity = String(order.quantity || 1);
-      const price = (order.price ?? 0).toLocaleString();
-      const total = (order.totalPrice ?? order.quantity * order.price).toLocaleString();
+    for (const [index, o] of orders.entries()) {
+      const desc = o.product.description || "—";
 
-      const descHeight = doc.heightOfString(description, { width: 120 });
-      const rowHeight = Math.max(25, descHeight + 10);
-      const fill = index % 2 === 0 ? "#F9FAFB" : "#FFFFFF";
+      // Dynamically compute height of description
+      const descHeight = doc.heightOfString(desc, { width: 120 });
+      const rowHeight = Math.max(20, descHeight + 8);
 
-      doc.rect(40, y, 560, rowHeight).fill(fill).stroke();
+      // Alternate background for rows
+      if (index % 2 === 0) {
+        doc.rect(40, y, 520, rowHeight).fill("#F9FAFB").stroke();
+      } else {
+        doc.rect(40, y, 520, rowHeight).fill("#FFFFFF").stroke();
+      }
 
-      doc.fillColor("#000").fontSize(10).font("Helvetica");
-      doc.text(index + 1, columns.no.x, y + 8);
-      doc.text(name, columns.product.x, y + 8, { width: columns.product.width });
-      doc.text(category, columns.category.x, y + 8, { width: columns.category.width });
-      doc.text(description, columns.description.x, y + 8, { width: columns.description.width });
-      doc.text(quantity, columns.qty.x, y + 8, { width: columns.qty.width });
-      doc.text(price, columns.price.x, y + 8, { width: columns.price.width, align: "right" });
-      doc.text(total, columns.total.x, y + 8, { width: columns.total.width, align: "right" });
+      doc.fillColor("#000");
+      doc.text(o.product.name, cols.product, y + 5, { width: 110 });
+      doc.text(o.product.categoryName, cols.category, y + 5, { width: 100 });
+      doc.text(desc, cols.description, y + 5, { width: 120 });
+      doc.text(String(o.quantity), cols.qty, y + 5);
+      doc.text(`₦${o.price.toLocaleString()}`, cols.price, y + 5);
+      doc.text(`₦${o.totalPrice.toLocaleString()}`, cols.total, y + 5);
 
       y += rowHeight;
-    });
+    }
 
-    // ===== TOTAL =====
-    y += 16;
+    // Total
+    y += 10;
     doc.moveTo(40, y).lineTo(560, y).stroke();
     y += 10;
-    doc
-      .fontSize(13)
-      .fillColor("#000")
-      .font("Helvetica-Bold")
-      .text("Total Amount:", 380, y)
-      .text(`₦${totalAmount.toLocaleString()}`, 460, y, {
-        width: 140,
-        align: "right",
-      });
+    doc.font("Helvetica-Bold");
+    doc.text("Grand Total:", 400, y);
+    doc.text(`₦${totalAmount.toLocaleString()}`, 500, y);
 
-    // ===== FOOTER =====
+    // Footer
     doc.moveDown(2);
-    doc
-      .fontSize(10)
-      .fillColor("gray")
-      .font("Helvetica")
-      .text("Thank you for shopping with MELECH STORE!", 40, doc.y + 10)
-      .text("Generated automatically — no signature required", 40, doc.y + 25);
+    doc.fontSize(10).fillColor("gray").font("Helvetica");
+    doc.text("Thank you for shopping with MELECH STORE!", 40, doc.y + 10);
+    doc.text("Generated automatically — no signature required", 40, doc.y + 25);
 
     doc.end();
   } catch (error) {
     console.error("generateInvoice error:", error);
-    res.status(500).json({ success: false, message: "Error generating invoice" });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
-
-export default generateInvoice;
 
 
 
@@ -430,9 +486,11 @@ export {
   addOrder,
   getOrders,
   completeOrder,
-  generateInvoice,
   reduceOrder,
   deleteOrderItem,
   clearUserOrders,
-  increaseOrderQuantity
+  increaseOrderQuantity,
+  getOrderByProduct,
+  updateOrder,
+  generateInvoice
 };

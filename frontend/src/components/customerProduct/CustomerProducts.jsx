@@ -1,7 +1,10 @@
+// frontend/src/components/customer/CustomerProducts.jsx
 import React, { useEffect, useState } from "react";
 import axiosInstance from "../../utils/axiosInstance";
 import CustomerProductsSkeleton from "./CustomerProductsSkeleton";
 import OrderModal from "./OrderModal";
+import { motion, AnimatePresence } from "framer-motion";
+import { ShoppingBag, Search, Package } from "lucide-react";
 
 const CustomerProducts = () => {
   const [categories, setCategories] = useState([]);
@@ -11,6 +14,7 @@ const CustomerProducts = () => {
   const [loading, setLoading] = useState(true);
 
   const [orderData, setOrderData] = useState({
+    orderId: "", // new field to store existing order id if any
     productId: "",
     quantity: 1,
     total: 0,
@@ -51,28 +55,72 @@ const CustomerProducts = () => {
     );
   };
 
-  const handleOrderChange = (product) => {
-    setOrderData({
-      productId: product._id,
-      quantity: 1,
-      total: product.price,
-      stock: product.stock,
-      price: product.price,
-    });
-    setOpenModal(true);
+  // When user clicks "Order" — check for existing order for this product first
+  const handleOrderChange = async (product) => {
+    try {
+      // Reset orderData to avoid stale values
+      setOrderData({
+        orderId: "",
+        productId: product._id,
+        quantity: 1,
+        total: product.price,
+        stock: product.stock,
+        price: product.price,
+      });
+
+      // Fetch existing order for this product (if any)
+      const res = await axiosInstance.get(`/orders/product/${product._id}`);
+      if (res.data.success && res.data.order) {
+        const existing = res.data.order;
+        setOrderData({
+          orderId: existing._id,
+          productId: product._id,
+          quantity: existing.quantity,
+          total: existing.totalPrice ?? existing.quantity * product.price,
+          stock: product.stock,
+          price: existing.price ?? product.price,
+        });
+      } else {
+        // no existing order — keep default (new order)
+        setOrderData((prev) => ({
+          ...prev,
+          productId: product._id,
+          total: product.price,
+          stock: product.stock,
+          price: product.price,
+        }));
+      }
+    } catch (err) {
+      // If request fails, still open modal with defaults
+      console.error("Error fetching existing order:", err);
+      setOrderData({
+        orderId: "",
+        productId: product._id,
+        quantity: 1,
+        total: product.price,
+        stock: product.stock,
+        price: product.price,
+      });
+    } finally {
+      setOpenModal(true);
+    }
   };
 
   const closeModal = () => setOpenModal(false);
 
   return (
-    <div className="px-4 py-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
-        <h1 className="font-bold text-2xl text-gray-800">Products</h1>
+    <div className="p-4 md:p-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div className="flex items-center gap-2">
+          <ShoppingBag className="text-green-600" size={24} />
+          <h1 className="font-bold text-2xl text-gray-800">Available Products</h1>
+        </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
           <select
             onChange={handleChangeCategory}
-            className="border border-gray-300 p-2 rounded w-full sm:w-auto"
+            className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-green-500 outline-none w-full sm:w-auto"
           >
             <option value="">All Categories</option>
             {categories.map((c) => (
@@ -82,85 +130,101 @@ const CustomerProducts = () => {
             ))}
           </select>
 
-          <input
-            type="text"
-            placeholder="Search product..."
-            onChange={handleSearch}
-            className="border border-gray-300 p-2 rounded w-full sm:w-60"
-          />
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+            <input
+              type="text"
+              placeholder="Search product..."
+              onChange={handleSearch}
+              className="border border-gray-300 rounded-lg pl-9 p-2 w-full focus:ring-2 focus:ring-green-500 outline-none"
+            />
+          </div>
         </div>
       </div>
 
+      {/* Product Table */}
       {loading ? (
         <CustomerProductsSkeleton />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full border border-gray-200">
-            <thead className="bg-gray-200 text-gray-700">
-              <tr>
-                <th className="border p-2 text-sm">S/N</th>
-                <th className="border p-2 text-sm">Product</th>
-                <th className="border p-2 text-sm">Category</th>
-                <th className="border p-2 text-sm">Price</th>
-                <th className="border p-2 text-sm">Stock</th>
-                <th className="border p-2 text-sm">Description</th>
-                <th className="border p-2 text-sm">Action</th>
+        <div className="overflow-x-auto bg-white shadow-lg rounded-xl border border-gray-100">
+          <table className="min-w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-100 text-gray-700">
+                <th className="p-3 text-sm text-left">S/N</th>
+                <th className="p-3 text-sm text-left">Product</th>
+                <th className="p-3 text-sm text-left">Category</th>
+                <th className="p-3 text-sm text-left">Price</th>
+                <th className="p-3 text-sm text-center">Stock</th>
+                <th className="p-3 text-sm text-left">Description</th>
+                <th className="p-3 text-sm text-center">Action</th>
               </tr>
             </thead>
-            <tbody>
-              {filteredProducts.length > 0 ? (
-                filteredProducts.map((product, index) => (
-                  <tr
-                    key={product._id}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="border p-2 text-center">{index + 1}</td>
-                    <td className="border p-2">{product.name}</td>
-                    <td className="border p-2">{product.categoryId?.name}</td>
-                    <td className="border p-2">₦{product.price}</td>
-                    <td className="border p-2 text-center">
-                      {product.stock === 0 ? (
-                        <span className="bg-red-100 text-red-600 px-2 py-1 rounded">
+
+            <AnimatePresence>
+              <tbody>
+                {filteredProducts.length > 0 ? (
+                  filteredProducts.map((product, index) => (
+                    <motion.tr
+                      key={product._id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="border-t border-gray-200 hover:bg-gray-50 transition-all"
+                    >
+                      <td className="p-3 text-sm">{index + 1}</td>
+                      <td className="p-3 font-semibold text-gray-800 flex items-center gap-2">
+                        <Package size={16} className="text-green-500" />
+                        {product.name}
+                      </td>
+                      <td className="p-3 text-gray-700">{product.categoryId?.name}</td>
+                      <td className="p-3 text-gray-700 font-medium">
+                        ₦{product.price.toLocaleString()}
+                      </td>
+                      <td className="p-3 text-center">
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            product.stock === 0
+                              ? "bg-red-100 text-red-600"
+                              : product.stock < 5
+                              ? "bg-yellow-100 text-yellow-700"
+                              : "bg-green-100 text-green-700"
+                          }`}
+                        >
                           {product.stock}
                         </span>
-                      ) : product.stock < 5 ? (
-                        <span className="bg-yellow-100 text-yellow-600 px-2 py-1 rounded">
-                          {product.stock}
-                        </span>
-                      ) : (
-                        <span className="bg-green-100 text-green-600 px-2 py-1 rounded">
-                          {product.stock}
-                        </span>
-                      )}
-                    </td>
-                    <td className="border p-2 text-sm text-gray-600">
-                      {product.description}
-                    </td>
-                    <td className="border p-2 text-center">
-                      {product.stock < 1?(
-                        <button className="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm">Unavailable</button>
-                      ):(
-                        <button
-                        onClick={() => handleOrderChange(product)}
-                        className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
-                      >
-                        Order
-                      </button>
-                      )}
+                      </td>
+                      <td className="p-3 text-sm text-gray-600 max-w-xs truncate">
+                        {product.description}
+                      </td>
+                      <td className="p-3 text-center">
+                        {product.stock < 1 ? (
+                          <button className="px-3 py-1 bg-gray-500 text-white rounded-md cursor-not-allowed">
+                            Unavailable
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleOrderChange(product)}
+                            className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-all"
+                          >
+                            Order
+                          </button>
+                        )}
+                      </td>
+                    </motion.tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan="7"
+                      className="text-center text-gray-500 py-6 italic"
+                    >
+                      No products found
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan="7"
-                    className="text-center text-gray-500 py-6 italic"
-                  >
-                    No products found
-                  </td>
-                </tr>
-              )}
-            </tbody>
+                )}
+              </tbody>
+            </AnimatePresence>
           </table>
         </div>
       )}

@@ -4,7 +4,8 @@ import { FaTrashAlt } from "react-icons/fa";
 const PlacedOrdersTable = ({ orders, updateDeliveryStatus, deleteOrder, updating }) => {
   // Calculate grand total of all orders
   const grandTotal = orders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
-
+  console.log(orders[0].productList[0].productId.name);
+  
   return (
     <div className="w-full bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
       {/* Header */}
