@@ -111,8 +111,13 @@ const getOrders = async (req, res) => {
     const userId = req.user._id;
     let query = {};
 
-    if (req.user.role === "staff") {
+    // 🧠 Determine what to fetch based on user role
+    if (req.user.role === "staff" || req.user.role === "customer") {
+      // Both staff and customers should only see their own orders
       query = { userOrdering: userId };
+    } else if (req.user.role === "admin") {
+      // Admin sees all orders — leave query empty
+      query = {};
     }
 
     const orders = await OrderModel.find(query)
@@ -120,8 +125,9 @@ const getOrders = async (req, res) => {
         path: "product",
         select: "name description price categoryId",
         populate: { path: "categoryId", select: "name" },
-      })
+      });
 
+    // 🧹 Clean up data before sending it to frontend
     const sanitizedOrders = orders.map((o) => ({
       _id: o._id,
       product: o.product,
@@ -129,14 +135,18 @@ const getOrders = async (req, res) => {
       totalPrice: o.totalPrice ?? 0,
       orderDate: o.orderDate,
       price: o.price,
+      userOrdering: o.userOrdering,
     }));
 
     return res.status(200).json({ success: true, orders: sanitizedOrders });
   } catch (error) {
     console.error("getOrders error:", error);
-    return res.status(500).json({ success: false, error: "Server error in fetching orders" });
+    return res
+      .status(500)
+      .json({ success: false, error: "Server error in fetching orders" });
   }
 };
+
 
 /**
  * completeOrder - saves payment and summary, marks paymentStatus as Paid

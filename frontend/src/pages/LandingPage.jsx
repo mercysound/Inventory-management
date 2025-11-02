@@ -1,11 +1,9 @@
-// src/pages/LandingPage.jsx
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { BASE_URL } from "../App";
+import axiosInstance from "../utils/axiosInstance";
 
 const LandingPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -21,9 +19,11 @@ const LandingPage = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
 
+  // 🔹 Auto-redirect logged-in users
   useEffect(() => {
     const storedToken = localStorage.getItem("pos-token");
     const storedUser = localStorage.getItem("pos-user");
+
     if (storedToken && storedUser) {
       const user = JSON.parse(storedUser);
       if (user.role === "admin") navigate("/admin-dashboard");
@@ -42,7 +42,7 @@ const LandingPage = () => {
 
     try {
       if (isLogin) {
-        // 🔹 Login Logic
+        // 🔹 Login
         const response = await axiosInstance.post("/auth/login", {
           email: formData.email,
           password: formData.password,
@@ -61,10 +61,21 @@ const LandingPage = () => {
           toast.error(response.data.message);
         }
       } else {
-        // 🔹 Signup Logic (now also uses axiosInstance)
-        const res = await axiosInstance.post("/users/add", formData);
+        // 🔹 Signup
+        const res = await axiosInstance.post("/users/register", formData);
         toast.success(res.data.message || "Signup successful!");
+
+        // ✅ After signup, switch to login mode
         setIsLogin(true);
+
+        // Optionally, prefill email & password
+        setFormData({
+          name: "",
+          address: "",
+          email: formData.email,
+          password: formData.password,
+          role: "customer",
+        });
       }
     } catch (error) {
       toast.error(

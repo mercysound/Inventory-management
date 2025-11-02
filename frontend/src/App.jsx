@@ -15,6 +15,7 @@ import PlacedOrders from "./components/purchase/PlacedOrders.jsx";
 import { ToastContainer } from "react-toastify";
 import LandingPage from "./pages/LandingPage.jsx";
 import CustomerOrderPortal from "./components/customer/CustomerOrderPortal/CustomerOrderPortal.jsx";
+import Unauthorized from "./pages/unauthorized/Unauthorized.jsx";
 
 export const BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -80,9 +81,10 @@ function App() {
           <Route
             path="/unauthorized"
             element={
-              <p className="font-bold text-3xl mt-20 ml-20 text-red-600">
-                Unauthorized Access
-              </p>
+              // <p className="font-bold text-3xl mt-20 ml-20 text-red-600">
+              //   Unauthorized Access
+              // </p>
+              <Unauthorized/>
             }
           />
         </Routes>

@@ -9,10 +9,8 @@ const axiosInstance = axios.create({
 // Automatically attach token to each request
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("pos-token"); // your token key
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    } 
+    const token = localStorage.getItem("pos-token");
+    if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
   (error) => Promise.reject(error)

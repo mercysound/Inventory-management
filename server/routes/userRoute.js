@@ -4,7 +4,8 @@ import { addUser, getUsers, deleteUser, getUser, updateUserprofile} from '../con
 
 const router = express.Router();
 
-router.post('/add', authMiddleware, addUser);
+router.post('/register', addUser); // public
+router.post('/add', authMiddleware, addUser); // for admin
 router.get('/', authMiddleware, getUsers);
 router.delete('/:id', authMiddleware, deleteUser);
 router.get('/profile', authMiddleware, getUser);
