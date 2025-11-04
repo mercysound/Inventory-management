@@ -22,25 +22,35 @@ const PlacedOrders = () => {
     }
   };
 
-  const updateDeliveryStatus = async (orderId, newStatus) => {
-    try {
-      setUpdating(true);
-      const res = await axiosInstance.put(`/placed-orders/${orderId}/status`, {
-        deliveryStatus: newStatus,
-      });
-      if (res.data.success) {
-        toast.success("Delivery status updated!");
-        fetchOrders();
-      } else {
-        toast.error(res.data.message || "Failed to update status");
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Error updating delivery status");
-    } finally {
-      setUpdating(false);
+const updateDeliveryStatus = async (orderId, newStatus) => {
+  // 💡 Step 1: Confirm if status is "delivered"
+  if (newStatus === "delivered") {
+    const confirmDelivery = window.confirm(
+      "Are you sure this order has been delivered? Once confirmed, it will move to history."
+    );
+    if (!confirmDelivery) return; // stop if user cancels
+  }
+
+  try {
+    setUpdating(true);
+    const res = await axiosInstance.put(`/placed-orders/${orderId}/status`, {
+      deliveryStatus: newStatus,
+    });
+
+    if (res.data.success) {
+      toast.success("Delivery status updated!");
+      fetchOrders(); // refresh table after update
+    } else {
+      toast.error(res.data.message || "Failed to update status");
     }
-  };
+  } catch (err) {
+    console.error(err);
+    toast.error("Error updating delivery status");
+  } finally {
+    setUpdating(false);
+  }
+};
+
 
   const handleDeleteOrder = async (id) => {
     if (!window.confirm("Are you sure you want to delete this order?")) return;

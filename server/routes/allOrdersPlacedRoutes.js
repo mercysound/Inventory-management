@@ -10,7 +10,7 @@ import { authMiddleware, adminOnly } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get("/", authMiddleware, adminOnly, getAllPlacedOrders);
+router.get("/", authMiddleware, getAllPlacedOrders);
 router.put("/:id/status", authMiddleware, adminOnly, updateDeliveryStatus);
 router.delete("/clear", authMiddleware, adminOnly, clearAllPlacedOrders);
 

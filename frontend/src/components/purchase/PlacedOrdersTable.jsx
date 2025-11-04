@@ -1,11 +1,9 @@
 import React from "react";
-import { FaTrashAlt } from "react-icons/fa";
 
-const PlacedOrdersTable = ({ orders, updateDeliveryStatus, deleteOrder, updating }) => {
-  // Calculate grand total of all orders
+const PlacedOrdersTable = ({ orders, updateDeliveryStatus, updating }) => {
+  // Calculate grand total
   const grandTotal = orders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
-  console.log(orders[0].productList[0].productId.name);
-  
+
   return (
     <div className="w-full bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
       {/* Header */}
@@ -26,9 +24,10 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, deleteOrder, updating
               <th className="p-3 text-left">Payment</th>
               <th className="p-3 text-left">Status</th>
               <th className="p-3 text-left">Date & Time</th>
-              <th className="p-3 text-left">Actions</th>
+              <th className="p-3 text-left">Action</th>
             </tr>
           </thead>
+
           <tbody>
             {orders.map((order, i) => (
               <tr
@@ -39,7 +38,7 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, deleteOrder, updating
                 <td className="p-3 font-medium text-gray-800">{order.buyerName}</td>
                 <td className="p-3">{order.userOrdering?.name || "Unknown"}</td>
 
-                {/* Products with description */}
+                {/* Products */}
                 <td className="p-3">
                   <ul className="space-y-3">
                     {order.productList?.map((item, idx) => (
@@ -87,7 +86,9 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, deleteOrder, updating
                     })}
                   </span>
                 </td>
-                <td className="p-3 flex items-center gap-2">
+
+                {/* Status dropdown only */}
+                <td className="p-3">
                   <select
                     value={order.deliveryStatus}
                     onChange={(e) =>
@@ -100,19 +101,11 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, deleteOrder, updating
                     <option value="in transit">In Transit</option>
                     <option value="delivered">Delivered</option>
                   </select>
-                  <button
-                    onClick={() => deleteOrder(order._id)}
-                    disabled={updating}
-                    className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg transition"
-                    title="Delete Order"
-                  >
-                    <FaTrashAlt className="text-xs" />
-                  </button>
                 </td>
               </tr>
             ))}
 
-            {/* Footer total row */}
+            {/* Footer total */}
             <tr className="bg-gray-50 font-bold text-gray-800 border-t">
               <td colSpan="4" className="p-3 text-right">
                 Grand Total:
@@ -191,27 +184,20 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, deleteOrder, updating
               </p>
             </div>
 
-            <div className="mt-3 flex justify-between items-center">
+            <div className="mt-3">
+              {updating && <span className="text-sm text-gray-500 ml-2">Updating...</span>}
               <select
                 value={order.deliveryStatus}
                 onChange={(e) =>
                   updateDeliveryStatus(order._id, e.target.value)
                 }
                 disabled={updating}
-                className="border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="border border-gray-300 rounded-lg px-2 py-1 text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-400"
               >
                 <option value="pending">Pending</option>
                 <option value="in transit">In Transit</option>
                 <option value="delivered">Delivered</option>
               </select>
-
-              <button
-                onClick={() => deleteOrder(order._id)}
-                disabled={updating}
-                className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg transition"
-              >
-                <FaTrashAlt className="text-xs" />
-              </button>
             </div>
           </div>
         ))}

@@ -1,6 +1,6 @@
 // frontend/src/components/customer/CustomerProducts.jsx
 import React, { useEffect, useState } from "react";
-import axiosInstance from "../../utils/axiosInstance";
+import axiosInstance from "../../../utils/axiosInstance";
 import CustomerProductsSkeleton from "./CustomerProductsSkeleton";
 import OrderModal from "./OrderModal";
 import { motion, AnimatePresence } from "framer-motion";

@@ -8,6 +8,7 @@ const orderSchema = new mongoose.Schema({
   totalPrice: { type: Number, required: true },
   orderDate: { type: Date, default: Date.now },
   productDescription: { type: String },
+  deliveryStatus: { type: String, default: "Pending"}
 
   // New fields
   // paymentMethod: { type: String, default: null }, // e.g. "Cash", "POS"

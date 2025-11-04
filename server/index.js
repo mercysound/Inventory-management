@@ -14,6 +14,8 @@ import userRoute from "./routes/userRoute.js";
 import orderRouter from "./routes/orderRoute.js";
 import dashboardRouter from "./routes/dashboardRoute.js";
 import allOrdersPlacedRoutes from "./routes/allOrdersPlacedRoutes.js";
+import completedOrderHistoryRoutes from "./routes/completedOrderHistoryRoutes.js";
+
 
   // const __filename = fileURLToPath(import.meta.url);
   // const __dirname = path.dirname(__filename);
@@ -61,6 +63,7 @@ app.use("/api/users", userRoute);
 app.use("/api/orders", orderRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/placed-orders", allOrdersPlacedRoutes);
+app.use("/api/completed-history", completedOrderHistoryRoutes);
 
 // // Serve frontend
 // app.use(express.static(path.join(__dirname, "../frontend/dist")));

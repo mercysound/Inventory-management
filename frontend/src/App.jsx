@@ -8,14 +8,17 @@ import Product from "./components/product/Product.jsx";
 import Profile from "./components/profile/Profile.jsx";
 import Logout from "./components/Logout.jsx";
 import Users from "./components/user/Users.jsx";
-import CustomerProducts from "./components/customerProduct/CustomerProducts.jsx";
+// import CustomerProducts from "./components/customer/customerProduct/CustomerProducts.js";
 import CustomerOrders from "./components/orders/CustomerOrders.jsx";
 import Summary from "./components/Summary.jsx";
 import PlacedOrders from "./components/purchase/PlacedOrders.jsx";
 import { ToastContainer } from "react-toastify";
 import LandingPage from "./pages/LandingPage.jsx";
-import CustomerOrderPortal from "./components/customer/CustomerOrderPortal/CustomerOrderPortal.jsx";
+// import CustomerOrderPortal from "./components/customer/CustomerOrderPortal/CustomerOrderPortal.jsx";
 import Unauthorized from "./pages/unauthorized/Unauthorized.jsx";
+import CompletedOrderHistory from "./components/history/CompletedOrderHistory.jsx";
+import CustomerOrderPortal from "./components/customer/CustomerOrderPortal/CustomerOrderPortal";
+import CustomerProducts from "./components/customer/customerProduct/CustomerProducts.jsx";
 
 export const BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -42,6 +45,7 @@ function App() {
             <Route path="products" element={<Product />} />
             <Route path="suppliers" element={<Suppliers />} />
             <Route path="placed-orders" element={<PlacedOrders />} />
+            <Route path="completed-history" element={<CompletedOrderHistory />} />
             <Route path="profile" element={<Profile />} />
             <Route path="users" element={<Users />} />
             <Route path="logout" element={<Logout />} />
@@ -71,8 +75,8 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<CustomerProducts />} />
-            <Route path="orders" element={<CustomerOrderPortal />} />
+            <Route index element={<CustomerProducts/>} />
+            <Route path="orders" element={<CustomerOrderPortal/>} />
             <Route path="profile" element={<Profile />} />
             <Route path="logout" element={<Logout />} />
           </Route>

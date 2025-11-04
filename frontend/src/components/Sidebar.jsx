@@ -24,6 +24,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     { name: "Products", path: "/admin-dashboard/products", icon: <FaBox /> },
     { name: "Suppliers", path: "/admin-dashboard/suppliers", icon: <FaTruck /> },
     { name: "Placed Orders", path: "/admin-dashboard/placed-orders", icon: <FaShoppingCart /> },
+    { name: "Complete Orders", path: "/admin-dashboard/completed-history", icon: <FaShoppingCart /> },
     { name: "Users", path: "/admin-dashboard/users", icon: <FaUsers /> },
     { name: "Profile", path: "/admin-dashboard/profile", icon: <FaCog /> },
     { name: "Logout", path: "/logout", icon: <FaSignOutAlt /> },
