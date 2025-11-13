@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, CheckCircle2 } from "lucide-react";
 import SkeletonLoader from "../../common/SkeletonLoader";
 
-const CompletedOrders = ({ isOpen, onClose }) => {
+const CompletedOrdersModal = ({ isOpen, onClose }) => {
   const [completedOrders, setCompletedOrders] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -49,6 +49,7 @@ const CompletedOrders = ({ isOpen, onClose }) => {
       toast.error("Failed to clear all orders");
     }
   };
+  const grandTotal = completedOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
 
   return (
     <AnimatePresence>
@@ -93,28 +94,34 @@ const CompletedOrders = ({ isOpen, onClose }) => {
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-green-700 text-white text-sm md:text-base">
-                      <th className="p-3 text-left">Customer</th>
-                      <th className="p-3 text-left">Products</th>
-                      <th className="p-3 text-left">Description</th>
-                      <th className="p-3">Total</th>
-                      <th className="p-3">Status</th>
-                      {/* <th className="p-3">Action</th> */}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {completedOrders.map((order) => (
-                      <tr
-                        key={order._id}
-                        className="border-b hover:bg-gray-50 transition-colors"
-                      >
-                        <td className="p-3 text-sm md:text-base">
-                          {order.buyerName}
-                        </td>
-                        <td className="p-3 text-sm md:text-base">
-                          <ul className="space-y-3">
+                <table className="min-w-full text-sm text-gray-700 border-collapse">
+          <thead className="bg-gray-100 uppercase font-semibold text-gray-600">
+            <tr>
+              <th className="p-3 text-left">#</th>
+              <th className="p-3 text-left">Name</th>
+              <th className="p-3 text-left">User</th>
+              <th className="p-3 text-left">Products</th>
+              <th className="p-3 text-left">Total</th>
+              <th className="p-3 text-left">Payment</th>
+              <th className="p-3 text-left">Status</th>
+              <th className="p-3 text-left">Date & Time</th>
+              {/* <th className="p-3 text-left">Action</th> */}
+            </tr>
+          </thead>
+
+          <tbody>
+            {completedOrders.map((order, i) => (
+              <tr
+                key={order._id}
+                className="border-t hover:bg-gray-50 transition duration-200 align-top"
+              >
+                <td className="p-3">{i + 1}</td>
+                <td className="p-3 font-medium text-gray-800">{order.buyerName}</td>
+                <td className="p-3">{order.userOrdering?.name || "Unknown"}</td>
+
+                {/* Products */}
+                <td className="p-3">
+                  <ul className="space-y-3">
                     {order.productList?.map((item, idx) => (
                       <li key={idx} className="border-b border-gray-100 pb-2 last:border-none">
                         <p className="font-semibold text-gray-800">
@@ -132,34 +139,47 @@ const CompletedOrders = ({ isOpen, onClose }) => {
                       </li>
                     ))}
                   </ul>
+                </td>
 
-                        </td>
-                        <td className="p-3 text-sm md:text-base">
-                          {order.productList
-                            .map((p) => p.productId?.name || "Unnamed")
-                            .join(", ")}
-                        </td>
-                        <td className="p-3 text-center text-sm md:text-base">
-                          ₦{order.totalPrice.toLocaleString()}
-                        </td>
-                        <td className="p-3 text-center">
-                          <span className="flex items-center justify-center text-green-600 font-medium">
-                            <CheckCircle2 size={16} className="mr-1" />
-                            {order.deliveryStatus}
-                          </span>
-                        </td>
-                        <td className="p-3 text-center">
-                          <button
-                            onClick={() => handleDeleteSingle(order._id)}
-                            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <td className="p-3 font-semibold text-gray-800">
+                  ₦{order.totalPrice?.toLocaleString() || 0}
+                </td>
+                <td className="p-3">{order.paymentMethod}</td>
+                 <td className="p-3">
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      order.deliveryStatus === "pending"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : order.deliveryStatus === "in transit"
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-green-100 text-green-700"
+                    }`}
+                  >
+                    {order.deliveryStatus}
+                  </span>
+                </td>
+                <td className="p-3 text-gray-600">
+                  {new Date(order.createdAt).toLocaleDateString()}{" "}
+                  <span className="text-xs text-gray-400">
+                    {new Date(order.createdAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </td>
+              </tr>
+            ))}
+
+            {/* Footer total */}
+            <tr className="bg-gray-50 font-bold text-gray-800 border-t">
+              <td colSpan="4" className="p-3 text-right">
+                Grand Total:
+              </td>
+              <td className="p-3 text-indigo-600">₦{grandTotal.toLocaleString()}</td>
+              <td colSpan="4"></td>
+            </tr>
+          </tbody>
+        </table>
               </div>
             )}
           </motion.div>
@@ -169,4 +189,4 @@ const CompletedOrders = ({ isOpen, onClose }) => {
   );
 };
 
-export default CompletedOrders;
+export default CompletedOrdersModal;

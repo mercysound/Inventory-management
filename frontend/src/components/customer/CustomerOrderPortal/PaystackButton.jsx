@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
-const PaystackButton = ({ email, amount, name, onSuccess }) => {
+const PaystackButton = ({ email, amount, name, onSuccess,  }) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
