@@ -12,7 +12,7 @@ export const getAllPlacedOrders = async (req, res) => {
     }
 
     const orders = await AllOrdersPlacedModel.find(query)
-      .populate("userOrdering", "name email")
+      .populate("userOrdering", "name role email")
       .populate({
         path: "productList.productId",
         select: "name categoryId description",

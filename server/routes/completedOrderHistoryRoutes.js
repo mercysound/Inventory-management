@@ -12,6 +12,6 @@ const router = express.Router();
 router.get("/", authMiddleware, getCompletedOrders);
 router.delete("/:id", authMiddleware, deleteCompletedOrder);
 // router.delete("/:id", authMiddleware, adminOnly, deleteCompletedOrder);
-router.delete("/clear/all", authMiddleware, adminOnly, clearCompletedOrders);
+router.delete("/clear/all", authMiddleware, clearCompletedOrders);
 
 export default router;

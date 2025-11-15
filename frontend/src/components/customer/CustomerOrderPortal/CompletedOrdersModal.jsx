@@ -83,7 +83,6 @@ const CompletedOrdersModal = ({ isOpen, onClose }) => {
                   <thead className="bg-white/10 text-gray-200 uppercase text-xs">
                     <tr>
                       <th className="p-3 text-left">#</th>
-                      <th className="p-3 text-left">Name</th>
                       <th className="p-3 text-left">User</th>
                       <th className="p-3 text-left">Products</th>
                       <th className="p-3 text-left">Total</th>
@@ -100,9 +99,6 @@ const CompletedOrdersModal = ({ isOpen, onClose }) => {
                         className="border-t border-white/20 hover:bg-white/10 transition duration-200"
                       >
                         <td className="p-3">{i + 1}</td>
-                        <td className="p-3 font-semibold text-white">
-                          {order.buyerName}
-                        </td>
                         <td className="p-3">
                           {order.userOrdering?.name || "Unknown"}
                         </td>

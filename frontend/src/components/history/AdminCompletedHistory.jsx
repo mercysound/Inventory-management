@@ -1,4 +1,3 @@
-// src/components/history/AdminCompletedHistory.jsx
 import React, { useEffect, useState } from "react";
 import axiosInstance from "../../utils/axiosInstance";
 import { toast } from "react-toastify";
@@ -14,7 +13,6 @@ const AdminCompletedHistory = () => {
       const res = await axiosInstance.get("/completed-history");
       if (res.data.success) setOrders(res.data.orders || []);
     } catch (err) {
-      console.error(err);
       toast.error("Failed to fetch completed orders");
     } finally {
       setLoading(false);
@@ -59,15 +57,14 @@ const AdminCompletedHistory = () => {
     <div className="p-5">
       <div className="flex justify-between items-center mb-3">
         <h2 className="text-2xl font-bold">📜 Admin Completed Orders</h2>
-        <button
-          onClick={clearAllOrders}
-          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md"
-        >
-          Clear All
-        </button>
       </div>
 
-      <SharedOrderTable orders={orders} role="admin" onDelete={deleteOrder} />
+      <SharedOrderTable
+        orders={orders}
+        role="admin"
+        onDelete={deleteOrder}
+        onClearAll={clearAllOrders}
+      />
     </div>
   );
 };

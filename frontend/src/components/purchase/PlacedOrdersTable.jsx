@@ -18,7 +18,7 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, updating }) => {
             <tr>
               <th className="p-3 text-left">#</th>
               <th className="p-3 text-left">Buyer</th>
-              <th className="p-3 text-left">Staff</th>
+              <th className="p-3 text-left">User</th> {/* Changed column header */}
               <th className="p-3 text-left">Products</th>
               <th className="p-3 text-left">Total</th>
               <th className="p-3 text-left">Payment</th>
@@ -36,24 +36,26 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, updating }) => {
               >
                 <td className="p-3">{i + 1}</td>
                 <td className="p-3 font-medium text-gray-800">{order.buyerName}</td>
-                <td className="p-3">{order.userOrdering?.name || "Unknown"}</td>
+                <td className="p-3 font-medium text-gray-800">
+                  {order.userOrdering?.role || "Unknown"}
+                </td>
 
                 {/* Products */}
-                <td className="p-3">
-                  <ul className="space-y-3">
+                <td className="p-3 align-top">
+                  <ul className="space-y-2">
                     {order.productList?.map((item, idx) => (
-                      <li key={idx} className="border-b border-gray-100 pb-2 last:border-none">
-                        <p className="font-semibold text-gray-800">
+                      <li key={idx} className="flex flex-col">
+                        <span className="font-semibold text-gray-800">
                           {item?.productId?.name || "Unnamed"}{" "}
                           <span className="text-gray-500 text-sm">
                             ({item?.productId?.categoryId?.name || "No Category"})
                           </span>{" "}
                           ×{item?.quantity || 1}
-                        </p>
+                        </span>
                         {item?.productId?.description && (
-                          <p className="text-gray-500 text-sm pl-3 italic">
+                          <span className="text-gray-500 text-sm italic break-words">
                             {item.productId.description}
-                          </p>
+                          </span>
                         )}
                       </li>
                     ))}
@@ -87,7 +89,6 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, updating }) => {
                   </span>
                 </td>
 
-                {/* Status dropdown only */}
                 <td className="p-3">
                   <select
                     value={order.deliveryStatus}
@@ -143,25 +144,25 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, updating }) => {
 
             <div className="text-sm text-gray-700 space-y-1">
               <p>
-                <span className="font-semibold">Staff:</span>{" "}
-                {order.userOrdering?.name || "Unknown"}
+                <span className="font-semibold">User:</span>{" "}
+                {order.userOrdering?.role || "Unknown"}
               </p>
 
               <p className="font-semibold">Products:</p>
-              <ul className="ml-3 space-y-2">
+              <ul className="space-y-1">
                 {order.productList?.map((item, idx) => (
-                  <li key={idx}>
-                    <p className="font-medium text-gray-800">
+                  <li key={idx} className="flex flex-col">
+                    <span className="font-medium text-gray-800">
                       {item?.productId?.name || "Unnamed"}{" "}
                       <span className="text-gray-500 text-xs">
                         ({item?.productId?.categoryId?.name || "No Category"})
                       </span>{" "}
                       ×{item?.quantity || 1}
-                    </p>
+                    </span>
                     {item?.productId?.description && (
-                      <p className="text-gray-500 text-xs pl-3 italic">
+                      <span className="text-gray-500 text-xs italic break-words">
                         {item.productId.description}
-                      </p>
+                      </span>
                     )}
                   </li>
                 ))}
@@ -185,7 +186,9 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, updating }) => {
             </div>
 
             <div className="mt-3">
-              {updating && <span className="text-sm text-gray-500 ml-2">Updating...</span>}
+              {updating && (
+                <span className="text-sm text-gray-500 ml-2">Updating...</span>
+              )}
               <select
                 value={order.deliveryStatus}
                 onChange={(e) =>

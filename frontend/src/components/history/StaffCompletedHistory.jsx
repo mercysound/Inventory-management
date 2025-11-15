@@ -1,4 +1,3 @@
-// src/components/history/StaffCompletedHistory.jsx
 import React, { useEffect, useState } from "react";
 import axiosInstance from "../../utils/axiosInstance";
 import { toast } from "react-toastify";
@@ -13,7 +12,7 @@ const StaffCompletedHistory = () => {
       setLoading(true);
       const res = await axiosInstance.get("/completed-history");
       if (res.data.success) setOrders(res.data.orders || []);
-    } catch (err) {
+    } catch {
       toast.error("Failed to fetch staff orders");
     } finally {
       setLoading(false);
@@ -25,11 +24,24 @@ const StaffCompletedHistory = () => {
     try {
       const res = await axiosInstance.delete(`/completed-history/${id}`);
       if (res.data.success) {
-        toast.success("Order removed from your view");
+        toast.success(res.data.message);
         setOrders((prev) => prev.filter((o) => o._id !== id));
       }
     } catch {
       toast.error("Error deleting order");
+    }
+  };
+
+  const clearAllOrders = async () => {
+    if (!window.confirm("Are you sure you want to clear all your completed orders?")) return;
+    try {
+      const res = await axiosInstance.delete("/completed-history/clear/all");
+      if (res.data.success) {
+        setOrders([]);
+        toast.success(res.data.message);
+      }
+    } catch {
+      toast.error("Error clearing all orders");
     }
   };
 
@@ -42,7 +54,12 @@ const StaffCompletedHistory = () => {
   return (
     <div className="p-5">
       <h2 className="text-2xl font-bold mb-3">📜 Staff Completed Orders</h2>
-      <SharedOrderTable orders={orders} role="staff" onDelete={deleteOrder} />
+      <SharedOrderTable
+        orders={orders}
+        role="staff"
+        onDelete={deleteOrder}
+        onClearAll={clearAllOrders}
+      />
     </div>
   );
 };

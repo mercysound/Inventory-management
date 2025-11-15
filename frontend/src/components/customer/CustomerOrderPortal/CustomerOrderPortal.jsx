@@ -146,6 +146,7 @@ const CustomerOrderPortal = () => {
       await axiosInstance.delete("/orders/clear");
       setOrders([]);
       toast.info("Your cart has been cleared.");
+       fetchOrders();
     } catch (error) {
       console.error(error);
       toast.error("Error finalizing your payment.");
@@ -199,7 +200,7 @@ const CustomerOrderPortal = () => {
             {user?.role === "customer" && grandTotal > 0 && (
               <PaystackButton
                 email={user.email}
-                amount={grandTotal}
+                amount={grandTotal*100}
                 name={user.name}
                 onSuccess={handlePaymentSuccess}
               />

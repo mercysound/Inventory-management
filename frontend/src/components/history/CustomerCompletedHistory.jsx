@@ -1,4 +1,3 @@
-// src/components/history/CustomerCompletedHistory.jsx
 import React, { useEffect, useState } from "react";
 import axiosInstance from "../../utils/axiosInstance";
 import { toast } from "react-toastify";
@@ -25,11 +24,24 @@ const CustomerCompletedHistory = () => {
     try {
       const res = await axiosInstance.delete(`/completed-history/${id}`);
       if (res.data.success) {
-        toast.success("Order deleted from your history");
+        toast.success(res.data.message);
         setOrders((prev) => prev.filter((o) => o._id !== id));
       }
     } catch {
       toast.error("Error deleting order");
+    }
+  };
+
+  const clearAllOrders = async () => {
+    if (!window.confirm("Are you sure you want to clear all your completed orders?")) return;
+    try {
+      const res = await axiosInstance.delete("/completed-history/clear/all");
+      if (res.data.success) {
+        setOrders([]);
+        toast.success(res.data.message);
+      }
+    } catch {
+      toast.error("Error clearing all orders");
     }
   };
 
@@ -42,8 +54,12 @@ const CustomerCompletedHistory = () => {
   return (
     <div className="p-5">
       <h2 className="text-2xl font-bold mb-3">📜 Your Completed Orders</h2>
-      <SharedOrderTable orders={orders} role="customer" onDelete={deleteOrder} />
-
+      <SharedOrderTable
+        orders={orders}
+        role="customer"
+        onDelete={deleteOrder}
+        onClearAll={clearAllOrders}
+      />
     </div>
   );
 };
