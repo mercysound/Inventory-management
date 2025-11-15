@@ -26,8 +26,6 @@ const AdminCompletedHistory = () => {
       if (res.data.success) {
         toast.success(res.data.message);
         setOrders((prev) => prev.filter((o) => o._id !== id));
-      } else {
-        toast.error(res.data.message || "Failed to delete order");
       }
     } catch {
       toast.error("Error deleting order");
@@ -55,10 +53,7 @@ const AdminCompletedHistory = () => {
 
   return (
     <div className="p-5">
-      <div className="flex justify-between items-center mb-3">
-        <h2 className="text-2xl font-bold">📜 Admin Completed Orders</h2>
-      </div>
-
+      <h2 className="text-2xl font-bold mb-3">📜 Admin Completed Orders</h2>
       <SharedOrderTable
         orders={orders}
         role="admin"

@@ -41,7 +41,7 @@ const CustomerCompletedHistory = () => {
         toast.success(res.data.message);
       }
     } catch {
-      toast.error("Error clearing all orders");
+      toast.error("Error clearing orders");
     }
   };
 

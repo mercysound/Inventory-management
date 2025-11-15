@@ -1,10 +1,14 @@
-// src/components/history/SharedOrderTable.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaTrashAlt } from "react-icons/fa";
 
 const SharedOrderTable = ({ orders, role, onDelete, onClearAll }) => {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchDate, setSearchDate] = useState("");
   const [searchRole, setSearchRole] = useState("");
+  const [allOrders, setAllOrders] = useState([]);
+
+  useEffect(() => {
+    setAllOrders(orders);
+  }, [orders]);
 
   if (!orders.length)
     return (
@@ -13,63 +17,62 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll }) => {
       </p>
     );
 
+  // COLUMN RULES
   const showBuyer = role === "admin" || role === "staff";
   const showUser = role === "admin";
   const showActions = true;
 
-  // Filter orders based on role and date
-  const filteredOrders = orders.filter((order) => {
-    const term = searchTerm.toLowerCase();
+  // Filter orders
+  const filteredOrders = allOrders.filter((order) => {
     const buyerName = order.buyerName?.toLowerCase() || "";
     const userName = order.userOrdering?.name?.toLowerCase() || "";
     const userRole = order.userOrdering?.role?.toLowerCase() || "";
 
     const roleMatch = searchRole ? order.userOrdering?.role === searchRole : true;
-    const dateMatch = searchTerm
-      ? new Date(order.createdAt).toLocaleDateString().includes(searchTerm)
+    const dateMatch = searchDate
+      ? new Date(order.createdAt).toISOString().slice(0, 10) === searchDate
       : true;
 
-    return roleMatch && dateMatch && (buyerName.includes(term) || userName.includes(term));
+    return roleMatch && dateMatch;
   });
 
   return (
     <div>
-      {/* Controls */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-4">
-        <div className="flex gap-2 flex-wrap">
-          {role === "admin" && (
-            <>
-              <select
-                value={searchRole}
-                onChange={(e) => setSearchRole(e.target.value)}
-                className="border border-gray-300 rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              >
-                <option value="">All Roles</option>
-                <option value="staff">Staff</option>
-                <option value="customer">Customer</option>
-              </select>
-            </>
-          )}
-          {(role === "admin" || role === "staff") && (
-            <input
-              type="date"
-              placeholder="Search by date"
-              className="border border-gray-300 rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          )}
-        </div>
+      {/* Filters */}
+      <div className="mb-4 flex flex-wrap gap-3 justify-end items-center">
+        {(role === "admin" || role === "staff") && (
+          <input
+            type="date"
+            value={searchDate}
+            placeholder="Search by date"
+            className="border border-gray-300 rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            onChange={(e) => setSearchDate(e.target.value)}
+          />
+        )}
 
-        <button
-          onClick={onClearAll}
-          className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 rounded-md"
-        >
-          Clear All
-        </button>
+        {role === "admin" && (
+          <select
+            value={searchRole}
+            onChange={(e) => setSearchRole(e.target.value)}
+            className="border border-gray-300 rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          >
+            <option value="">All Roles</option>
+            <option value="staff">Staff</option>
+            <option value="customer">Customer</option>
+          </select>
+        )}
+
+        {onClearAll && (
+          <button
+            onClick={onClearAll}
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 rounded"
+          >
+            Clear All
+          </button>
+        )}
       </div>
 
-      {/* Table for desktop */}
-      <div className="overflow-x-auto rounded-lg shadow-md border md:block hidden">
+      <div className="overflow-x-auto rounded-lg shadow-md border">
         <table className="min-w-full text-left border-collapse">
           <thead className="bg-gray-200 text-gray-700 uppercase text-sm">
             <tr>
@@ -89,32 +92,42 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll }) => {
             {filteredOrders.map((order, i) => (
               <tr key={order._id} className="border-t hover:bg-gray-100 transition align-top">
                 <td className="p-3">{i + 1}</td>
-                {showBuyer && <td className="p-3 font-medium">{order.buyerName || "Unknown Buyer"}</td>}
+                {showBuyer && (
+                  <td className="p-3 font-medium">{order.buyerName || "Unknown Buyer"}</td>
+                )}
                 {showUser && (
                   <td className="p-3">
                     {order.userOrdering
-                      ? `${order.userOrdering.name || "Unknown"} (${order.userOrdering.role})`
+                      ? order.userOrdering.role === "staff"
+                        ? `${order.userOrdering.name || "Unknown"} (${order.userOrdering.role})`
+                        : order.userOrdering.role
                       : "Unknown User"}
                   </td>
                 )}
-                <td className="p-3">
-                  <ul className="space-y-1">
+                {/* Products with description */}
+                <td className="p-3 align-top">
+                  <ul className="space-y-2">
                     {order.productList?.map((item, idx) => (
                       <li key={idx} className="flex flex-col">
                         <span className="font-semibold text-gray-800">
-                          {item.productId?.name || "Unnamed"} × {item.quantity || 1}{" "}
+                          {item.productId?.name || "Unnamed"}{" "}
                           <span className="text-gray-500 text-sm">
                             ({item.productId?.categoryId?.name || "No Category"})
-                          </span>
+                          </span>{" "}
+                          ×{item.quantity || 1}
                         </span>
                         {item.productId?.description && (
-                          <span className="text-gray-500 text-sm italic">{item.productId.description}</span>
+                          <span className="text-gray-500 text-sm italic">
+                            {item.productId.description}
+                          </span>
                         )}
                       </li>
                     ))}
                   </ul>
                 </td>
-                <td className="p-3 font-semibold text-green-700">₦{order.totalPrice?.toLocaleString()}</td>
+                <td className="p-3 font-semibold text-green-700">
+                  ₦{order.totalPrice?.toLocaleString()}
+                </td>
                 <td className="p-3">{order.paymentMethod}</td>
                 <td className="p-3">
                   <b className="text-green-800">{order.deliveryStatus.toUpperCase()}</b>
@@ -163,7 +176,9 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll }) => {
               <p>
                 <span className="font-semibold">User:</span>{" "}
                 {order.userOrdering
-                  ? `${order.userOrdering.name || "Unknown"} (${order.userOrdering.role})`
+                  ? order.userOrdering.role === "staff"
+                    ? `${order.userOrdering.name} (${order.userOrdering.role})`
+                    : order.userOrdering.role
                   : "Unknown User"}
               </p>
             )}
@@ -174,26 +189,34 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll }) => {
                 {order.productList?.map((item, idx) => (
                   <li key={idx} className="flex flex-col">
                     <span className="font-medium text-gray-800">
-                      {item.productId?.name || "Unnamed"} × {item.quantity || 1}{" "}
+                      {item.productId?.name || "Unnamed"}{" "}
                       <span className="text-gray-500 text-xs">
                         ({item.productId?.categoryId?.name || "No Category"})
-                      </span>
+                      </span>{" "}
+                      ×{item.quantity || 1}
                     </span>
                     {item.productId?.description && (
-                      <span className="text-gray-500 text-xs italic">{item.productId.description}</span>
+                      <span className="text-gray-500 text-xs italic">
+                        {item.productId.description}
+                      </span>
                     )}
                   </li>
                 ))}
               </ul>
+
               <p>
                 <span className="font-semibold">Payment:</span> {order.paymentMethod}
               </p>
               <p>
-                <span className="font-semibold">Total:</span> ₦{order.totalPrice?.toLocaleString() || 0}
+                <span className="font-semibold">Total:</span> ₦
+                {order.totalPrice?.toLocaleString() || 0}
               </p>
               <p className="text-xs text-gray-400">
                 {new Date(order.createdAt).toLocaleDateString()} •{" "}
-                {new Date(order.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                {new Date(order.createdAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </p>
             </div>
 
