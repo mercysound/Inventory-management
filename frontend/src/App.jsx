@@ -16,9 +16,12 @@ import { ToastContainer } from "react-toastify";
 import LandingPage from "./pages/LandingPage.jsx";
 // import CustomerOrderPortal from "./components/customer/CustomerOrderPortal/CustomerOrderPortal.jsx";
 import Unauthorized from "./pages/unauthorized/Unauthorized.jsx";
-import CompletedOrderHistory from "./components/history/CompletedOrderHistory.jsx";
+// import CompletedOrderHistory from "./components/history/CompletedOrderHistory.jsx";
 import CustomerOrderPortal from "./components/customer/CustomerOrderPortal/CustomerOrderPortal";
 import CustomerProducts from "./components/customer/customerProduct/CustomerProducts.jsx";
+import StaffCompletedHistory from "./components/history/StaffCompletedHistory.jsx";
+import AdminCompletedHistory from "./components/history/AdminCompletedHistory.jsx";
+import CustomerCompletedHistory from "./components/history/CustomerCompletedHistory.jsx";
 
 export const BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -45,7 +48,8 @@ function App() {
             <Route path="products" element={<Product />} />
             <Route path="suppliers" element={<Suppliers />} />
             <Route path="placed-orders" element={<PlacedOrders />} />
-            <Route path="completed-history" element={<CompletedOrderHistory />} />
+            {/* <Route path="completed-history" element={<CompletedOrderHistory />} /> */}
+            <Route path="completed-history" element={<AdminCompletedHistory />} />
             <Route path="profile" element={<Profile />} />
             <Route path="users" element={<Users />} />
             <Route path="logout" element={<Logout />} />
@@ -62,6 +66,7 @@ function App() {
           >
             <Route index element={<CustomerProducts />} />
             <Route path="orders" element={<CustomerOrders />} />
+            <Route path="completed-history" element={<StaffCompletedHistory />} />
             <Route path="profile" element={<Profile />} />
             <Route path="logout" element={<Logout />} />
           </Route>
@@ -77,6 +82,7 @@ function App() {
           >
             <Route index element={<CustomerProducts/>} />
             <Route path="orders" element={<CustomerOrderPortal/>} />
+            <Route path="completed-history" element={<CustomerCompletedHistory />} />
             <Route path="profile" element={<Profile />} />
             <Route path="logout" element={<Logout />} />
           </Route>

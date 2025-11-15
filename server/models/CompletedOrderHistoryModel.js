@@ -1,3 +1,4 @@
+// models/CompletedOrderHistoryModel.js
 import mongoose from "mongoose";
 
 const completedOrderHistorySchema = new mongoose.Schema(
@@ -7,26 +8,27 @@ const completedOrderHistorySchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    buyerName: { type: String },
-    paymentMethod: { type: String },
+    buyerName: String,
+    paymentMethod: String,
     deliveryStatus: { type: String, default: "Delivered" },
     totalPrice: { type: Number, required: true },
     allQuantity: { type: Number, required: true },
     productList: [
       {
         productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
-        quantity: { type: Number },
-        price: { type: Number },
-        totalPrice: { type: Number },
+        quantity: Number,
+        price: Number,
+        totalPrice: Number,
       },
     ],
+
+    // track which specific users have hidden this order from their view
+    hiddenFor: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+
+    // mark if admin(s) have hidden it (counts as admin-side delete)
+    adminHidden: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
-const CompletedOrderHistoryModel = mongoose.model(
-  "CompletedOrderHistory",
-  completedOrderHistorySchema
-);
-
-export default CompletedOrderHistoryModel;
+export default mongoose.model("CompletedOrderHistory", completedOrderHistorySchema);

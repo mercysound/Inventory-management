@@ -133,7 +133,7 @@ const CustomerOrders = () => {
         buyerName: customerName || "Unknown",
         productList,
         allQuantity,
-        deliveryStatus: "pending",
+        // deliveryStatus: "pending",
         totalPrice,
         paymentStatus: "Paid",
         productDescription,

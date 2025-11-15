@@ -33,6 +33,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   const customerMenu = [
     { name: "Products", path: "/customer-dashboard", icon: <FaBox /> },
     { name: "Orders", path: "/customer-dashboard/orders", icon: <FaShoppingCart /> },
+    { name: "Complete Orders", path: "/customer-dashboard/completed-history", icon: <FaShoppingCart /> }, //
     { name: "Profile", path: "/customer-dashboard/profile", icon: <FaCog /> },
     { name: "Logout", path: "/logout", icon: <FaSignOutAlt /> },
   ];
@@ -40,6 +41,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   const customerUserMenu = [
     { name: "Products", path: "/user-dashboard", icon: <FaBox /> },
     { name: "Orders", path: "/user-dashboard/orders", icon: <FaShoppingCart /> },
+    { name: "Complete Orders", path: "/user-dashboard/completed-history", icon: <FaShoppingCart /> },
     { name: "Profile", path: "/user-dashboard/profile", icon: <FaCog /> },
     { name: "Logout", path: "/logout", icon: <FaSignOutAlt /> },
   ];

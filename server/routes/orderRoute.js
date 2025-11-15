@@ -16,8 +16,8 @@ import {
 
 const router = express.Router();
 
-router.post("/add", authMiddleware, addOrder);
 router.get("/", authMiddleware, getOrders);
+router.post("/add", authMiddleware, addOrder);
 router.post("/payment", authMiddleware, completeOrder);
 router.delete("/clear", authMiddleware, clearUserOrders);
 router.post("/reduce/:orderId", authMiddleware, reduceOrder);

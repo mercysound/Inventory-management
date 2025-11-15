@@ -153,13 +153,9 @@ const getOrders = async (req, res) => {
  */
 const completeOrder = async (req, res) => {
   try {
-    const {
-      paymentMethod,
-      buyerName,
-      deliveryStatus,
-      totalPrice,
-    } = req.body;
-
+    const { paymentMethod, buyerName, 
+      // deliveryStatus,
+       totalPrice } = req.body;
     const userId = req.user._id;
 
     if (!paymentMethod) {
@@ -200,12 +196,14 @@ const completeOrder = async (req, res) => {
 
     // ✅ Compute totals
     const allQuantity = userOrders.reduce((sum, o) => sum + (o.quantity || 0), 0);
-    const totalOrderPrice = totalPrice || userOrders.reduce(
-      (sum, o) => sum + (o.totalPrice ?? o.quantity * o.price),
-      0
-    );
+    const totalOrderPrice =
+      totalPrice ||
+      userOrders.reduce(
+        (sum, o) => sum + (o.totalPrice ?? o.quantity * o.price),
+        0
+      );
 
-    // ✅ Structure the productList exactly like schema
+    // ✅ Structure product list as required
     const productList = userOrders.map((order) => ({
       productId: order.product?._id,
       quantity: order.quantity,
@@ -213,25 +211,27 @@ const completeOrder = async (req, res) => {
       totalPrice: order.totalPrice,
     }));
 
-    // ✅ Save to AllOrdersPlacedModel
+    // ✅ Save to AllOrdersPlacedModel (mark paid)
     const placed = new AllOrdersPlacedModel({
       userOrdering: userId,
       buyerName: buyerName || "Unknown",
       paymentMethod,
-      deliveryStatus: deliveryStatus || "Pending",
+      // deliveryStatus: deliveryStatus || "Paid",
       totalPrice: totalOrderPrice,
       allQuantity,
       productList,
+      paid: true, // ✅ mark order paid for invoice display
+      status: "completed",
     });
 
     await placed.save();
 
-    // ✅ Clear user's temp orders
+    // ✅ Clear user's temporary cart orders
     await OrderModel.deleteMany({ userOrdering: userId });
 
     return res.json({
       success: true,
-      message: "Order completed successfully and stock updated.",
+      message: "Order completed successfully, stock updated and marked as paid.",
       placed,
     });
   } catch (error) {

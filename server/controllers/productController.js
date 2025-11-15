@@ -7,8 +7,8 @@ import ProductModel from '../models/ProductModel.js';
 const getProducts = async (req, res) => {
   try {
     const products = await ProductModel.find({ isDeleted: false }).populate('categoryId').populate('supplierId');
-    
-    
+
+
     const suppliers = await SupplierModel.find();
     const categories = await CategoryModel.find();
     // console.log(products);
@@ -22,7 +22,7 @@ const getProducts = async (req, res) => {
 
 const addProduct = async (req, res) => {
   try {
-    const { name, description, price, stock, categoryId, supplierId} = req.body;
+    const { name, description, price, stock, categoryId, supplierId } = req.body;
     // Create a new category
     const newProduct = new ProductModel({
       name,
@@ -68,7 +68,7 @@ const updateProduct = async (req, res) => {
 const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
-  
+
     const existingProduct = await ProductModel.findById(id);
 
     if (!existingProduct) {
@@ -78,7 +78,7 @@ const deleteProduct = async (req, res) => {
     if (existingProduct.isDeleted) {
       return res.status(400).json({ success: false, message: 'Product already deleted' })
     }
-    await ProductModel.findByIdAndUpdate(id, {isDeleted: true}, {new: true})
+    await ProductModel.findByIdAndUpdate(id, { isDeleted: true }, { new: true })
     return res.status(200).json({ success: true, message: 'Product deleted successfully' })
 
   } catch (error) {
