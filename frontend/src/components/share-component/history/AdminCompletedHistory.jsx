@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
-import axiosInstance from "../../utils/axiosInstance";
 import { toast } from "react-toastify";
 import SharedOrderTable from "./SharedOrderTable";
+import axiosInstance from "../../../utils/axiosInstance";
 
-const CustomerCompletedHistory = () => {
+const AdminCompletedHistory = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -12,15 +12,15 @@ const CustomerCompletedHistory = () => {
       setLoading(true);
       const res = await axiosInstance.get("/completed-history");
       if (res.data.success) setOrders(res.data.orders || []);
-    } catch {
-      toast.error("Failed to fetch your completed orders");
+    } catch (err) {
+      toast.error("Failed to fetch completed orders");
     } finally {
       setLoading(false);
     }
   };
 
   const deleteOrder = async (id) => {
-    if (!window.confirm("Remove this order from your history?")) return;
+    if (!window.confirm("Delete this order from admin view?")) return;
     try {
       const res = await axiosInstance.delete(`/completed-history/${id}`);
       if (res.data.success) {
@@ -33,7 +33,7 @@ const CustomerCompletedHistory = () => {
   };
 
   const clearAllOrders = async () => {
-    if (!window.confirm("Are you sure you want to clear all your completed orders?")) return;
+    if (!window.confirm("Are you sure you want to clear all completed orders?")) return;
     try {
       const res = await axiosInstance.delete("/completed-history/clear/all");
       if (res.data.success) {
@@ -41,7 +41,7 @@ const CustomerCompletedHistory = () => {
         toast.success(res.data.message);
       }
     } catch {
-      toast.error("Error clearing orders");
+      toast.error("Error clearing all orders");
     }
   };
 
@@ -53,10 +53,10 @@ const CustomerCompletedHistory = () => {
 
   return (
     <div className="p-5">
-      <h2 className="text-2xl font-bold mb-3">📜 Your Completed Orders</h2>
+      <h2 className="text-2xl font-bold mb-3">📜 Admin Completed Orders</h2>
       <SharedOrderTable
         orders={orders}
-        role="customer"
+        role="admin"
         onDelete={deleteOrder}
         onClearAll={clearAllOrders}
       />
@@ -64,4 +64,4 @@ const CustomerCompletedHistory = () => {
   );
 };
 
-export default CustomerCompletedHistory;
+export default AdminCompletedHistory;

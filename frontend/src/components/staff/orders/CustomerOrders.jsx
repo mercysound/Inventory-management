@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import CustomerTable from "./CustomerTable";
 import CustomerSkeleton from "./CustomerSkeleton";
-import axiosInstance from "../../utils/axiosInstance";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
+import axiosInstance from "../../../utils/axiosInstance";
 
 const PAYMENT_OPTIONS = ["Cash", "Card", "POS", "Bank Transfer"];
 

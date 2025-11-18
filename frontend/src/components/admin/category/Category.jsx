@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router";
-import axiosInstance from "../../utils/axiosInstance";
 import CategoryForm from "./CategoryForm";
 import CategoryTable from "./CategoryTable";
 import CategorySkeleton from "./CategorySkeleton";
+import axiosInstance from "../../../utils/axiosInstance";
 
 const Category = () => {
   const [categoryName, setCategoryName] = useState("");

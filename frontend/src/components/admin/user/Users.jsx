@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
-import axiosInstance from "../../utils/axiosInstance";
 import { toast } from "react-toastify";
 import UsersForm from "./UsersForm";
 import UsersTable from "./UsersTable";
 import UsersSkeleton from "./UsersSkeleton";
+import axiosInstance from "../../../utils/axiosInstance";
 
 const Users = () => {
   const [formData, setFormData] = useState({

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import Sidebar from "../components/Sidebar";
 import { Outlet } from "react-router-dom";
 import { FaBars } from "react-icons/fa";
+import Sidebar from "../components/share-component/sidebar/Sidebar";
 
 const Dashboard = () => {
   const [isOpen, setIsOpen] = useState(true);

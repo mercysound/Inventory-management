@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
-import axiosInstance from "../../utils/axiosInstance";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import SupplierTable from "./SupplierTable";
 import SupplierForm from "./SupplierForm";
 import SupplierSkeleton from "./SupplierSkeleton";
 import { FaUserPlus, FaSearch } from "react-icons/fa";
+import axiosInstance from "../../../utils/axiosInstance";
 
 const Suppliers = () => {
   const [suppliers, setSuppliers] = useState([]);

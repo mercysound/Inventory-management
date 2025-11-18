@@ -2,26 +2,25 @@ import "./App.css";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./utils/ProtectedRoute.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
-import Categories from "./components/category/Category.jsx";
-import Suppliers from "./components/supplier/Suppliers.jsx";
-import Product from "./components/product/Product.jsx";
-import Profile from "./components/profile/Profile.jsx";
-import Logout from "./components/Logout.jsx";
-import Users from "./components/user/Users.jsx";
-// import CustomerProducts from "./components/customer/customerProduct/CustomerProducts.js";
-import CustomerOrders from "./components/orders/CustomerOrders.jsx";
-import Summary from "./components/Summary.jsx";
-import PlacedOrders from "./components/purchase/PlacedOrders.jsx";
+import Categories from "./components/admin/category/Category.jsx";
+// import Users from "./components/admin/user/Users.js";
+import Summary from "./components/admin/dashboard/Summary.jsx";
+// import PlacedOrders from "./components/purchase/PlacedOrders.jsx";
 import { ToastContainer } from "react-toastify";
 import LandingPage from "./pages/LandingPage.jsx";
-// import CustomerOrderPortal from "./components/customer/CustomerOrderPortal/CustomerOrderPortal.jsx";
 import Unauthorized from "./pages/unauthorized/Unauthorized.jsx";
-// import CompletedOrderHistory from "./components/history/CompletedOrderHistory.jsx";
 import CustomerOrderPortal from "./components/customer/CustomerOrderPortal/CustomerOrderPortal";
 import CustomerProducts from "./components/customer/customerProduct/CustomerProducts.jsx";
-import StaffCompletedHistory from "./components/history/StaffCompletedHistory.jsx";
-import AdminCompletedHistory from "./components/history/AdminCompletedHistory.jsx";
-import CustomerCompletedHistory from "./components/history/CustomerCompletedHistory.jsx";
+import Suppliers from "./components/admin/supplier/Suppliers.jsx";
+import CustomerOrders from "./components/staff/orders/CustomerOrders.jsx";
+import Users from "./components/admin/user/Users.jsx";
+import PlacedOrders from "./components/admin/purchase/PlacedOrders.jsx";
+import Profile from "./components/share-component/profile/Profile.jsx";
+import AdminCompletedHistory from "./components/share-component/history/AdminCompletedHistory.jsx";
+import StaffCompletedHistory from "./components/share-component/history/StaffCompletedHistory.jsx";
+import CustomerCompletedHistory from "./components/share-component/history/CustomerCompletedHistory.jsx";
+import Product from "./components/share-component/product/Product.jsx";
+import Logout from "./components/share-component/logout/Logout.jsx";
 
 export const BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -46,9 +45,8 @@ function App() {
             <Route index element={<Summary />} />
             <Route path="categories" element={<Categories />} />
             <Route path="products" element={<Product />} />
-            <Route path="suppliers" element={<Suppliers />} />
+            <Route path="suppliers" element={<Suppliers/>} />
             <Route path="placed-orders" element={<PlacedOrders />} />
-            {/* <Route path="completed-history" element={<CompletedOrderHistory />} /> */}
             <Route path="completed-history" element={<AdminCompletedHistory />} />
             <Route path="profile" element={<Profile />} />
             <Route path="users" element={<Users />} />

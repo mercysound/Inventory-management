@@ -1,4 +1,4 @@
-import axiosInstance from "../utils/axiosInstance";
+import axiosInstance from "../../../utils/axiosInstance";
 import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { FaBoxOpen, FaCubes, FaMoneyBillWave, FaShoppingCart } from "react-icons/fa";

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import axiosInstance from "../../utils/axiosInstance";
 import ProductTable from "./ProductTable";
 import ProductForm from "./ProductForm";
 import ProductSkeleton from "./ProductSkeleton";
+import axiosInstance from "../../../utils/axiosInstance";
 
 const Product = () => {
   const [openModal, setOpenModal] = useState(false);

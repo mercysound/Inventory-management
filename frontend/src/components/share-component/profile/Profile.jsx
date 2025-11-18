@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import axiosInstance from "../../utils/axiosInstance";
 import ProfileForm from "./ProfileForm";
 import ProfileSkeleton from "./ProfileSkeleton";
+import axiosInstance from "../../../utils/axiosInstance";
 
 const Profile = () => {
   const [user, setUser] = useState({
