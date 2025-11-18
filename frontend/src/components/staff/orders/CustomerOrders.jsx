@@ -85,32 +85,35 @@ const CustomerOrders = () => {
     }
   };
 
-  const handleDownloadInvoice = async () => {
-    try {
-      setProcessing(true);
-      if (!orders.length) return toast.error("No orders.");
+  const handleDownloadInvoice = async (orderId, modelType) => {
+  try {
+    setProcessing(true);
 
-      const query = new URLSearchParams({
-        format: "pdf",
-        customerName: customerName || "Guest",
-        paymentMethod: paymentMethod || "Not Specified",
-      }).toString();
+    if (!orderId) return toast.error("Order ID missing for invoice!");
 
-      const response = await axiosInstance.get(`/orders/invoice?${query}`, {
-        responseType: "blob",
-      });
-      const blob = new Blob([response.data], { type: "application/pdf" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = `Invoice_${customerName || "Guest"}.pdf`;
-      link.click();
-      toast.success("Invoice downloaded");
-    } catch {
-      toast.error("Failed to download invoice");
-    } finally {
-      setProcessing(false);
-    }
-  };
+    const endpoint =
+      modelType === "history"
+        ? `/orders/invoice/history/${orderId}`
+        : `/orders/invoice/${orderId}`;
+
+    const response = await axiosInstance.get(endpoint, {
+      responseType: "blob",
+    });
+
+    const blob = new Blob([response.data], { type: "application/pdf" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `Invoice_${customerName || "Guest"}.pdf`;
+    link.click();
+
+    toast.success("Invoice downloaded");
+  } catch {
+    toast.error("Failed to download invoice");
+  } finally {
+    setProcessing(false);
+  }
+};
+
 
   const completeOrder = async () => {
     if (!paymentMethod) return alert("Select payment method first.");

@@ -2,6 +2,7 @@ import PDFDocument from "pdfkit";
 import OrderModel from "../models/OrderModel.js";
 import ProductModel from "../models/ProductModel.js";
 import AllOrdersPlacedModel from "../models/AllOrdersPlacedModel.js";
+import CompletedOrderHistoryModel from "../models/CompletedOrderHistoryModel.js";
 
 
 /**
@@ -151,12 +152,13 @@ const getOrders = async (req, res) => {
 /**
  * completeOrder - saves payment and summary, marks paymentStatus as Paid
  */
+
+
 const completeOrder = async (req, res) => {
   try {
-    const { paymentMethod, buyerName, 
-      // deliveryStatus,
-       totalPrice } = req.body;
+    const { paymentMethod, buyerName, totalPrice } = req.body;
     const userId = req.user._id;
+    const userRole = req.user.role; // 🔥 VERY IMPORTANT
 
     if (!paymentMethod) {
       return res
@@ -164,23 +166,24 @@ const completeOrder = async (req, res) => {
         .json({ success: false, message: "Payment method required" });
     }
 
-    // ✅ Fetch all current orders of this user
-    const userOrders = await OrderModel.find({ userOrdering: userId })
-      .populate({
-        path: "product",
-        populate: { path: "categoryId", select: "name" },
-      });
+    // Fetch all current orders
+    const userOrders = await OrderModel.find({ userOrdering: userId }).populate({
+      path: "product",
+      populate: { path: "categoryId", select: "name" },
+    });
 
     if (!userOrders || userOrders.length === 0) {
-      return res
-        .status(400)
-        .json({ success: false, message: "No orders found for this user" });
+      return res.status(400).json({
+        success: false,
+        message: "No orders found for this user",
+      });
     }
 
-    // ✅ Reduce stock safely
+    // Reduce stock
     for (const order of userOrders) {
       const product = order.product;
       const qty = order.quantity || 0;
+
       if (!product) continue;
 
       if (product.stock < qty) {
@@ -194,8 +197,12 @@ const completeOrder = async (req, res) => {
       await product.save();
     }
 
-    // ✅ Compute totals
-    const allQuantity = userOrders.reduce((sum, o) => sum + (o.quantity || 0), 0);
+    // Compute totals
+    const allQuantity = userOrders.reduce(
+      (sum, o) => sum + (o.quantity || 0),
+      0
+    );
+
     const totalOrderPrice =
       totalPrice ||
       userOrders.reduce(
@@ -203,7 +210,7 @@ const completeOrder = async (req, res) => {
         0
       );
 
-    // ✅ Structure product list as required
+    // Product list structure
     const productList = userOrders.map((order) => ({
       productId: order.product?._id,
       quantity: order.quantity,
@@ -211,29 +218,49 @@ const completeOrder = async (req, res) => {
       totalPrice: order.totalPrice,
     }));
 
-    // ✅ Save to AllOrdersPlacedModel (mark paid)
-    const placed = new AllOrdersPlacedModel({
-      userOrdering: userId,
-      buyerName: buyerName || "Unknown",
-      paymentMethod,
-      // deliveryStatus: deliveryStatus || "Paid",
-      totalPrice: totalOrderPrice,
-      allQuantity,
-      productList,
-      paid: true, // ✅ mark order paid for invoice display
-      status: "completed",
-    });
+    let savedOrder;
 
-    await placed.save();
+    // ----------------------------------------------------
+    // 🔥🔥 ROLE-BASED SAVING LOGIC
+    // ----------------------------------------------------
 
-    // ✅ Clear user's temporary cart orders
+    if (userRole === "staff") {
+      // STAFF → save directly to CompletedOrderHistoryModel
+      savedOrder = await CompletedOrderHistoryModel.create({
+        userOrdering: userId,
+        buyerName: buyerName || "Unknown",
+        paymentMethod,
+        deliveryStatus: "Delivered", // staff orders auto-delivered
+        totalPrice: totalOrderPrice,
+        allQuantity,
+        productList,
+      });
+    } else {
+      // CUSTOMER → save to AllOrdersPlacedModel (track delivery)
+      savedOrder = await AllOrdersPlacedModel.create({
+        userOrdering: userId,
+        buyerName: buyerName || "Unknown",
+        paymentMethod,
+        totalPrice: totalOrderPrice,
+        allQuantity,
+        productList,
+        paid: true,
+        status: "completed",
+      });
+    }
+
+    // Clear temporary orders
     await OrderModel.deleteMany({ userOrdering: userId });
 
     return res.json({
-      success: true,
-      message: "Order completed successfully, stock updated and marked as paid.",
-      placed,
-    });
+  success: true,
+  message:
+    userRole === "staff"
+      ? "Order completed by staff and saved to history."
+      : "Order completed and placed for delivery tracking.",
+  savedOrder,
+  modelType: userRole === "staff" ? "history" : "placed",
+});
   } catch (error) {
     console.error("completeOrder error:", error);
     return res.status(500).json({
@@ -248,7 +275,7 @@ const completeOrder = async (req, res) => {
 /**
  * generateInvoice - produce a PDF invoice for current user's active orders.
  */
- const generateInvoice = async (req, res) => {
+const generateInvoice = async (req, res) => {
   try {
     const customerName = req.query.customerName || "Guest Customer";
     const paymentMethod = req.query.paymentMethod || "Not Specified";
