@@ -29,17 +29,17 @@ const CustomerOrders = () => {
   };
 
   useEffect(() => {
-  fetchOrders();
-
-  const handler = () => {
     fetchOrders();
-  };
-  window.addEventListener("ordersUpdated", handler);
 
-  return () => {
-    window.removeEventListener("ordersUpdated", handler);
-  };
-}, []);
+    const handler = () => {
+      fetchOrders();
+    };
+    window.addEventListener("ordersUpdated", handler);
+
+    return () => {
+      window.removeEventListener("ordersUpdated", handler);
+    };
+  }, []);
 
   const handleIncreaseQty = async (orderId) => {
     try {
@@ -85,34 +85,26 @@ const CustomerOrders = () => {
     }
   };
 
-  const handleDownloadInvoice = async (orderId, modelType) => {
+const handleDownloadInvoice = async (orderId) => {
   try {
-    setProcessing(true);
-
     if (!orderId) return toast.error("Order ID missing for invoice!");
 
-    const endpoint =
-      modelType === "history"
-        ? `/orders/invoice/history/${orderId}`
-        : `/orders/invoice/${orderId}`;
-
-    const response = await axiosInstance.get(endpoint, {
-      responseType: "blob",
+    const response = await axiosInstance.get(`/orders/invoice/${orderId}`, {
+      responseType: "blob"
     });
 
     const blob = new Blob([response.data], { type: "application/pdf" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `Invoice_${customerName || "Guest"}.pdf`;
+    link.download = `Invoice_${orderId}.pdf`;
     link.click();
 
     toast.success("Invoice downloaded");
-  } catch {
+  } catch (error) {
     toast.error("Failed to download invoice");
-  } finally {
-    setProcessing(false);
   }
 };
+
 
 
   const completeOrder = async () => {
@@ -144,7 +136,10 @@ const CustomerOrders = () => {
 
       if (res.data.success) {
         toast.success("Order completed successfully!");
-        handleDownloadInvoice();
+
+        const { orderId, modelType } = res.data;
+        handleDownloadInvoice(orderId, modelType);
+
         await axiosInstance.delete("/orders/clear");
         setOrders([]);
         setCustomerName("");
