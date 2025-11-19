@@ -10,6 +10,9 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll }) => {
     setAllOrders(orders);
   }, [orders]);
 
+  console.log(orders)
+  
+
   if (!orders.length)
     return (
       <p className="text-gray-500 text-center py-10">

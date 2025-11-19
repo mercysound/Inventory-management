@@ -5,6 +5,7 @@ import AllOrdersPlacedModel from "../models/AllOrdersPlacedModel.js";
 import CompletedOrderHistoryModel from "../models/CompletedOrderHistoryModel.js";
 
 
+
 /**
  * addOrder - add a single product to current user's cart (order)
  */
@@ -107,6 +108,7 @@ const updateOrder = async (req, res) => {
 /**
  * getOrders - return orders for current user (staff) or all for admin
  */
+
 const getOrders = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -154,36 +156,32 @@ const getOrders = async (req, res) => {
  */
 
 
+
 const completeOrder = async (req, res) => {
   try {
     const { paymentMethod, buyerName, totalPrice } = req.body;
     const userId = req.user._id;
-    const userRole = req.user.role; // 🔥 VERY IMPORTANT
+    const userRole = req.user.role; // assuming req.user.role exists: "customer" | "staff"
 
     if (!paymentMethod) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Payment method required" });
+      return res.status(400).json({ success: false, message: "Payment method required" });
     }
 
-    // Fetch all current orders
-    const userOrders = await OrderModel.find({ userOrdering: userId }).populate({
-      path: "product",
-      populate: { path: "categoryId", select: "name" },
-    });
+    // Fetch current orders for this user
+    const userOrders = await OrderModel.find({ userOrdering: userId })
+      .populate({
+        path: "product",
+        populate: { path: "categoryId", select: "name" },
+      });
 
     if (!userOrders || userOrders.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No orders found for this user",
-      });
+      return res.status(400).json({ success: false, message: "No orders found for this user" });
     }
 
-    // Reduce stock
+    // Reduce stock safely
     for (const order of userOrders) {
       const product = order.product;
       const qty = order.quantity || 0;
-
       if (!product) continue;
 
       if (product.stock < qty) {
@@ -198,19 +196,11 @@ const completeOrder = async (req, res) => {
     }
 
     // Compute totals
-    const allQuantity = userOrders.reduce(
-      (sum, o) => sum + (o.quantity || 0),
-      0
-    );
-
+    const allQuantity = userOrders.reduce((sum, o) => sum + (o.quantity || 0), 0);
     const totalOrderPrice =
-      totalPrice ||
-      userOrders.reduce(
-        (sum, o) => sum + (o.totalPrice ?? o.quantity * o.price),
-        0
-      );
+      totalPrice || userOrders.reduce((sum, o) => sum + (o.totalPrice ?? o.quantity * o.price), 0);
 
-    // Product list structure
+    // Structure product list
     const productList = userOrders.map((order) => ({
       productId: order.product?._id,
       quantity: order.quantity,
@@ -218,26 +208,12 @@ const completeOrder = async (req, res) => {
       totalPrice: order.totalPrice,
     }));
 
+    // Conditional saving based on user role
     let savedOrder;
 
-    // ----------------------------------------------------
-    // 🔥🔥 ROLE-BASED SAVING LOGIC
-    // ----------------------------------------------------
-
-    if (userRole === "staff") {
-      // STAFF → save directly to CompletedOrderHistoryModel
-      savedOrder = await CompletedOrderHistoryModel.create({
-        userOrdering: userId,
-        buyerName: buyerName || "Unknown",
-        paymentMethod,
-        deliveryStatus: "Delivered", // staff orders auto-delivered
-        totalPrice: totalOrderPrice,
-        allQuantity,
-        productList,
-      });
-    } else {
-      // CUSTOMER → save to AllOrdersPlacedModel (track delivery)
-      savedOrder = await AllOrdersPlacedModel.create({
+    if (userRole === "customer") {
+      // Save to AllOrdersPlacedModel (track delivery, invoice)
+      savedOrder = new AllOrdersPlacedModel({
         userOrdering: userId,
         buyerName: buyerName || "Unknown",
         paymentMethod,
@@ -247,29 +223,37 @@ const completeOrder = async (req, res) => {
         paid: true,
         status: "completed",
       });
+      await savedOrder.save();
+    } else if (userRole === "staff") {
+      // Save to CompletedOrderHistoryModel (staff placing order directly)
+      savedOrder = new CompletedOrderHistoryModel({
+        userOrdering: userId,
+        buyerName: buyerName || "Unknown",
+        paymentMethod,
+        totalPrice: totalOrderPrice,
+        allQuantity,
+        productList,
+        deliveryStatus: "Delivered", // optional default
+      });
+      await savedOrder.save();
+    } else {
+      return res.status(400).json({ success: false, message: "Invalid user role" });
     }
 
-    // Clear temporary orders
+    // Clear user's temporary cart orders
     await OrderModel.deleteMany({ userOrdering: userId });
 
     return res.json({
-  success: true,
-  message:
-    userRole === "staff"
-      ? "Order completed by staff and saved to history."
-      : "Order completed and placed for delivery tracking.",
-  savedOrder,
-  modelType: userRole === "staff" ? "history" : "placed",
-});
+      success: true,
+      message: "Order completed successfully, stock updated and saved.",
+      order: savedOrder,
+    });
   } catch (error) {
     console.error("completeOrder error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Error completing order",
-      error: error.message,
-    });
+    return res.status(500).json({ success: false, message: "Error completing order", error: error.message });
   }
 };
+
 
 
 /**
