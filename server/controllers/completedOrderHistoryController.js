@@ -7,7 +7,7 @@ import mongoose from "mongoose";
  * - Admin: see all orders except ones marked adminHidden
  * - Customer/staff: see only their own orders, excluding ones they hid
  */
-export const getCompletedOrders = async (req, res) => {
+export const getCompletedHistory = async (req, res) => {
   try {
     const userId = req.user._id;
     const role = req.user.role;
@@ -15,10 +15,10 @@ export const getCompletedOrders = async (req, res) => {
     let filter = {};
 
     if (role === "admin") {
-      // Admin sees everything except those hidden by admin
+      // Admin sees everything except admin-hidden
       filter = { adminHidden: { $ne: true } };
     } else {
-      // Staff/customer sees only their orders not hidden for them
+      // Staff/Customer sees only their own & not hidden from them
       filter = {
         userOrdering: userId,
         hiddenFor: { $ne: userId },
@@ -34,15 +34,16 @@ export const getCompletedOrders = async (req, res) => {
       })
       .sort({ createdAt: -1 });
 
-    res.status(200).json({ success: true, orders });
-  } catch (error) {
-    console.error("❌ getCompletedOrders error:", error);
-    res.status(500).json({
+    return res.status(200).json({ success: true, orders });
+  } catch (err) {
+    console.error("getCompletedHistory error:", err);
+    return res.status(500).json({
       success: false,
-      message: "Error fetching completed orders",
+      message: "Server error",
     });
   }
 };
+
 
 /**
  * DELETE /completed-history/:id

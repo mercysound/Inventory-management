@@ -29,17 +29,17 @@ const CustomerOrders = () => {
   };
 
   useEffect(() => {
+  fetchOrders();
+
+  const handler = () => {
     fetchOrders();
+  };
+  window.addEventListener("ordersUpdated", handler);
 
-    const handler = () => {
-      fetchOrders();
-    };
-    window.addEventListener("ordersUpdated", handler);
-
-    return () => {
-      window.removeEventListener("ordersUpdated", handler);
-    };
-  }, []);
+  return () => {
+    window.removeEventListener("ordersUpdated", handler);
+  };
+}, []);
 
   const handleIncreaseQty = async (orderId) => {
     try {
@@ -85,27 +85,32 @@ const CustomerOrders = () => {
     }
   };
 
-const handleDownloadInvoice = async (orderId) => {
-  try {
-    if (!orderId) return toast.error("Order ID missing for invoice!");
+  const handleDownloadInvoice = async () => {
+    try {
+      setProcessing(true);
+      if (!orders.length) return toast.error("No orders.");
 
-    const response = await axiosInstance.get(`/orders/invoice/${orderId}`, {
-      responseType: "blob"
-    });
+      const query = new URLSearchParams({
+        format: "pdf",
+        customerName: customerName || "Guest",
+        paymentMethod: paymentMethod || "Not Specified",
+      }).toString();
 
-    const blob = new Blob([response.data], { type: "application/pdf" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `Invoice_${orderId}.pdf`;
-    link.click();
-
-    toast.success("Invoice downloaded");
-  } catch (error) {
-    toast.error("Failed to download invoice");
-  }
-};
-
-
+      const response = await axiosInstance.get(`/orders/invoice?${query}`, {
+        responseType: "blob",
+      });
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `Invoice_${customerName || "Guest"}.pdf`;
+      link.click();
+      toast.success("Invoice downloaded");
+    } catch {
+      toast.error("Failed to download invoice");
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   const completeOrder = async () => {
     if (!paymentMethod) return alert("Select payment method first.");
@@ -136,10 +141,7 @@ const handleDownloadInvoice = async (orderId) => {
 
       if (res.data.success) {
         toast.success("Order completed successfully!");
-
-        const { orderId, modelType } = res.data;
-        handleDownloadInvoice(orderId, modelType);
-
+        handleDownloadInvoice();
         await axiosInstance.delete("/orders/clear");
         setOrders([]);
         setCustomerName("");

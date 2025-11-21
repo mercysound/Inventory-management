@@ -68,21 +68,21 @@ const updateDeliveryStatus = async (orderId, newStatus) => {
     }
   };
 
-  const handleClearAll = async () => {
-    if (!window.confirm("Are you sure you want to clear all orders?")) return;
-    try {
-      const res = await axiosInstance.delete("/placed-orders/clear");
-      if (res.data.success) {
-        setOrders([]);
-        toast.success("All orders cleared.");
-      } else {
-        toast.error(res.data.message || "Failed to clear orders.");
-      }
-    } catch (error) {
-      console.error("Clear error:", error);
-      toast.error("Error clearing orders.");
-    }
-  };
+  // const handleClearAll = async () => {
+  //   if (!window.confirm("Are you sure you want to clear all orders?")) return;
+  //   try {
+  //     const res = await axiosInstance.delete("/placed-orders/clear");
+  //     if (res.data.success) {
+  //       setOrders([]);
+  //       toast.success("All orders cleared.");
+  //     } else {
+  //       toast.error(res.data.message || "Failed to clear orders.");
+  //     }
+  //   } catch (error) {
+  //     console.error("Clear error:", error);
+  //     toast.error("Error clearing orders.");
+  //   }
+  // };
 
   useEffect(() => {
     fetchOrders();
@@ -92,13 +92,13 @@ const updateDeliveryStatus = async (orderId, newStatus) => {
     <div className="p-4">
       <div className="flex justify-between items-center mb-3">
         <h2 className="text-xl font-bold text-gray-800">📦 Placed Orders</h2>
-        <button
+        {/* <button
           onClick={handleClearAll}
           className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md"
           disabled={updating}
         >
           Clear All
-        </button>
+        </button> */}
       </div>
 
       {loading ? (

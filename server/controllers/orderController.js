@@ -5,7 +5,6 @@ import AllOrdersPlacedModel from "../models/AllOrdersPlacedModel.js";
 import CompletedOrderHistoryModel from "../models/CompletedOrderHistoryModel.js";
 
 
-
 /**
  * addOrder - add a single product to current user's cart (order)
  */
@@ -108,7 +107,6 @@ const updateOrder = async (req, res) => {
 /**
  * getOrders - return orders for current user (staff) or all for admin
  */
-
 const getOrders = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -154,20 +152,18 @@ const getOrders = async (req, res) => {
 /**
  * completeOrder - saves payment and summary, marks paymentStatus as Paid
  */
-
-
-
 const completeOrder = async (req, res) => {
   try {
     const { paymentMethod, buyerName, totalPrice } = req.body;
     const userId = req.user._id;
-    const userRole = req.user.role; // assuming req.user.role exists: "customer" | "staff"
 
     if (!paymentMethod) {
-      return res.status(400).json({ success: false, message: "Payment method required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Payment method required" });
     }
 
-    // Fetch current orders for this user
+    // ✅ Fetch all current orders of this user
     const userOrders = await OrderModel.find({ userOrdering: userId })
       .populate({
         path: "product",
@@ -175,10 +171,12 @@ const completeOrder = async (req, res) => {
       });
 
     if (!userOrders || userOrders.length === 0) {
-      return res.status(400).json({ success: false, message: "No orders found for this user" });
+      return res
+        .status(400)
+        .json({ success: false, message: "No orders found for this user" });
     }
 
-    // Reduce stock safely
+    // ✅ Reduce stock safely
     for (const order of userOrders) {
       const product = order.product;
       const qty = order.quantity || 0;
@@ -195,71 +193,76 @@ const completeOrder = async (req, res) => {
       await product.save();
     }
 
-    // Compute totals
+    // ✅ Compute totals
     const allQuantity = userOrders.reduce((sum, o) => sum + (o.quantity || 0), 0);
     const totalOrderPrice =
-      totalPrice || userOrders.reduce((sum, o) => sum + (o.totalPrice ?? o.quantity * o.price), 0);
+      totalPrice ||
+      userOrders.reduce(
+        (sum, o) => sum + (o.totalPrice ?? o.quantity * o.price),
+        0
+      );
 
-    // Structure product list
+    // ✅ Structure product list as required
     const productList = userOrders.map((order) => ({
       productId: order.product?._id,
       quantity: order.quantity,
       price: order.price,
       totalPrice: order.totalPrice,
     }));
-
-    // Conditional saving based on user role
-    let savedOrder;
-
-    if (userRole === "customer") {
-      // Save to AllOrdersPlacedModel (track delivery, invoice)
-      savedOrder = new AllOrdersPlacedModel({
-        userOrdering: userId,
-        buyerName: buyerName || "Unknown",
-        paymentMethod,
-        totalPrice: totalOrderPrice,
-        allQuantity,
-        productList,
-        paid: true,
-        status: "completed",
-      });
-      await savedOrder.save();
-    } else if (userRole === "staff") {
-      // Save to CompletedOrderHistoryModel (staff placing order directly)
-      savedOrder = new CompletedOrderHistoryModel({
-        userOrdering: userId,
-        buyerName: buyerName || "Unknown",
-        paymentMethod,
-        totalPrice: totalOrderPrice,
-        allQuantity,
-        productList,
-        deliveryStatus: "Delivered", // optional default
-      });
-      await savedOrder.save();
-    } else {
-      return res.status(400).json({ success: false, message: "Invalid user role" });
+    let placed 
+    if(req.user.role === "customer"){
+      // ✅ Save to AllOrdersPlacedModel (mark paid)
+     placed = new AllOrdersPlacedModel({
+      userOrdering: userId,
+      buyerName: buyerName || "Unknown",
+      paymentMethod,
+      // deliveryStatus: deliveryStatus || "Paid",
+      totalPrice: totalOrderPrice,
+      allQuantity,
+      productList,
+      paid: true, // ✅ mark order paid for invoice display
+      status: "completed",
+    });
+    }else{
+      // ✅ Save to CompletedOrderHistoryModel (mark paid)
+     placed = new CompletedOrderHistoryModel({
+      userOrdering: userId,
+      buyerName: buyerName || "Unknown",
+      paymentMethod,
+      // deliveryStatus: deliveryStatus || "Paid",
+      totalPrice: totalOrderPrice,
+      allQuantity,
+      productList,
+      paid: true, // ✅ mark order paid for invoice display
+      status: "completed",
+    });
     }
 
-    // Clear user's temporary cart orders
+    await placed.save();
+
+    // ✅ Clear user's temporary cart orders
     await OrderModel.deleteMany({ userOrdering: userId });
 
     return res.json({
       success: true,
-      message: "Order completed successfully, stock updated and saved.",
-      order: savedOrder,
+      message: "Order completed successfully, stock updated and marked as paid.",
+      placed,
     });
   } catch (error) {
     console.error("completeOrder error:", error);
-    return res.status(500).json({ success: false, message: "Error completing order", error: error.message });
+    return res.status(500).json({
+      success: false,
+      message: "Error completing order",
+      error: error.message,
+    });
   }
 };
-
 
 
 /**
  * generateInvoice - produce a PDF invoice for current user's active orders.
  */
-const generateInvoice = async (req, res) => {
+ const generateInvoice = async (req, res) => {
   try {
     const customerName = req.query.customerName || "Guest Customer";
     const paymentMethod = req.query.paymentMethod || "Not Specified";
@@ -414,141 +417,6 @@ const generateInvoice = async (req, res) => {
   }
 };
 
-// =============================================
-// NEW: Generate invoice for a specific order
-// =============================================
-export const generateInvoiceByOrderObject = async (order, res) => {
-  try {
-    const doc = new PDFDocument({ margin: 40 });
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", "inline; filename=invoice.pdf");
-    doc.pipe(res);
-
-    // Header
-    doc.fontSize(20).fillColor("#1E3A8A").text("MELECH STORE", { align: "center" });
-    doc.fontSize(12).fillColor("#000").text("Sales Invoice", { align: "center" });
-    doc.moveDown(1);
-
-    // Customer Info
-    doc.fontSize(11).text(`Customer: ${order.buyerName}`);
-    doc.text(`Payment Method: ${order.paymentMethod}`);
-    doc.text(`Date: ${new Date(order.createdAt).toLocaleString()}`);
-    doc.moveDown(1);
-
-    // Columns
-    const cols = {
-      product: 45,
-      category: 160,
-      description: 260,
-      qty: 390,
-      price: 430,
-      total: 500,
-    };
-
-    // Table Header
-    const startY = doc.y;
-    doc.fontSize(11).fillColor("#FFF")
-       .rect(40, startY, 520, 20).fill("#1E3A8A").stroke();
-
-    doc.fillColor("#FFF").font("Helvetica-Bold");
-    doc.text("Product", cols.product, startY + 5);
-    doc.text("Category", cols.category, startY + 5);
-    doc.text("Description", cols.description, startY + 5);
-    doc.text("Qty", cols.qty, startY + 5);
-    doc.text("Price", cols.price, startY + 5);
-    doc.text("Total", cols.total, startY + 5);
-
-    // Table Items
-    let y = startY + 25;
-    doc.fillColor("#000").font("Helvetica");
-
-    for (const [i, item] of order.productList.entries()) {
-      const p = item.productId;
-
-      const desc = p.description || "—";
-      const descHeight = doc.heightOfString(desc, { width: 120 });
-      const rowHeight = Math.max(20, descHeight + 8);
-
-      if (i % 2 === 0) doc.rect(40, y, 520, rowHeight).fill("#F9FAFB").stroke();
-      else doc.rect(40, y, 520, rowHeight).fill("#FFFFFF").stroke();
-
-      doc.fillColor("#000");
-      doc.text(p.name, cols.product, y + 5);
-      doc.text(p.categoryId?.name || "N/A", cols.category, y + 5);
-      doc.text(desc, cols.description, y + 5, { width: 120 });
-      doc.text(item.quantity.toString(), cols.qty, y + 5);
-      doc.text(`₦${item.price.toLocaleString()}`, cols.price, y + 5);
-      doc.text(`₦${item.totalPrice.toLocaleString()}`, cols.total, y + 5);
-
-      y += rowHeight;
-    }
-
-    // Total
-    y += 10;
-    doc.moveTo(40, y).lineTo(560, y).stroke();
-    y += 10;
-
-    doc.font("Helvetica-Bold");
-    doc.text("Grand Total:", 400, y);
-    doc.text(`₦${order.totalPrice.toLocaleString()}`, 500, y);
-
-    doc.end();
-  } catch (err) {
-    console.error("Invoice ERROR:", err);
-    return res.status(500).json({ message: "Failed to generate invoice" });
-  }
-};
-
-
-// ===========================
-//  INVOICE FOR ACTIVE ORDERS
-// ===========================
-export const getInvoiceByOrderId = async (req, res) => {
-  try {
-    const order = await AllOrdersPlacedModel.findById(req.params.id)
-      .populate("productList.productId");
-
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
-    }
-
-    return generateInvoiceByOrderObject(order, res);
-  } catch (error) {
-    console.error("Customer invoice error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Invoice error",
-    });
-  }
-};
-
-// ==============================
-//  INVOICE FOR HISTORY (STAFF)
-// ==============================
-export const getInvoiceByHistoryId = async (req, res) => {
-  try {
-    const order = await CompletedOrderHistoryModel.findById(req.params.id)
-      .populate("productList.productId");
-
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
-    }
-
-    return generateInvoiceByOrderObject(order, res);
-  } catch (error) {
-    console.error("Staff invoice error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Invoice error",
-    });
-  }
-};
 
 
 /**

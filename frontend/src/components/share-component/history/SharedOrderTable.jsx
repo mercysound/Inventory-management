@@ -10,8 +10,7 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll }) => {
     setAllOrders(orders);
   }, [orders]);
 
-  console.log(orders)
-  
+
 
   if (!orders.length)
     return (
@@ -38,6 +37,9 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll }) => {
 
     return roleMatch && dateMatch;
   });
+
+  console.log(orders)
+
 
   return (
     <div>
@@ -136,7 +138,14 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll }) => {
                   <b className="text-green-800">{order.deliveryStatus.toUpperCase()}</b>
                 </td>
                 <td className="p-3 text-gray-600">
-                  {new Date(order.createdAt).toLocaleDateString()}
+                  {new Date(order.createdAt).toLocaleDateString()}{" "}
+                  <span className="text-xs text-gray-500">
+                    {new Date(order.createdAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+
                 </td>
                 {showActions && (
                   <td className="p-3">
@@ -163,13 +172,12 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll }) => {
                 #{i + 1} — {order.buyerName}
               </h3>
               <span
-                className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  order.deliveryStatus === "pending"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : order.deliveryStatus === "in transit"
+                className={`px-2 py-1 rounded-full text-xs font-medium ${order.deliveryStatus === "pending"
+                  ? "bg-yellow-100 text-yellow-800"
+                  : order.deliveryStatus === "in transit"
                     ? "bg-blue-100 text-blue-700"
                     : "bg-green-100 text-green-700"
-                }`}
+                  }`}
               >
                 {order.deliveryStatus}
               </span>

@@ -4,7 +4,8 @@ import axiosInstance from "../../../utils/axiosInstance";
 import CustomerOrderTable from "./CustomerOrderTable";
 import PaystackButton from "./PaystackButton";
 import { useAuth } from "../../../context/AuthContext";
-import CompletedOrdersModal from "./CompletedOrdersModal";
+import CompletedOrdersModal from "./PendingOrdersModal";
+import PendingOrdersModal from "./PendingOrdersModal";
 
 const CustomerOrderPortal = () => {
   const [orders, setOrders] = useState([]);
@@ -210,7 +211,7 @@ const CustomerOrderPortal = () => {
       )}
 
       {/* ✅ Modal for pending orders */}
-      <CompletedOrdersModal
+      <PendingOrdersModal
         isOpen={showPendingModal}
         onClose={() => setShowPendingModal(false)}
         pendingOrders={pendingOrders}
