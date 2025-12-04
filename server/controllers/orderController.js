@@ -149,8 +149,7 @@ const getOrders = async (req, res) => {
 };
 
 
-/**
- * completeOrder - saves payment and summary, marks paymentStatus as Paid
+/* completeOrder - saves payment and summary, marks paymentStatus as Paid
  */
 const completeOrder = async (req, res) => {
   try {
@@ -258,9 +257,7 @@ const completeOrder = async (req, res) => {
   }
 };
 
-
-/**
- * generateInvoice - produce a PDF invoice for current user's active orders.
+ /* generateInvoice - produce a PDF invoice for current user's active orders.
  */
  const generateInvoice = async (req, res) => {
   try {

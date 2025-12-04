@@ -67,7 +67,7 @@ const LandingPage = () => {
   // Handle email/password submit
   const handleSubmit = async (e) => {
   e.preventDefault(); // Prevent form default reload
-  if (!validateForm()) return; // Optional: validate inputs
+  // if (!validateForm()) return; // Optional: validate inputs
 
   setLoading(true);
 
@@ -255,7 +255,7 @@ const handleGoogleSuccess = async (credentialResponse) => {
                 <input
                   type="tel"
                   name="phone"
-                  pattern="^(\+234|0)[7-9][0-1]\d{8}$"
+                  // pattern="^(\+234|0)[7-9][0-1]\d{8}$"
                   placeholder="Phone Number (e.g. 08012345678)"
 
                   value={formData.phone}
