@@ -21,6 +21,8 @@ import StaffCompletedHistory from "./components/share-component/history/StaffCom
 import CustomerCompletedHistory from "./components/share-component/history/CustomerCompletedHistory.jsx";
 import Product from "./components/share-component/product/Product.jsx";
 import Logout from "./components/share-component/logout/Logout.jsx";
+import CompleteProfile from "./components/share-component/complete-profile/CompleteProfile.jsx";
+
 
 export const BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -32,7 +34,8 @@ function App() {
         <Routes>
           {/* Landing/Login Page */}
           <Route path="/" element={<LandingPage />} />
-
+          {/* Complete Profile Page */}
+          <Route path="/complete-profile" element={<CompleteProfile />} />
           {/* Admin Dashboard */}
           <Route
             path="/admin-dashboard/*"

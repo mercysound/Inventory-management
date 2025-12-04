@@ -20,11 +20,19 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      toast.error("Session expired. Please log in again.");
+    const status = error.response?.status;
+
+    // Only auto-logout when user ALREADY logged in
+    const token = localStorage.getItem("pos-token");
+
+    if (status === 401 && token) {
+      // Token expired → force logout
       localStorage.removeItem("pos-token");
+      localStorage.removeItem("pos-user");
       window.location.href = "/";
     }
+
+    // For login failure (no token yet) → DO NOT RELOAD
     return Promise.reject(error);
   }
 );

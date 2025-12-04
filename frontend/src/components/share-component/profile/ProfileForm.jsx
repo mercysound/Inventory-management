@@ -28,7 +28,7 @@ const ProfileForm = ({ user, setUser, edit, setEdit, handleSubmit }) => {
         <input
           type="text"
           className="w-full p-2 border rounded-md focus:outline-none focus:ring-blue-500 disabled:bg-gray-100"
-          value={user.email}
+          value={user.email||""}
           onChange={(e) => setUser({ ...user, email: e.target.value })}
           disabled={!edit}
         />
@@ -41,7 +41,7 @@ const ProfileForm = ({ user, setUser, edit, setEdit, handleSubmit }) => {
         <input
           type="text"
           className="w-full p-2 border rounded-md focus:outline-none focus:ring-blue-500 disabled:bg-gray-100"
-          value={user.address}
+          value={user.address||""}
           onChange={(e) => setUser({ ...user, address: e.target.value })}
           disabled={!edit}
         />

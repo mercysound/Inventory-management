@@ -39,7 +39,6 @@ const CustomerOrderPortal = () => {
           o.deliveryStatus?.toLowerCase() === "pending" ||
           o.deliveryStatus?.toLowerCase() === "in transit"
       );
-      console.log(pendingFromHistory);   
 
       setPendingOrders(pendingFromHistory);
 
@@ -147,7 +146,7 @@ const CustomerOrderPortal = () => {
       await axiosInstance.delete("/orders/clear");
       setOrders([]);
       toast.info("Your cart has been cleared.");
-       fetchOrders();
+      fetchOrders();
     } catch (error) {
       console.error(error);
       toast.error("Error finalizing your payment.");
@@ -187,7 +186,7 @@ const CustomerOrderPortal = () => {
         <>
           <CustomerOrderTable
             orders={orders}
-             role={user?.role} 
+            role={user?.role}
             onIncrease={handleIncreaseQty}
             onReduce={handleReduceQty}
             onDelete={handleDeleteOrder}
@@ -199,11 +198,19 @@ const CustomerOrderPortal = () => {
             </h3>
 
             {user?.role === "customer" && grandTotal > 0 && (
+              // <PaystackButton
+              //   email={user.email}
+              //   amount={grandTotal*100}
+              //   name={user.name}
+              //   onSuccess={handlePaymentSuccess}
+              // />
               <PaystackButton
                 email={user.email}
-                amount={grandTotal*100}
+                amount={grandTotal}
                 name={user.name}
+                reference={`order_${Date.now()}`}
                 onSuccess={handlePaymentSuccess}
+                onCancel={() => alert("Payment canceled")}
               />
             )}
           </div>
@@ -216,6 +223,7 @@ const CustomerOrderPortal = () => {
         onClose={() => setShowPendingModal(false)}
         pendingOrders={pendingOrders}
       />
+
     </div>
   );
 };

@@ -1,71 +1,65 @@
-import React, { useEffect, useState } from "react";
-import { toast } from "react-toastify";
+import { useEffect, useState } from "react";
 
-const PaystackButton = ({ email, amount, name, onSuccess,  }) => {
+const PaystackButton = ({ email, amount, name, reference, onSuccess, onCancel }) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    // Check if the Paystack script is already in the document
-    const existingScript = document.querySelector('script[src="https://js.paystack.co/v1/inline.js"]');
-    if (existingScript) {
-      setIsLoaded(true);
-      return;
-    }
+    // Check if script already exists
+    const scriptId = "paystack-script";
+    const existingScript = document.getElementById(scriptId);
 
-    // Otherwise, inject it dynamically
-    const script = document.createElement("script");
-    script.src = "https://js.paystack.co/v1/inline.js";
-    script.async = true;
-    script.onload = () => setIsLoaded(true);
-    script.onerror = () => toast.error("Failed to load Paystack SDK");
-    document.body.appendChild(script);
+    if (!existingScript) {
+      const script = document.createElement("script");
+      script.id = scriptId;
+      script.src = "https://js.paystack.co/v1/inline.js";
+      script.onload = () => setIsLoaded(true);
+      script.onerror = () => console.error("Paystack script failed to load");
+      document.body.appendChild(script);
+    } else {
+      setIsLoaded(true);
+    }
   }, []);
 
-  const handlePay = () => {
-    if (!isLoaded || !window.PaystackPop) {
-      toast.error("Paystack SDK not ready. Try again in a moment.");
+  const payNow = () => {
+    if (!isLoaded) {
+      alert("Payment script not loaded yet...");
       return;
     }
 
-    try {
-      // ✅ Correct Paystack integration (no `new`)
-      const handler = window.PaystackPop.setup({
-        key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
-        email,
-        amount, // already multiplied by 100 in parent
-        currency: "NGN",
-        metadata: {
-          custom_fields: [
-            {
-              display_name: "Customer Name",
-              variable_name: "customer_name",
-              value: name,
-            },
-          ],
-        },
-        callback: (response) => {
-          toast.success("Payment successful!");
-          onSuccess?.(response);
-        },
-        onClose: () => toast.info("Payment cancelled."),
-      });
+    const handler = window.PaystackPop.setup({
+      key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY, // Your public key
+      email,
+      amount: amount * 100, // Convert to kobo
+      ref: reference || `ps_${Date.now()}`,
+      metadata: {
+        custom_fields: [
+          {
+            display_name: "Customer Name",
+            variable_name: "customer_name",
+            value: name,
+          },
+        ],
+      },
+      callback: function (response) {
+        console.log("Payment success:", response);
+        if (onSuccess) onSuccess(response);
+      },
+      onClose: function () {
+        console.log("Payment cancelled");
+        if (onCancel) onCancel();
+      },
+    });
 
-      handler.openIframe();
-    } catch (error) {
-      console.error("Paystack error:", error);
-      toast.error("Payment initialization failed.");
-    }
+    handler.openIframe();
   };
 
   return (
     <button
-      onClick={handlePay}
+      onClick={payNow}
       disabled={!isLoaded}
-      className={`px-4 py-2 rounded-lg text-white ${
-        isLoaded ? "bg-green-600 hover:bg-green-700" : "bg-gray-400 cursor-not-allowed"
-      } transition-all`}
+      className="bg-green-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
     >
-      {isLoaded ? "Pay with Paystack" : "Loading Paystack..."}
+      {isLoaded ? "Pay with Paystack" : "Loading..."}
     </button>
   );
 };

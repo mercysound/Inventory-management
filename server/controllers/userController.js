@@ -3,30 +3,36 @@ import bcrypt from 'bcrypt'
 
 const addUser = async (req, res) => {
   try {
-    const { name, email, password, address, role } = req.body;
+    const { name, address, phone, email, password, role } = req.body;
 
-    //check if the category already exists
     const existingUser = await UserModel.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ success: false, message: 'User already exists' })
-    }
+    if (existingUser)
+      return res.status(400).json({ success: false, message: 'User already exists' });
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    // Create a new category
+
     const newUser = new UserModel({
       name,
+      address,
+      phone,
       email,
       password: hashedPassword,
-      address,
-      role
+      role,
+      profileCompleted: true,  // 🔥 IMPORTANT
     });
 
     await newUser.save();
-    return res.status(201).json({ success: true, message: 'User added succesfully' })
+
+    return res.status(201).json({
+      success: true,
+      message: "User added successfully",
+      user: newUser,
+    });
   } catch (error) {
     console.error("Error adding user", error);
-    return res.status(500).json({ success: false, message: "server error" })
+    return res.status(500).json({ success: false, message: "Server error" });
   }
-}
+};
 
 
 const getUsers = async (req, res) => {
@@ -92,5 +98,26 @@ const deleteUser = async (req, res) => {
   }
 }
 
+const updateProfile = async (req, res) => {
+  try {
+    const { phone, address } = req.body;
+    const userId = req.user.id;
 
-export { addUser, getUser, deleteUser, getUsers, updateUserprofile }
+    if (!phone) return res.status(400).json({ success: false, message: "Phone number is required" });
+
+    const updatedUser = await UserModel.findByIdAndUpdate(
+      userId,
+      { phone, address, profileCompleted: true },
+      { new: true }
+    ).select("-password");
+
+    return res.status(200).json({ success: true, message: "Profile updated successfully", user: updatedUser });
+  } catch (error) {
+    console.error("Complete profile error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+
+
+export { addUser, getUser, deleteUser, getUsers, updateUserprofile, updateProfile }

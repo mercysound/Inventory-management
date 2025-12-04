@@ -1,6 +1,6 @@
 import express from 'express';
 import {authMiddleware} from '../middleware/authMiddleware.js';
-import { addUser, getUsers, deleteUser, getUser, updateUserprofile} from '../controllers/userController.js';
+import { addUser, getUsers, deleteUser, getUser, updateUserprofile, updateProfile} from '../controllers/userController.js';
 
 const router = express.Router();
 
@@ -10,5 +10,7 @@ router.get('/', authMiddleware, getUsers);
 router.delete('/:id', authMiddleware, deleteUser);
 router.get('/profile', authMiddleware, getUser);
 router.put('/profile', authMiddleware, updateUserprofile);
+// Protected route: user must be logged in
+router.put("/complete-profile", authMiddleware, updateProfile);
 
 export default router;
