@@ -12,7 +12,6 @@ import Unauthorized from "./pages/unauthorized/Unauthorized.jsx";
 import CustomerOrderPortal from "./components/customer/CustomerOrderPortal/CustomerOrderPortal";
 import CustomerProducts from "./components/customer/customerProduct/CustomerProducts.jsx";
 import Suppliers from "./components/admin/supplier/Suppliers.jsx";
-import CustomerOrders from "./components/staff/orders/CustomerOrders.jsx";
 import Users from "./components/admin/user/Users.jsx";
 import PlacedOrders from "./components/admin/purchase/PlacedOrders.jsx";
 import Profile from "./components/share-component/profile/Profile.jsx";
@@ -22,6 +21,7 @@ import CustomerCompletedHistory from "./components/share-component/history/Custo
 import Product from "./components/share-component/product/Product.jsx";
 import Logout from "./components/share-component/logout/Logout.jsx";
 import CompleteProfile from "./components/share-component/complete-profile/CompleteProfile.jsx";
+import StaffOrders from "./components/staff/orders/StaffOrders.jsx";
 
 
 export const BASE_URL = import.meta.env.VITE_API_URL;
@@ -66,7 +66,7 @@ function App() {
             }
           >
             <Route index element={<CustomerProducts />} />
-            <Route path="orders" element={<CustomerOrders />} />
+            <Route path="orders" element={<StaffOrders />} />
             <Route path="completed-history" element={<StaffCompletedHistory />} />
             <Route path="profile" element={<Profile />} />
             <Route path="logout" element={<Logout />} />

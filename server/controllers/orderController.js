@@ -3,6 +3,12 @@ import OrderModel from "../models/OrderModel.js";
 import ProductModel from "../models/ProductModel.js";
 import AllOrdersPlacedModel from "../models/AllOrdersPlacedModel.js";
 import CompletedOrderHistoryModel from "../models/CompletedOrderHistoryModel.js";
+// import { STORE_ACCOUNT } from "../config/storeAccount.js";
+const STORE_ACCOUNT = {
+  bankName: "XYZ Bank",
+  accountName: "MELECH STORE",
+  accountNumber: "1234567890",
+};
 
 
 /**
@@ -149,201 +155,220 @@ const getOrders = async (req, res) => {
 };
 
 
-/* completeOrder - saves payment and summary, marks paymentStatus as Paid
+/**
+ * completeOrder - saves payment and summary, marks paymentStatus as Paid
  */
 const completeOrder = async (req, res) => {
   try {
-    const { paymentMethod, buyerName, totalPrice } = req.body;
+    const { paymentMethod, buyerName } = req.body;
     const userId = req.user._id;
 
     if (!paymentMethod) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Payment method required" });
-    }
-
-    // ✅ Fetch all current orders of this user
-    const userOrders = await OrderModel.find({ userOrdering: userId })
-      .populate({
-        path: "product",
-        populate: { path: "categoryId", select: "name" },
+      return res.status(400).json({
+        success: false,
+        message: "Payment method required",
       });
-
-    if (!userOrders || userOrders.length === 0) {
-      return res
-        .status(400)
-        .json({ success: false, message: "No orders found for this user" });
     }
 
-    // ✅ Reduce stock safely
-    for (const order of userOrders) {
-      const product = order.product;
-      const qty = order.quantity || 0;
-      if (!product) continue;
+    const orders = await OrderModel.find({ userOrdering: userId })
+      .populate("product");
 
-      if (product.stock < qty) {
+    if (!orders.length) {
+      return res.status(400).json({
+        success: false,
+        message: "No active orders",
+      });
+    }
+
+    // ✅ Stock validation
+    for (const o of orders) {
+      if (!o.product || o.product.stock < o.quantity) {
         return res.status(400).json({
           success: false,
-          message: `Not enough stock for ${product.name}. Available: ${product.stock}`,
+          message: `Insufficient stock for ${o.product?.name}`,
         });
       }
-
-      product.stock -= qty;
-      await product.save();
     }
 
-    // ✅ Compute totals
-    const allQuantity = userOrders.reduce((sum, o) => sum + (o.quantity || 0), 0);
-    const totalOrderPrice =
-      totalPrice ||
-      userOrders.reduce(
-        (sum, o) => sum + (o.totalPrice ?? o.quantity * o.price),
-        0
-      );
+    // ✅ Reduce stock
+    for (const o of orders) {
+      o.product.stock -= o.quantity;
+      await o.product.save();
+    }
 
-    // ✅ Structure product list as required
-    const productList = userOrders.map((order) => ({
-      productId: order.product?._id,
-      quantity: order.quantity,
-      price: order.price,
-      totalPrice: order.totalPrice,
+    const totalPrice = orders.reduce(
+      (sum, o) => sum + o.quantity * o.price,
+      0
+    );
+
+    const allQuantity = orders.reduce(
+      (sum, o) => sum + o.quantity,
+      0
+    );
+
+    const productList = orders.map(o => ({
+      productId: o.product._id,
+      quantity: o.quantity,
+      price: o.price,
+      totalPrice: o.quantity * o.price,
     }));
-    let placed 
-    if(req.user.role === "customer"){
-      // ✅ Save to AllOrdersPlacedModel (mark paid)
-     placed = new AllOrdersPlacedModel({
-      userOrdering: userId,
-      buyerName: buyerName || "Unknown",
-      paymentMethod,
-      // deliveryStatus: deliveryStatus || "Paid",
-      totalPrice: totalOrderPrice,
-      allQuantity,
-      productList,
-      paid: true, // ✅ mark order paid for invoice display
-      status: "completed",
-    });
-    }else{
-      // ✅ Save to CompletedOrderHistoryModel (mark paid)
-     placed = new CompletedOrderHistoryModel({
-      userOrdering: userId,
-      buyerName: buyerName || "Unknown",
-      paymentMethod,
-      // deliveryStatus: deliveryStatus || "Paid",
-      totalPrice: totalOrderPrice,
-      allQuantity,
-      productList,
-      paid: true, // ✅ mark order paid for invoice display
-      status: "completed",
-    });
+
+    let placed;
+
+    if (req.user.role === "customer") {
+      placed = await AllOrdersPlacedModel.create({
+        userOrdering: userId,
+        buyerName: buyerName || "Customer",
+        paymentMethod,
+        totalPrice,
+        allQuantity,
+        productList,
+        paid: true,
+        deliveryStatus: "Pending",
+      });
+    } else {
+      placed = await CompletedOrderHistoryModel.create({
+        userOrdering: userId,
+        buyerName: buyerName || "Walk-in Customer",
+        paymentMethod,
+        totalPrice,
+        allQuantity,
+        productList,
+        paid: true,
+        deliveryStatus: "Completed",
+      });
     }
 
-    await placed.save();
-
-    // ✅ Clear user's temporary cart orders
     await OrderModel.deleteMany({ userOrdering: userId });
 
     return res.json({
       success: true,
-      message: "Order completed successfully, stock updated and marked as paid.",
-      placed,
+      message: "Order completed successfully",
+      orderId: placed._id,
     });
+
   } catch (error) {
     console.error("completeOrder error:", error);
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
-      message: "Error completing order",
-      error: error.message,
+      message: error.message,
     });
   }
 };
 
- /* generateInvoice - produce a PDF invoice for current user's active orders.
- */
- const generateInvoice = async (req, res) => {
+
+/* generateInvoice - produce a PDF invoice for current user's active orders. */
+const generateInvoice = async (req, res) => {
   try {
+    // const {
+    //   customerName = "Guest Customer",
+    //   paymentMethod = "Not Paid Yet",
+    //   mode = "preview", // preview | final
+    // } = req.query;
     const customerName = req.query.customerName || "Guest Customer";
     const paymentMethod = req.query.paymentMethod || "Not Specified";
-    let paymentStatus = "Unpaid";
+    const mode = req.query.mode
+    const paymentStatus = mode === "final" ? "Paid" : "Unpaid";
 
-    // STEP 1: Try to get user's active orders
-    const query = req.user ? { userOrdering: req.user._id } : {};
-    let orders = await OrderModel.find(query).populate({
+    let orders = [];
+
+    /**
+     * 1️⃣ Try active cart orders first (PREVIEW)
+     */
+    const activeOrders = await OrderModel.find({
+      userOrdering: req.user._id,
+    }).populate({
       path: "product",
-      select: "name description price categoryId",
       populate: { path: "categoryId", select: "name" },
     });
 
-    // STEP 2: If no active orders, use last completed order
-    if (!orders || orders.length === 0) {
-      const lastOrder = await AllOrdersPlacedModel.findOne(
-        req.user ? { userOrdering: req.user._id } : {}
-      )
-        .populate({
-          path: "productList.productId",
-          select: "name description price categoryId",
-          populate: { path: "categoryId", select: "name" },
-        })
-        .sort({ createdAt: -1 })
-        .lean();
-
-      if (lastOrder) {
-        orders = lastOrder.productList.map((item) => ({
-          product: {
-            name: item.productId?.name || "Unknown",
-            description: item.productId?.description || "No description",
-            categoryName: item.productId?.categoryId?.name || "N/A",
-          },
-          quantity: item.quantity,
-          price: item.price,
-          totalPrice: item.totalPrice,
-        }));
-        paymentStatus = "Paid";
-      }
-    } else {
-      orders = orders.map((o) => ({
+    if (activeOrders.length) {
+      orders = activeOrders.map(o => ({
         product: {
           name: o.product?.name,
           description: o.product?.description,
-          categoryName: o.product?.categoryId?.name || "N/A",
+          categoryName: o.product?.categoryId?.name,
         },
         quantity: o.quantity,
         price: o.price,
-        totalPrice: o.totalPrice,
+        totalPrice: o.quantity * o.price,
+      }));
+    } else {
+      /**
+       * 2️⃣ Fallback → last completed order (FINAL)
+       */
+      const historyModel =
+        mode === "final"
+          ? CompletedOrderHistoryModel
+          : AllOrdersPlacedModel;
+
+      const lastOrder = await historyModel
+        .findOne({ userOrdering: req.user._id })
+        .populate({
+          path: "productList.productId",
+          populate: { path: "categoryId", select: "name" },
+        })
+        .sort({ createdAt: -1 });
+
+      if (!lastOrder) {
+        return res.status(404).json({ message: "No orders found" });
+      }
+
+      orders = lastOrder.productList.map(i => ({
+        product: {
+          name: i.productId?.name,
+          description: i.productId?.description,
+          categoryName: i.productId?.categoryId?.name,
+        },
+        quantity: i.quantity,
+        price: i.price,
+        totalPrice: i.totalPrice,
       }));
     }
 
-    if (!orders || orders.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No orders found to generate invoice",
-      });
+    if (!orders.length) {
+      return res.status(404).json({ message: "No orders found" });
     }
 
-    // STEP 3: Calculate total
     const totalAmount = orders.reduce(
-      (sum, o) => sum + (o.totalPrice || o.price * o.quantity),
+      (sum, o) => sum + o.totalPrice,
       0
     );
 
-    // STEP 4: Create PDF
+    // ================= PDF SETUP =================
     const doc = new PDFDocument({ margin: 40 });
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "inline; filename=invoice.pdf");
     doc.pipe(res);
 
-    // Header
-    doc.fontSize(20).fillColor("#1E3A8A").text("MELECH STORE", { align: "center" });
-    doc.fontSize(12).fillColor("#000").text("Sales Invoice", { align: "center" });
+    // ================= HEADER =================
+    doc.fontSize(20).fillColor("#1E3A8A").text("MELECH STORE", {
+      align: "center",
+    });
+    doc.fontSize(12).fillColor("#000").text("Sales Invoice", {
+      align: "center",
+    });
     doc.moveDown(1);
 
-    // Customer Info
-    doc.fontSize(11).fillColor("#000").text(`Customer: ${customerName}`);
+    // ================= CUSTOMER INFO =================
+    doc.fontSize(11).fillColor("#000");
+    doc.text(`Customer: ${customerName}`);
     doc.text(`Payment Method: ${paymentMethod}`);
     doc.text(`Payment Status: ${paymentStatus}`);
     doc.text(`Date: ${new Date().toLocaleString()}`);
     doc.moveDown(1);
 
-    // Column layout
+    // ================= PAYMENT INSTRUCTIONS (UNPAID ONLY) =================
+    if (paymentStatus === "Unpaid") {
+      doc.font("Helvetica-Bold").text("Payment Instructions");
+      doc.font("Helvetica");
+      doc.text(`Bank: ${STORE_ACCOUNT.bankName}`);
+      doc.text(`Account Name: ${STORE_ACCOUNT.accountName}`);
+      doc.text(`Account Number: ${STORE_ACCOUNT.accountNumber}`);
+      doc.moveDown(1);
+    }
+
+    // ================= TABLE LAYOUT =================
     const cols = {
       product: 45,
       category: 160,
@@ -353,9 +378,16 @@ const completeOrder = async (req, res) => {
       total: 500,
     };
 
-    // Table Header
     const startY = doc.y;
-    doc.fontSize(11).fillColor("#FFF").rect(40, startY, 520, 20).fill("#1E3A8A").stroke();
+
+    // Table Header
+    doc
+      .fontSize(11)
+      .fillColor("#FFF")
+      .rect(40, startY, 520, 20)
+      .fill("#1E3A8A")
+      .stroke();
+
     doc.fillColor("#FFF").font("Helvetica-Bold");
     doc.text("Product", cols.product, startY + 5);
     doc.text("Category", cols.category, startY + 5);
@@ -364,27 +396,26 @@ const completeOrder = async (req, res) => {
     doc.text("Price", cols.price, startY + 5);
     doc.text("Total", cols.total, startY + 5);
 
-    // Table Rows
+    // ================= TABLE ROWS =================
     doc.fillColor("#000").font("Helvetica");
     let y = startY + 25;
 
     for (const [index, o] of orders.entries()) {
       const desc = o.product.description || "—";
-
-      // Dynamically compute height of description
       const descHeight = doc.heightOfString(desc, { width: 120 });
       const rowHeight = Math.max(20, descHeight + 8);
 
-      // Alternate background for rows
-      if (index % 2 === 0) {
-        doc.rect(40, y, 520, rowHeight).fill("#F9FAFB").stroke();
-      } else {
-        doc.rect(40, y, 520, rowHeight).fill("#FFFFFF").stroke();
-      }
+      // Alternate row background
+      doc
+        .rect(40, y, 520, rowHeight)
+        .fill(index % 2 === 0 ? "#F9FAFB" : "#FFFFFF")
+        .stroke();
 
       doc.fillColor("#000");
       doc.text(o.product.name, cols.product, y + 5, { width: 110 });
-      doc.text(o.product.categoryName, cols.category, y + 5, { width: 100 });
+      doc.text(o.product.categoryName || "-", cols.category, y + 5, {
+        width: 100,
+      });
       doc.text(desc, cols.description, y + 5, { width: 120 });
       doc.text(String(o.quantity), cols.qty, y + 5);
       doc.text(`₦${o.price.toLocaleString()}`, cols.price, y + 5);
@@ -393,7 +424,7 @@ const completeOrder = async (req, res) => {
       y += rowHeight;
     }
 
-    // Total
+    // ================= TOTAL =================
     y += 10;
     doc.moveTo(40, y).lineTo(560, y).stroke();
     y += 10;
@@ -401,16 +432,23 @@ const completeOrder = async (req, res) => {
     doc.text("Grand Total:", 400, y);
     doc.text(`₦${totalAmount.toLocaleString()}`, 500, y);
 
-    // Footer
+    // ================= FOOTER =================
     doc.moveDown(2);
     doc.fontSize(10).fillColor("gray").font("Helvetica");
     doc.text("Thank you for shopping with MELECH STORE!", 40, doc.y + 10);
-    doc.text("Generated automatically — no signature required", 40, doc.y + 25);
+    doc.text(
+      "Generated automatically — no signature required",
+      40,
+      doc.y + 25
+    );
 
     doc.end();
   } catch (error) {
     console.error("generateInvoice error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 

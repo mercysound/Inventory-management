@@ -1,7 +1,7 @@
 // frontend/src/components/orders/CustomerSkeleton.jsx
 import React from "react";
 
-const CustomerSkeleton = () => {
+const StaffSkeleton = () => {
   return (
     <div className="animate-pulse rounded-md p-4 border border-gray-200 bg-white">
       <div className="h-4 bg-gray-200 rounded w-1/3 mb-4" />
@@ -13,4 +13,4 @@ const CustomerSkeleton = () => {
   );
 };
 
-export default CustomerSkeleton;
+export default StaffSkeleton;

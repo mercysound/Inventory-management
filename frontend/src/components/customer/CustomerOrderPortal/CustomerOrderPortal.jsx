@@ -6,6 +6,7 @@ import PaystackButton from "./PaystackButton";
 import { useAuth } from "../../../context/AuthContext";
 import CompletedOrdersModal from "./PendingOrdersModal";
 import PendingOrdersModal from "./PendingOrdersModal";
+import ReceiptPromptModal from "../../share-component/receipt-prompt-modal/ReceiptPromptModal";
 
 const CustomerOrderPortal = () => {
   const [orders, setOrders] = useState([]);
@@ -13,6 +14,9 @@ const CustomerOrderPortal = () => {
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+
+  const [showReceiptPrompt, setShowReceiptPrompt] = useState(false);
+  const [receiptPreviewUrl, setReceiptPreviewUrl] = useState("");
 
   // ✅ Fetch both orders and pending/in-transit history
   const fetchOrders = useCallback(async () => {
@@ -113,43 +117,96 @@ const CustomerOrderPortal = () => {
   );
 
   // ✅ Payment success logic
-  const handlePaymentSuccess = async () => {
-    toast.success("Payment successful! Finalizing your order...");
+  // const handlePaymentSuccess = async () => {
+  //   toast.success("Payment successful! Finalizing your order...");
+  //   try {
+  //     const res = await axiosInstance.post("/orders/payment", {
+  //       paymentMethod: "Paystack",
+  //       buyerName: user?.name || "Unknown",
+  //     });
+
+  //     if (res.data.success) {
+  //       toast.success("Order confirmed and stock updated!");
+  //     }
+
+  //     // Auto download invoice
+  //     const query = new URLSearchParams({
+  //       format: "pdf",
+  //       customerName: user?.name || "Customer",
+  //       paymentMethod: "Paystack",
+  //     }).toString();
+
+  //     const invoiceRes = await axiosInstance.get(`/orders/invoice?${query}`, {
+  //       responseType: "blob",
+  //     });
+
+  //     const blob = new Blob([invoiceRes.data], { type: "application/pdf" });
+  //     const link = document.createElement("a");
+  //     link.href = URL.createObjectURL(blob);
+  //     link.download = `Invoice_${user?.name || "Customer"}.pdf`;
+  //     link.click();
+
+  //     // Clear cart after success
+  //     await axiosInstance.delete("/orders/clear");
+  //     setOrders([]);
+  //     toast.info("Your cart has been cleared.");
+  //     fetchOrders();
+  //   } catch (error) {
+  //     console.error(error);
+  //     toast.error("Error finalizing your payment.");
+  //   }
+  // };
+
+
+  const handleDownloadFinalReceipt = async () => {
     try {
-      const res = await axiosInstance.post("/orders/payment", {
-        paymentMethod: "Paystack",
-        buyerName: user?.name || "Unknown",
-      });
-
-      if (res.data.success) {
-        toast.success("Order confirmed and stock updated!");
-      }
-
-      // Auto download invoice
       const query = new URLSearchParams({
-        format: "pdf",
         customerName: user?.name || "Customer",
         paymentMethod: "Paystack",
+        mode: "final",
       }).toString();
 
-      const invoiceRes = await axiosInstance.get(`/orders/invoice?${query}`, {
+      const res = await axiosInstance.get(`/orders/invoice?${query}`, {
         responseType: "blob",
       });
 
-      const blob = new Blob([invoiceRes.data], { type: "application/pdf" });
+      const blob = new Blob([res.data], { type: "application/pdf" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = `Invoice_${user?.name || "Customer"}.pdf`;
+      link.download = `Receipt_${user?.name || "Customer"}.pdf`;
       link.click();
 
-      // Clear cart after success
-      await axiosInstance.delete("/orders/clear");
+      setShowReceiptPrompt(false);
+    } catch {
+      toast.error("Failed to download receipt");
+    }
+  };
+
+  // ✅ FINAL PAYSTACK SUCCESS HANDLER
+  const handlePaymentSuccess = async () => {
+    toast.success("Payment successful");
+
+    try {
+      await axiosInstance.post("/orders/complete", {
+        paymentMethod: "Paystack",
+        buyerName: user?.name || "Customer",
+      });
+
+      const query = new URLSearchParams({
+        customerName: user?.name || "Customer",
+        paymentMethod: "Paystack",
+        mode: "final",
+      }).toString();
+
+      // ✅ SHOW PREVIEW FIRST
+      setReceiptPreviewUrl(`/orders/invoice?${query}`);
+      setShowReceiptPrompt(true);
+
       setOrders([]);
-      toast.info("Your cart has been cleared.");
       fetchOrders();
-    } catch (error) {
-      console.error(error);
-      toast.error("Error finalizing your payment.");
+
+    } catch {
+      toast.error("Order completion failed");
     }
   };
 
@@ -224,6 +281,12 @@ const CustomerOrderPortal = () => {
         pendingOrders={pendingOrders}
       />
 
+      <ReceiptPromptModal
+        open={showReceiptPrompt}
+        previewUrl={receiptPreviewUrl}
+        onClose={() => setShowReceiptPrompt(false)}
+        onDownload={handleDownloadFinalReceipt}
+      />
     </div>
   );
 };
