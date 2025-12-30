@@ -1,78 +1,80 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
-import StaffTable from "./StaffTable";
 import axiosInstance from "../../../utils/axiosInstance";
+import StaffTable from "./StaffTable";
+import StaffSkeleton from "./StaffSkeleton";
 
-const PAYMENT_METHODS = ["Cash", "Bank Transfer", "POS", "Paystack"];
+// Replace with your real store account details
+const STORE_ACCOUNT = {
+  bankName: "MELECH BANK",
+  accountName: "MELECH STORE",
+  accountNumber: "1234567890",
+};
 
-export default function OrderCheckout({ user }) {
+const PAYMENT_OPTIONS = ["Cash", "Card", "POS", "Bank Transfer"];
+
+const StaffOrders = () => {
   const [orders, setOrders] = useState([]);
-  const [loadingOrders, setLoadingOrders] = useState(true);
-  const [customerName, setCustomerName] = useState(user?.name || "");
+  const [loading, setLoading] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState("");
-  const [receiptBlob, setReceiptBlob] = useState(null);
-  const [showPreview, setShowPreview] = useState(false);
-  const [showFinal, setShowFinal] = useState(false);
+  const [customerName, setCustomerName] = useState("");
   const [processing, setProcessing] = useState(false);
 
-  const fetchOrders = async () => {
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [receiptBlob, setReceiptBlob] = useState(null);
+  const [receiptMode, setReceiptMode] = useState("preview"); // preview | final
+  const [completedOrderId, setCompletedOrderId] = useState(null);
+
+  // Fetch active orders
+  const fetchOrders = useCallback(async () => {
     try {
+      setLoading(true);
       const res = await axiosInstance.get("/orders");
-      const data = Array.isArray(res.data) ? res.data : res.data.orders;
-      setOrders(data || []);
-    } catch {
-      alert("Failed to load orders");
+      const data = Array.isArray(res.data) ? res.data : res.data.orders || [];
+      setOrders(data);
+    } catch (err) {
+      toast.error("Failed to fetch orders.");
     } finally {
-      setLoadingOrders(false);
+      setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-  const fetchData = async () => {
+    fetchOrders();
+    const handler = () => fetchOrders();
+    window.addEventListener("ordersUpdated", handler);
+    return () => window.removeEventListener("ordersUpdated", handler);
+  }, [fetchOrders]);
+
+  // ==================== CART ACTIONS ====================
+  const handleIncreaseQty = async (orderId) => {
     try {
-      const res = await axiosInstance.get("/orders");
-      const data = Array.isArray(res.data) ? res.data : res.data.orders;
-      setOrders(data || []);
-    } catch {
-      alert("Failed to load orders");
-    } finally {
-      setLoadingOrders(false);
-    }
-  };
-
-  fetchData();
-}, []);
-
-  const grandTotal = orders.reduce(
-    (sum, o) => sum + (o.totalPrice || o.quantity * o.price || 0),
-    0
-  );
-
-  const handleIncreaseQty = async (id) => {
-    try {
-      await axiosInstance.post(`/orders/increase/${id}`);
+      await axiosInstance.post(`/orders/increase/${orderId}`);
       fetchOrders();
     } catch {
-      alert("Failed to increase quantity");
+      toast.error("Failed to increase quantity");
     }
   };
 
-  const handleReduceQty = async (id) => {
+  const handleReduceQty = async (orderId) => {
     try {
-      await axiosInstance.post(`/orders/reduce/${id}`);
+      await axiosInstance.post(`/orders/reduce/${orderId}`);
       fetchOrders();
     } catch {
-      alert("Failed to reduce quantity");
+      toast.error("Failed to reduce quantity");
     }
   };
 
-  const handleDeleteOrder = async (id) => {
+  const handleDeleteOrder = async (orderId) => {
+    alert("work")
     if (!window.confirm("Delete this item?")) return;
     try {
-      await axiosInstance.delete(`/orders/remove/${id}`);
+      await axiosInstance.delete(`/orders/remove/${orderId}`);
       fetchOrders();
+      toast.success("Item deleted");
     } catch {
-      alert("Failed to delete order");
+      toast.error("Failed to delete item");
     }
   };
 
@@ -81,148 +83,192 @@ export default function OrderCheckout({ user }) {
     try {
       await axiosInstance.delete("/orders/clear");
       setOrders([]);
+      toast.success("All orders cleared");
     } catch {
-      alert("Failed to clear orders");
+      toast.error("Failed to clear orders");
     }
   };
 
-  const handlePreviewInvoice = async () => {
-    if (!orders.length) return alert("No orders to preview");
+  const grandTotal = orders.reduce(
+    (sum, o) => sum + (o.totalPrice || o.quantity * o.price || 0),
+    0
+  );
+
+  // ==================== PREVIEW INVOICE ====================
+  const previewInvoice = async () => {
+    if (!orders.length) return toast.error("No orders to preview");
+
     try {
       setProcessing(true);
       const query = new URLSearchParams({
-        format: "pdf",
-        customerName: customerName || "Guest",
+        mode: "preview",
+        customerName: customerName || "Walk-in Customer",
         paymentMethod: paymentMethod || "Not Specified",
-        mode:"preview"
       }).toString();
-      const res = await axiosInstance.get(
-        `/orders/invoice?${query}`,
-        { responseType: "blob" }
-      );
+
+      const res = await axiosInstance.get(`/orders/invoice?${query}`, {
+        responseType: "blob",
+      });
+
       setReceiptBlob(res.data);
-      setShowPreview(true);
-      setShowFinal(false);
-    } catch {
-      alert("Failed to generate invoice preview");
+      setReceiptMode("preview");
+      setShowReceiptModal(true);
+    } catch (err) {
+      toast.error("Failed to generate preview");
     } finally {
       setProcessing(false);
     }
   };
 
-  const handleCompleteOrder = async () => {
-    if (!paymentMethod) return alert("Select payment method");
-    if (!orders.length) return alert("No orders to complete");
+  // ==================== COMPLETE ORDER ====================
+  const completeOrder = async () => {
+    if (!paymentMethod) return toast.error("Select payment method first");
+    if (!orders.length) return toast.error("No orders to complete");
+
+    setProcessing(true);
+
     try {
-      setProcessing(true);
-      await axiosInstance.post("/orders/complete", {
+      const res = await axiosInstance.post("/orders/complete", {
         paymentMethod,
         buyerName: customerName || "Walk-in Customer",
       });
-      const res = await axiosInstance.get(
-        `/orders/invoice?mode=final&customerName=${customerName}&paymentMethod=${paymentMethod}`,
-        { responseType: "blob" }
-      );
-      setReceiptBlob(res.data);
-      setShowPreview(false);
-      setShowFinal(true);
-      setOrders([]);
-    } catch {
-      alert("Failed to complete order");
+
+      if (res.data.success) {
+        toast.success("Order completed successfully");
+        setCompletedOrderId(res.data.orderId);
+
+        // Fetch final receipt
+        const query = new URLSearchParams({
+          mode: "final",
+          orderSource: "staff",
+          customerName: customerName || "Walk-in Customer",
+          paymentMethod,
+        }).toString();
+
+        const invoiceRes = await axiosInstance.get(
+          `/orders/invoice?${query}`,
+          { responseType: "blob" }
+        );
+        setReceiptBlob(invoiceRes.data);
+        setReceiptMode("final");
+        setShowReceiptModal(true);
+
+        // Clear local orders
+        setOrders([]);
+        setCustomerName("");
+        setPaymentMethod("");
+      }
+    } catch (err) {
+      toast.error("Failed to complete order");
+      console.error(err);
     } finally {
       setProcessing(false);
     }
   };
 
-  const downloadReceipt = (filename) => {
+  // ==================== DOWNLOAD RECEIPT ====================
+  const handleDownloadReceipt = () => {
     if (!receiptBlob) return;
-    const url = URL.createObjectURL(receiptBlob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(receiptBlob);
+    link.download =
+      receiptMode === "preview"
+        ? `Invoice_UNPAID_${customerName || "Walk-in"}.pdf`
+        : `Receipt_PAID_${customerName || "Walk-in"}.pdf`;
+    link.click();
+    setShowReceiptModal(false);
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-4 md:p-6">
+    <>
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl shadow-xl p-6"
+        className="max-w-6xl mx-auto bg-white/80 backdrop-blur-md border border-gray-200 shadow-xl rounded-2xl p-6 mt-8"
       >
-        <h2 className="text-2xl font-bold text-center mb-6">🧾 POS Checkout</h2>
+        <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">
+          🧾 Customer Orders Summary
+        </h2>
 
-        {/* Customer Info */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <input
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            placeholder="Customer name"
-            className="border rounded-xl px-4 py-3 flex-1 shadow-sm focus:ring-2 focus:ring-indigo-400"
-          />
-          <select
-            value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value)}
-            className="border rounded-xl px-4 py-3 shadow-sm focus:ring-2 focus:ring-indigo-400"
-          >
-            <option value="">Select payment method</option>
-            {PAYMENT_METHODS.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
+        {/* Controls */}
+        <div className="bg-white/70 backdrop-blur-sm border border-gray-100 rounded-xl p-4 mb-6 shadow-sm">
+          <div className="flex flex-col lg:flex-row justify-between items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+              <input
+                type="text"
+                placeholder="Enter customer name"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                className="w-full sm:w-64 px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 transition-all"
+              />
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="w-full sm:w-56 px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 transition-all"
+              >
+                <option value="">-- Select Payment Method --</option>
+                {PAYMENT_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-wrap justify-center lg:justify-end gap-3 w-full lg:w-auto">
+              <button
+                onClick={previewInvoice}
+                disabled={processing}
+                className="px-5 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg shadow-md transition-all disabled:opacity-60"
+              >
+                Preview Invoice
+              </button>
+              <button
+                onClick={completeOrder}
+                disabled={processing}
+                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition-all disabled:opacity-60"
+              >
+                Complete Order
+              </button>
+              <button
+                onClick={handleClearAll}
+                className="px-5 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-all"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Orders Table */}
-        <StaffTable
-          orders={orders}
-          loading={loadingOrders}
-          onIncreaseQty={handleIncreaseQty}
-          onReduceQty={handleReduceQty}
-          onDeleteOrder={handleDeleteOrder}
-        />
+        {loading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <StaffSkeleton key={i} />
+            ))}
+          </div>
+        ) : (
+          <StaffTable
+            orders={orders}
+            onIncreaseQty={handleIncreaseQty}
+            onReduceQty={handleReduceQty}
+            onRemoveOrder={handleDeleteOrder}
+          />
+        )}
 
-        <div className="flex justify-between items-center mt-4 mb-6 flex-wrap gap-2">
-          <button
-            onClick={handleClearAll}
-            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md"
-          >
-            Clear All
-          </button>
-          <span className="font-bold text-lg">
-            Grand Total: ₦{grandTotal.toLocaleString()}
-          </span>
-        </div>
-
-        {/* Actions */}
-        <div className="flex flex-wrap gap-4 justify-center">
-          <button
-            onClick={handlePreviewInvoice}
-            disabled={processing}
-            className="px-6 py-3 rounded-xl bg-gray-700 text-white"
-          >
-            Preview Invoice
-          </button>
-          <button
-            onClick={handleCompleteOrder}
-            disabled={processing}
-            className="px-6 py-3 rounded-xl bg-indigo-600 text-white"
-          >
-            Complete Order
-          </button>
+        <div className="mt-4 text-right font-semibold text-lg">
+          Grand Total: ₦{grandTotal.toLocaleString()}
         </div>
       </motion.div>
 
-      {/* Invoice Modal */}
+      {/* Receipt Modal */}
       <AnimatePresence>
-        {(showPreview || showFinal) && receiptBlob && (
+        {showReceiptModal && receiptBlob && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2"
+            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
           >
             <motion.div
               initial={{ scale: 0.9 }}
@@ -232,27 +278,38 @@ export default function OrderCheckout({ user }) {
             >
               <div className="flex justify-between items-center mb-3">
                 <h3 className="font-bold">
-                  {showFinal ? "Final Receipt (PAID)" : "Invoice Preview (UNPAID)"}
+                  {receiptMode === "preview"
+                    ? "Invoice Preview (UNPAID)"
+                    : "Final Receipt (PAID)"}
                 </h3>
                 <button
-                  onClick={() => {
-                    setShowPreview(false);
-                    setShowFinal(false);
-                  }}
+                  onClick={() => setShowReceiptModal(false)}
+                  className="text-xl font-bold"
                 >
                   ✕
                 </button>
               </div>
+
+              {/* Display PDF */}
               <iframe
                 src={URL.createObjectURL(receiptBlob)}
                 className="w-full flex-1 border rounded"
                 title="Invoice"
               />
+
+              {/* Payment Instructions */}
+              {receiptMode === "preview" && (
+                <div className="mt-3 p-3 bg-gray-100 rounded">
+                  <h4 className="font-semibold">Payment Instructions</h4>
+                  <p>Bank: {STORE_ACCOUNT.bankName}</p>
+                  <p>Account Name: {STORE_ACCOUNT.accountName}</p>
+                  <p>Account Number: {STORE_ACCOUNT.accountNumber}</p>
+                </div>
+              )}
+
               <div className="flex justify-end mt-4">
                 <button
-                  onClick={() =>
-                    downloadReceipt(showFinal ? "Receipt_PAID.pdf" : "Invoice_UNPAID.pdf")
-                  }
+                  onClick={handleDownloadReceipt}
                   className="px-5 py-2 bg-indigo-600 text-white rounded-xl"
                 >
                   Download
@@ -262,6 +319,8 @@ export default function OrderCheckout({ user }) {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
-}
+};
+
+export default StaffOrders;
