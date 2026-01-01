@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import axiosInstance from "../../../utils/axiosInstance";
 import StaffTable from "./StaffTable";
 import StaffSkeleton from "./StaffSkeleton";
+import StaffReceiptPromptModal from "./StaffReceiptPromptModal";
 
 // Replace with your real store account details
 const STORE_ACCOUNT = {
@@ -260,65 +261,14 @@ const StaffOrders = () => {
           Grand Total: ₦{grandTotal.toLocaleString()}
         </div>
       </motion.div>
-
-      {/* Receipt Modal */}
-      <AnimatePresence>
-        {showReceiptModal && receiptBlob && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              className="bg-white rounded-2xl w-full md:w-[80%] h-[85vh] p-4 flex flex-col"
-            >
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-bold">
-                  {receiptMode === "preview"
-                    ? "Invoice Preview (UNPAID)"
-                    : "Final Receipt (PAID)"}
-                </h3>
-                <button
-                  onClick={() => setShowReceiptModal(false)}
-                  className="text-xl font-bold"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Display PDF */}
-              <iframe
-                src={URL.createObjectURL(receiptBlob)}
-                className="w-full flex-1 border rounded"
-                title="Invoice"
-              />
-
-              {/* Payment Instructions */}
-              {receiptMode === "preview" && (
-                <div className="mt-3 p-3 bg-gray-100 rounded">
-                  <h4 className="font-semibold">Payment Instructions</h4>
-                  <p>Bank: {STORE_ACCOUNT.bankName}</p>
-                  <p>Account Name: {STORE_ACCOUNT.accountName}</p>
-                  <p>Account Number: {STORE_ACCOUNT.accountNumber}</p>
-                </div>
-              )}
-
-              <div className="flex justify-end mt-4">
-                <button
-                  onClick={handleDownloadReceipt}
-                  className="px-5 py-2 bg-indigo-600 text-white rounded-xl"
-                >
-                  Download
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <StaffReceiptPromptModal
+        show={showReceiptModal}
+        onClose={() => setShowReceiptModal(false)}
+        receiptBlob={receiptBlob}
+        receiptMode={receiptMode}
+        onDownload={handleDownloadReceipt}
+        storeAccount={STORE_ACCOUNT}
+      />
     </>
   );
 };

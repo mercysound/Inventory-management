@@ -7,8 +7,7 @@ orders,
 loading,
 onIncreaseQty,
 onReduceQty,
-handleDeleteOrder,
-onPreviewInvoice,
+onRemoveOrder
 }) => {
 if (loading) {
 return <div className="p-6 text-center text-gray-500">Loading orders...</div>;
@@ -47,7 +46,6 @@ return (
 <button onClick={() => onReduceQty(o._id)} className="p-2 bg-yellow-500 text-white rounded-full"><FaMinus /></button>
 <button onClick={() => onIncreaseQty(o._id)} className="p-2 bg-green-500 text-white rounded-full"><FaPlus /></button>
 <button onClick={() => onRemoveOrder(o._id)} className="p-2 bg-red-600 text-white rounded-full"><FaTrash /></button>
-<button onClick={onPreviewInvoice} className="p-2 bg-indigo-600 text-white rounded-full"><FaFileInvoice /></button>
 </td>
 </tr>
 ))}

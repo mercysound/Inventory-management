@@ -1,4 +1,3 @@
-// frontend/src/components/orders/CustomerSkeleton.jsx
 import React from "react";
 
 const StaffSkeleton = () => {
