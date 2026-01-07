@@ -305,40 +305,54 @@ const generateInvoice = async (req, res) => {
     ====================================================== */
 
     if (mode === "final") {
-  let HistoryModel
-    if(historyReceipt){
-      HistoryModel = CompletedOrderHistoryModel
-    }else{
-    HistoryModel = orderSource === "staff"
-      ? CompletedOrderHistoryModel
-      : AllOrdersPlacedModel;
+      let HistoryModel;
+
+      if (historyReceipt) {
+        HistoryModel = CompletedOrderHistoryModel
+      } else {
+        HistoryModel = orderSource === "staff"
+          ? CompletedOrderHistoryModel
+          : AllOrdersPlacedModel;
+      };
+
+
+      let order;
+
+      const query = orderId
+        ? { _id: orderId }
+        : { userOrdering: req.user._id };
+// (if) for the history receipt method and (else) for the recent order receipt
+      if (historyReceipt) {
+        order = await HistoryModel.findOne(query)
+          .populate({
+            path: "productList.productId",
+            populate: { path: "categoryId", select: "name" },
+          });
+      } else {
+        order = await HistoryModel.findOne(query)
+          .populate({
+            path: "productList.productId",
+            populate: { path: "categoryId", select: "name" },
+          })
+          .sort({ createdAt: -1 });
+      }
+
+
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      orders = order.productList.map((i) => ({
+        product: {
+          name: i.productId?.name,
+          description: i.productId?.description,
+          categoryName: i.productId?.categoryId?.name,
+        },
+        quantity: i.quantity,
+        price: i.price,
+        totalPrice: i.totalPrice,
+      }));
     }
-
-  const query = orderId
-    ? { _id: orderId }
-    : { userOrdering: req.user._id };
-
-  const order = await HistoryModel.findOne(query)
-    .populate({
-      path: "productList.productId",
-      populate: { path: "categoryId", select: "name" },
-    });
-
-  if (!order) {
-    return res.status(404).json({ message: "Order not found" });
-  }
-
-  orders = order.productList.map((i) => ({
-    product: {
-      name: i.productId?.name,
-      description: i.productId?.description,
-      categoryName: i.productId?.categoryId?.name,
-    },
-    quantity: i.quantity,
-    price: i.price,
-    totalPrice: i.totalPrice,
-  }));
-} 
 
     if (!orders.length) {
       return res.status(404).json({ message: "No orders found" });
