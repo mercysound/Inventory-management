@@ -260,30 +260,35 @@ const completeOrder = async (req, res) => {
 /* generateInvoice - produce a PDF invoice for current user's active orders. */
 const generateInvoice = async (req, res) => {
   try {
-    // const {
-    //   customerName = "Guest Customer",
-    //   paymentMethod = "Not Paid Yet",
-    //   mode = "preview", // preview | final
-    // } = req.query;
-    const customerName = req.query.customerName || "Guest Customer";
-    const paymentMethod = req.query.paymentMethod || "Not Specified";
-    const mode = req.query.mode
+    const {
+      customerName = "Guest Customer",
+      paymentMethod = "Not Specified",
+      mode = "preview",          // preview | final
+      orderSource = "online",    // online | staff
+      orderId,
+      historyReceipt
+    } = req.query;
+
     const paymentStatus = mode === "final" ? "Paid" : "Unpaid";
 
     let orders = [];
 
-    /**
-     * 1️⃣ Try active cart orders first (PREVIEW)
-     */
-    const activeOrders = await OrderModel.find({
-      userOrdering: req.user._id,
-    }).populate({
-      path: "product",
-      populate: { path: "categoryId", select: "name" },
-    });
+    /* ======================================================
+       1️⃣ PREVIEW → ALWAYS FROM CART
+    ====================================================== */
+    if (mode === "preview") {
+      const activeOrders = await OrderModel.find({
+        userOrdering: req.user._id,
+      }).populate({
+        path: "product",
+        populate: { path: "categoryId", select: "name" },
+      });
 
-    if (activeOrders.length) {
-      orders = activeOrders.map(o => ({
+      if (!activeOrders.length) {
+        return res.status(404).json({ message: "No active orders to preview" });
+      }
+
+      orders = activeOrders.map((o) => ({
         product: {
           name: o.product?.name,
           description: o.product?.description,
@@ -293,79 +298,90 @@ const generateInvoice = async (req, res) => {
         price: o.price,
         totalPrice: o.quantity * o.price,
       }));
-    } else {
-      /**
-       * 2️⃣ Fallback → last completed order (FINAL)
-       */
-      const historyModel =
-        mode === "final"
-          ? CompletedOrderHistoryModel
-          : AllOrdersPlacedModel;
-
-      const lastOrder = await historyModel
-        .findOne({ userOrdering: req.user._id })
-        .populate({
-          path: "productList.productId",
-          populate: { path: "categoryId", select: "name" },
-        })
-        .sort({ createdAt: -1 });
-
-      if (!lastOrder) {
-        return res.status(404).json({ message: "No orders found" });
-      }
-
-      orders = lastOrder.productList.map(i => ({
-        product: {
-          name: i.productId?.name,
-          description: i.productId?.description,
-          categoryName: i.productId?.categoryId?.name,
-        },
-        quantity: i.quantity,
-        price: i.price,
-        totalPrice: i.totalPrice,
-      }));
     }
+
+    /* ======================================================
+       2️⃣ FINAL → FROM CORRECT HISTORY MODEL
+    ====================================================== */
+
+    if (mode === "final") {
+  let HistoryModel
+    if(historyReceipt){
+      HistoryModel = CompletedOrderHistoryModel
+    }else{
+    HistoryModel = orderSource === "staff"
+      ? CompletedOrderHistoryModel
+      : AllOrdersPlacedModel;
+    }
+
+  const query = orderId
+    ? { _id: orderId }
+    : { userOrdering: req.user._id };
+
+  const order = await HistoryModel.findOne(query)
+    .populate({
+      path: "productList.productId",
+      populate: { path: "categoryId", select: "name" },
+    });
+
+  if (!order) {
+    return res.status(404).json({ message: "Order not found" });
+  }
+
+  orders = order.productList.map((i) => ({
+    product: {
+      name: i.productId?.name,
+      description: i.productId?.description,
+      categoryName: i.productId?.categoryId?.name,
+    },
+    quantity: i.quantity,
+    price: i.price,
+    totalPrice: i.totalPrice,
+  }));
+} 
 
     if (!orders.length) {
       return res.status(404).json({ message: "No orders found" });
     }
 
+    /* ======================================================
+       3️⃣ TOTAL
+    ====================================================== */
     const totalAmount = orders.reduce(
       (sum, o) => sum + o.totalPrice,
       0
     );
 
-    // ================= PDF SETUP =================
+    /* ======================================================
+       4️⃣ PDF GENERATION (UNCHANGED – YOUR UI IS GOOD)
+    ====================================================== */
     const doc = new PDFDocument({ margin: 40 });
+
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "inline; filename=invoice.pdf");
     doc.pipe(res);
 
-    // ================= HEADER =================
     doc.fontSize(20).fillColor("#1E3A8A").text("MELECH STORE", {
       align: "center",
     });
     doc.fontSize(12).fillColor("#000").text("Sales Invoice", {
       align: "center",
     });
-    doc.moveDown(1);
 
-    // ================= CUSTOMER INFO =================
-    doc.fontSize(11).fillColor("#000");
+    doc.moveDown();
     doc.text(`Customer: ${customerName}`);
     doc.text(`Payment Method: ${paymentMethod}`);
     doc.text(`Payment Status: ${paymentStatus}`);
     doc.text(`Date: ${new Date().toLocaleString()}`);
-    doc.moveDown(1);
+    doc.moveDown();
 
-    // ================= PAYMENT INSTRUCTIONS (UNPAID ONLY) =================
     if (paymentStatus === "Unpaid") {
       doc.font("Helvetica-Bold").text("Payment Instructions");
       doc.font("Helvetica");
       doc.text(`Bank: ${STORE_ACCOUNT.bankName}`);
       doc.text(`Account Name: ${STORE_ACCOUNT.accountName}`);
       doc.text(`Account Number: ${STORE_ACCOUNT.accountNumber}`);
-      doc.moveDown(1);
+      doc.moveDown();
     }
 
     // ================= TABLE LAYOUT =================

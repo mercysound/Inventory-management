@@ -1,12 +1,11 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "react-toastify";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import axiosInstance from "../../../utils/axiosInstance";
 import StaffTable from "./StaffTable";
 import StaffSkeleton from "./StaffSkeleton";
-import StaffReceiptPromptModal from "./StaffReceiptPromptModal";
+import ReceiptModal from "../../share-component/receipt/ReceiptModal";
 
-// Replace with your real store account details
 const STORE_ACCOUNT = {
   bankName: "MELECH BANK",
   accountName: "MELECH STORE",
@@ -25,9 +24,8 @@ const StaffOrders = () => {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptBlob, setReceiptBlob] = useState(null);
   const [receiptMode, setReceiptMode] = useState("preview"); // preview | final
-  const [completedOrderId, setCompletedOrderId] = useState(null);
 
-  // Fetch active orders
+  // ==================== FETCH ORDERS ====================
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
@@ -68,7 +66,6 @@ const StaffOrders = () => {
   };
 
   const handleDeleteOrder = async (orderId) => {
-    alert("work")
     if (!window.confirm("Delete this item?")) return;
     try {
       await axiosInstance.delete(`/orders/remove/${orderId}`);
@@ -136,7 +133,6 @@ const StaffOrders = () => {
 
       if (res.data.success) {
         toast.success("Order completed successfully");
-        setCompletedOrderId(res.data.orderId);
 
         // Fetch final receipt
         const query = new URLSearchParams({
@@ -146,10 +142,10 @@ const StaffOrders = () => {
           paymentMethod,
         }).toString();
 
-        const invoiceRes = await axiosInstance.get(
-          `/orders/invoice?${query}`,
-          { responseType: "blob" }
-        );
+        const invoiceRes = await axiosInstance.get(`/orders/invoice?${query}`, {
+          responseType: "blob",
+        });
+
         setReceiptBlob(invoiceRes.data);
         setReceiptMode("final");
         setShowReceiptModal(true);
@@ -177,8 +173,27 @@ const StaffOrders = () => {
         ? `Invoice_UNPAID_${customerName || "Walk-in"}.pdf`
         : `Receipt_PAID_${customerName || "Walk-in"}.pdf`;
     link.click();
-    setShowReceiptModal(false);
+
+    // Close modal & cleanup
+    handleCloseReceiptModal();
   };
+
+  // ==================== CLOSE MODAL ====================
+  const handleCloseReceiptModal = () => {
+    setShowReceiptModal(false);
+
+    if (receiptBlob) {
+      URL.revokeObjectURL(URL.createObjectURL(receiptBlob));
+      setReceiptBlob(null);
+    }
+  };
+
+  // ==================== CLEANUP ON UNMOUNT ====================
+  useEffect(() => {
+    return () => {
+      if (receiptBlob) URL.revokeObjectURL(URL.createObjectURL(receiptBlob));
+    };
+  }, [receiptBlob]);
 
   return (
     <>
@@ -249,25 +264,30 @@ const StaffOrders = () => {
             ))}
           </div>
         ) : (
-          <StaffTable
-            orders={orders}
-            onIncreaseQty={handleIncreaseQty}
-            onReduceQty={handleReduceQty}
-            onRemoveOrder={handleDeleteOrder}
-          />
+          <div className="overflow-x-auto">
+            <StaffTable
+              orders={orders}
+              onIncreaseQty={handleIncreaseQty}
+              onReduceQty={handleReduceQty}
+              onRemoveOrder={handleDeleteOrder}
+            />
+          </div>
         )}
 
         <div className="mt-4 text-right font-semibold text-lg">
           Grand Total: ₦{grandTotal.toLocaleString()}
         </div>
       </motion.div>
-      <StaffReceiptPromptModal
-        show={showReceiptModal}
-        onClose={() => setShowReceiptModal(false)}
-        receiptBlob={receiptBlob}
-        receiptMode={receiptMode}
-        onDownload={handleDownloadReceipt}
+
+      {/* ==================== RECEIPT MODAL ==================== */}
+      <ReceiptModal
+        open={showReceiptModal}
+        onClose={handleCloseReceiptModal}
+        blob={receiptBlob}
+        mode={receiptMode}
+        role="staff"
         storeAccount={STORE_ACCOUNT}
+        onDownload={handleDownloadReceipt}
       />
     </>
   );

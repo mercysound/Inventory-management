@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FaTrashAlt } from "react-icons/fa";
 
-const SharedOrderTable = ({ orders, role, onDelete, onClearAll }) => {
+const SharedOrderTable = ({ orders, role, onDelete, onClearAll, onViewReceipt }) => {
   const [searchDate, setSearchDate] = useState("");
   const [searchRole, setSearchRole] = useState("");
   const [allOrders, setAllOrders] = useState([]);
@@ -9,8 +9,6 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll }) => {
   useEffect(() => {
     setAllOrders(orders);
   }, [orders]);
-
-
 
   if (!orders.length)
     return (
@@ -26,10 +24,6 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll }) => {
 
   // Filter orders
   const filteredOrders = allOrders.filter((order) => {
-    const buyerName = order.buyerName?.toLowerCase() || "";
-    const userName = order.userOrdering?.name?.toLowerCase() || "";
-    const userRole = order.userOrdering?.role?.toLowerCase() || "";
-
     const roleMatch = searchRole ? order.userOrdering?.role === searchRole : true;
     const dateMatch = searchDate
       ? new Date(order.createdAt).toISOString().slice(0, 10) === searchDate
@@ -37,9 +31,6 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll }) => {
 
     return roleMatch && dateMatch;
   });
-
-  console.log(orders)
-
 
   return (
     <div>
@@ -77,7 +68,8 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll }) => {
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-lg shadow-md border">
+      {/* Desktop Table */}
+      <div className="overflow-x-auto rounded-lg shadow-md border hidden md:block">
         <table className="min-w-full text-left border-collapse">
           <thead className="bg-gray-200 text-gray-700 uppercase text-sm">
             <tr>
@@ -109,7 +101,6 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll }) => {
                       : "Unknown User"}
                   </td>
                 )}
-                {/* Products with description */}
                 <td className="p-3 align-top">
                   <ul className="space-y-2">
                     {order.productList?.map((item, idx) => (
@@ -145,16 +136,23 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll }) => {
                       minute: "2-digit",
                     })}
                   </span>
-
                 </td>
                 {showActions && (
-                  <td className="p-3">
+                  <td className="p-3 flex gap-2">
                     <button
                       onClick={() => onDelete(order._id)}
                       className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded flex items-center gap-1"
                     >
                       <FaTrashAlt className="text-xs" /> Remove
                     </button>
+                    {onViewReceipt && (
+                      <button
+                        onClick={() => onViewReceipt(order._id, order)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
+                      >
+                        View Receipt
+                      </button>
+                    )}
                   </td>
                 )}
               </tr>
@@ -163,7 +161,7 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll }) => {
         </table>
       </div>
 
-      {/* Mobile cards */}
+      {/* Mobile Cards */}
       <div className="md:hidden mt-4 space-y-4">
         {filteredOrders.map((order, i) => (
           <div key={order._id} className="border border-gray-200 rounded-xl shadow-sm p-4 bg-white">
@@ -232,13 +230,21 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll }) => {
             </div>
 
             {showActions && (
-              <div className="mt-2">
+              <div className="mt-2 flex flex-col gap-2">
                 <button
                   onClick={() => onDelete(order._id)}
                   className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded flex items-center gap-1 w-full"
                 >
                   <FaTrashAlt className="text-xs" /> Remove
                 </button>
+                {onViewReceipt && (
+                  <button
+                    onClick={() => onViewReceipt(order._id, order)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded w-full"
+                  >
+                    View Receipt
+                  </button>
+                )}
               </div>
             )}
           </div>

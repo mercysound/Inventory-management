@@ -4,51 +4,50 @@ import axiosInstance from "../../../utils/axiosInstance";
 import CustomerOrderTable from "./CustomerOrderTable";
 import PaystackButton from "./PaystackButton";
 import { useAuth } from "../../../context/AuthContext";
-import CompletedOrdersModal from "./PendingOrdersModal";
 import PendingOrdersModal from "./PendingOrdersModal";
-import ReceiptPromptModal from "../../share-component/receipt-prompt-modal/ReceiptPromptModal";
+import ReceiptModal from "../../share-component/receipt/ReceiptModal";
 
 const CustomerOrderPortal = () => {
+  const { user } = useAuth();
+
   const [orders, setOrders] = useState([]);
   const [pendingOrders, setPendingOrders] = useState([]);
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
 
+  // ================= RECEIPT STATES =================
   const [showReceiptPrompt, setShowReceiptPrompt] = useState(false);
+  const [receiptBlob, setReceiptBlob] = useState(null);
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState("");
 
-  // ✅ Fetch both orders and pending/in-transit history
+  // ================= FETCH ORDERS =================
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
 
-      // 1️⃣ Fetch active (cart) orders
       const orderRes = await axiosInstance.get("/orders");
-      const data = orderRes.data.orders || [];
+      const cartOrders = orderRes.data.orders || [];
 
-      const updatedOrders = data.map((o) => ({
+      const normalized = cartOrders.map((o) => ({
         ...o,
         total: o.total || o.quantity * o.price,
       }));
-      setOrders(updatedOrders);
 
-      // 2️⃣ Fetch user's completed history (delivered, pending, in transit)
+      setOrders(normalized);
+
       const historyRes = await axiosInstance.get("/placed-orders");
-      const allHistory = historyRes.data.orders || [];
+      const history = historyRes.data.orders || [];
 
-      // 3️⃣ Filter pending + in-transit only
-      const pendingFromHistory = allHistory.filter(
+      const pending = history.filter(
         (o) =>
           o.deliveryStatus?.toLowerCase() === "pending" ||
           o.deliveryStatus?.toLowerCase() === "in transit"
       );
 
-      setPendingOrders(pendingFromHistory);
-
-    } catch (error) {
-      console.error("Error fetching orders:", error);
-      toast.error("Failed to fetch your orders");
+      setPendingOrders(pending);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to fetch orders");
     } finally {
       setLoading(false);
     }
@@ -58,108 +57,64 @@ const CustomerOrderPortal = () => {
     fetchOrders();
   }, [fetchOrders]);
 
-  // ✅ Increase quantity
+  // ================= CART ACTIONS =================
   const handleIncreaseQty = async (orderId) => {
     try {
       const res = await axiosInstance.post(`/orders/increase/${orderId}`);
       if (res.data.success) fetchOrders();
-      else if (res.data.message?.toLowerCase().includes("stock"))
-        toast.warn("Not enough stock available");
-      else toast.error("Failed to increase quantity");
+      else toast.error(res.data.message);
     } catch {
       toast.error("Failed to increase quantity");
     }
   };
 
-  // ✅ Reduce quantity
   const handleReduceQty = async (orderId) => {
     const order = orders.find((o) => o._id === orderId);
     if (!order) return;
 
     if (order.quantity <= 1) {
-      await handleDeleteOrder(orderId);
+      handleDeleteOrder(orderId);
       return;
     }
 
     try {
       const res = await axiosInstance.post(`/orders/reduce/${orderId}`);
-      if (res.data.success) {
-        setOrders((prev) =>
-          prev.map((o) =>
-            o._id === orderId
-              ? { ...o, quantity: o.quantity - 1, total: (o.quantity - 1) * o.price }
-              : o
-          )
-        );
-      }
+      if (res.data.success) fetchOrders();
     } catch {
       toast.error("Failed to reduce quantity");
     }
   };
 
-  // ✅ Delete order
   const handleDeleteOrder = async (orderId) => {
     try {
       const res = await axiosInstance.delete(`/orders/remove/${orderId}`);
       if (res.data.success) {
         setOrders((prev) => prev.filter((o) => o._id !== orderId));
-        toast.success("Order removed");
+        toast.success("Item removed");
       }
     } catch {
-      toast.error("Failed to remove order");
+      toast.error("Failed to remove item");
     }
   };
 
-  // ✅ Calculate total
+  // ================= TOTAL =================
   const grandTotal = orders.reduce(
-    (acc, o) => acc + (o.total || o.quantity * o.price),
+    (sum, o) => sum + (o.total || o.quantity * o.price),
     0
   );
 
-  // ✅ Payment success logic
-  // const handlePaymentSuccess = async () => {
-  //   toast.success("Payment successful! Finalizing your order...");
-  //   try {
-  //     const res = await axiosInstance.post("/orders/payment", {
-  //       paymentMethod: "Paystack",
-  //       buyerName: user?.name || "Unknown",
-  //     });
+  // ================= PAYSTACK SUCCESS =================
+  const handlePaymentSuccess = async () => {
+    toast.success("Payment successful");
 
-  //     if (res.data.success) {
-  //       toast.success("Order confirmed and stock updated!");
-  //     }
-
-  //     // Auto download invoice
-  //     const query = new URLSearchParams({
-  //       format: "pdf",
-  //       customerName: user?.name || "Customer",
-  //       paymentMethod: "Paystack",
-  //     }).toString();
-
-  //     const invoiceRes = await axiosInstance.get(`/orders/invoice?${query}`, {
-  //       responseType: "blob",
-  //     });
-
-  //     const blob = new Blob([invoiceRes.data], { type: "application/pdf" });
-  //     const link = document.createElement("a");
-  //     link.href = URL.createObjectURL(blob);
-  //     link.download = `Invoice_${user?.name || "Customer"}.pdf`;
-  //     link.click();
-
-  //     // Clear cart after success
-  //     await axiosInstance.delete("/orders/clear");
-  //     setOrders([]);
-  //     toast.info("Your cart has been cleared.");
-  //     fetchOrders();
-  //   } catch (error) {
-  //     console.error(error);
-  //     toast.error("Error finalizing your payment.");
-  //   }
-  // };
-
-
-  const handleDownloadFinalReceipt = async () => {
     try {
+      // 1️⃣ Complete order
+      await axiosInstance.post("/orders/complete", {
+        paymentMethod: "Paystack",
+        buyerName: user?.name || "Customer",
+      });
+
+      // 2️⃣ Fetch FINAL receipt (PDF)
       const query = new URLSearchParams({
         customerName: user?.name || "Customer",
         paymentMethod: "Paystack",
@@ -170,121 +125,115 @@ const CustomerOrderPortal = () => {
         responseType: "blob",
       });
 
-      const blob = new Blob([res.data], { type: "application/pdf" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = `Receipt_${user?.name || "Customer"}.pdf`;
-      link.click();
+      // ✅ store blob for download
+      setReceiptBlob(res.data);
 
-      setShowReceiptPrompt(false);
-    } catch {
-      toast.error("Failed to download receipt");
-    }
-  };
+      // ✅ create preview URL for iframe
+      const blobUrl = URL.createObjectURL(res.data);
+      setReceiptPreviewUrl(blobUrl);
 
-  // ✅ FINAL PAYSTACK SUCCESS HANDLER
-  const handlePaymentSuccess = async () => {
-    toast.success("Payment successful");
-
-    try {
-      await axiosInstance.post("/orders/complete", {
-        paymentMethod: "Paystack",
-        buyerName: user?.name || "Customer",
-      });
-
-      const query = new URLSearchParams({
-        customerName: user?.name || "Customer",
-        paymentMethod: "Paystack",
-        mode: "final",
-      }).toString();
-
-      // ✅ SHOW PREVIEW FIRST
-      setReceiptPreviewUrl(`/orders/invoice?${query}`);
+      // ✅ open modal
       setShowReceiptPrompt(true);
 
+      // clear UI
       setOrders([]);
       fetchOrders();
-
-    } catch {
+    } catch (err) {
+      console.error(err);
       toast.error("Order completion failed");
     }
   };
 
-  // ✅ Handle ESC to close modal
+  // ================= DOWNLOAD RECEIPT =================
+  const handleDownloadFinalReceipt = () => {
+    if (!receiptBlob) {
+      toast.error("Receipt not ready");
+      return;
+    }
+
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(receiptBlob);
+    link.download = `Receipt_${user?.name || "Customer"}.pdf`;
+    link.click();
+
+    // Close modal after download
+    handleCloseReceiptModal();
+  };
+
+  // ================= CLOSE MODAL =================
+  const handleCloseReceiptModal = () => {
+    setShowReceiptPrompt(false);
+    if (receiptPreviewUrl) URL.revokeObjectURL(receiptPreviewUrl);
+    setReceiptPreviewUrl("");
+    setReceiptBlob(null);
+  };
+
+
+  // ================= CLEANUP ON UNMOUNT =================
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape" && showPendingModal) {
-        setShowPendingModal(false);
-      }
+    return () => {
+      if (receiptPreviewUrl) URL.revokeObjectURL(receiptPreviewUrl);
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showPendingModal]);
+  }, [receiptPreviewUrl]);
+
 
   return (
     <div className="p-4 md:p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-semibold">My Orders</h2>
+      {/* ================= HEADER ================= */}
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-6">
+        <h2 className="text-2xl font-bold">My Orders</h2>
 
-        {/* ✅ Pending orders button */}
         <button
           onClick={() => setShowPendingModal(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow"
         >
           View Pending Orders ({pendingOrders.length})
         </button>
       </div>
 
+      {/* ================= ORDERS ================= */}
       {loading ? (
-        <p>Loading...</p>
+        <p className="text-gray-500">Loading orders...</p>
       ) : orders.length === 0 ? (
-        <p className="text-gray-500">You have no orders yet.</p>
+        <p className="text-gray-500">You have no orders.</p>
       ) : (
         <>
           <CustomerOrderTable
             orders={orders}
-            role={user?.role}
             onIncrease={handleIncreaseQty}
             onReduce={handleReduceQty}
             onDelete={handleDeleteOrder}
           />
 
-          <div className="flex justify-between items-center mt-6 border-t pt-4">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 border-t pt-4">
             <h3 className="text-lg font-semibold">
               Grand Total: ₦{grandTotal.toLocaleString()}
             </h3>
 
-            {user?.role === "customer" && grandTotal > 0 && (
-              // <PaystackButton
-              //   email={user.email}
-              //   amount={grandTotal*100}
-              //   name={user.name}
-              //   onSuccess={handlePaymentSuccess}
-              // />
-              <PaystackButton
-                email={user.email}
-                amount={grandTotal}
-                name={user.name}
-                reference={`order_${Date.now()}`}
-                onSuccess={handlePaymentSuccess}
-                onCancel={() => alert("Payment canceled")}
-              />
-            )}
+            <PaystackButton
+              email={user.email}
+              amount={grandTotal}
+              name={user.name}
+              reference={`order_${Date.now()}`}
+              onSuccess={handlePaymentSuccess}
+              onCancel={() => toast.info("Payment cancelled")}
+            />
           </div>
         </>
       )}
 
-      {/* ✅ Modal for pending orders */}
+      {/* ================= MODALS ================= */}
       <PendingOrdersModal
         isOpen={showPendingModal}
         onClose={() => setShowPendingModal(false)}
         pendingOrders={pendingOrders}
       />
 
-      <ReceiptPromptModal
+      <ReceiptModal
         open={showReceiptPrompt}
+        onClose={handleCloseReceiptModal}
         previewUrl={receiptPreviewUrl}
-        onClose={() => setShowReceiptPrompt(false)}
+        role="customer"
         onDownload={handleDownloadFinalReceipt}
       />
     </div>
