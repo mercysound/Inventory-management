@@ -20,6 +20,7 @@ const ProductTable = ({ products, onEdit, onDelete, onAddClick }) => {
           <thead className="bg-gray-100 text-gray-700">
             <tr>
               <th className="border border-gray-200 p-2 text-left">S/N</th>
+              <th className="border border-gray-200 p-2 text-left">Image</th>
               <th className="border border-gray-200 p-2 text-left">Name</th>
               <th className="border border-gray-200 p-2 text-left">Category</th>
               <th className="border border-gray-200 p-2 text-left">Price</th>
@@ -36,6 +37,17 @@ const ProductTable = ({ products, onEdit, onDelete, onAddClick }) => {
                   className="hover:bg-gray-50 transition border-b"
                 >
                   <td className="p-2 border border-gray-200">{index + 1}</td>
+                  <td className="p-2 border border-gray-200">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded overflow-hidden mx-auto">
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    </div>
+                  </td>
+
                   <td className="p-2 border border-gray-200">{product.name}</td>
                   <td className="p-2 border border-gray-200">
                     {product.categoryId?.name || "N/A"}

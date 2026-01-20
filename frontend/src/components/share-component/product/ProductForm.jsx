@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+
 
 const ProductForm = ({
   open,
@@ -9,7 +10,10 @@ const ProductForm = ({
   suppliers,
   onSubmit,
   onClose,
+  setImage
 }) => {
+   const [loading, setLoading] = useState(false);
+
   const handleChange = (e) =>
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
@@ -97,17 +101,51 @@ const ProductForm = ({
             ))}
           </select>
 
-          <div className="flex space-x-2">
+          {/* Product Image */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">Product Image</label>
+
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setImage(e.target.files[0])}
+              className="border p-2 rounded text-sm"
+            />
+
+            {/* Preview (edit mode only) */}
+            {editProduct && (
+              <div className="w-24 h-24 rounded overflow-hidden border">
+                <img
+                  src={formData.image}
+                  alt="Preview"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+          </div>
+
+         <div className="flex space-x-2">
+            {/* ✅ Submit button disabled while loading */}
             <button
               type="submit"
-              className="w-full mt-2 rounded-md bg-green-500 text-white p-3 cursor-pointer hover:bg-green-600"
+              disabled={loading}
+              className={`w-full mt-2 rounded-md text-white p-3 cursor-pointer 
+                ${loading ? "bg-gray-400 cursor-not-allowed" : "bg-green-500 hover:bg-green-600"}`}
             >
-              {editProduct ? "Save Changes" : "Add Product"}
+              {loading
+                ? editProduct
+                  ? "Saving..."
+                  : "Adding..."
+                : editProduct
+                ? "Save Changes"
+                : "Add Product"}
             </button>
+
             <button
               type="button"
               className="w-full mt-2 rounded-md bg-red-500 text-white p-3 cursor-pointer hover:bg-red-600"
               onClick={onClose}
+              disabled={loading} // optional: prevent closing while saving
             >
               Cancel
             </button>

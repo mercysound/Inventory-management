@@ -1,40 +1,50 @@
 import SupplierModel from '../models/SupplierModel.js';
 import CategoryModel from '../models/CategoryModel.js';
 import ProductModel from '../models/ProductModel.js';
+import cloudinary from '../config/cloudinary.js';
 
 
 
 const getProducts = async (req, res) => {
   try {
-    const products = await ProductModel.find({ isDeleted: false }).populate('categoryId').populate('supplierId');
-
+    const products = await ProductModel
+      .find({ isDeleted: false })
+      .populate("categoryId")
+      .populate("supplierId");
 
     const suppliers = await SupplierModel.find();
     const categories = await CategoryModel.find();
-    // console.log(products);
-    return res.status(200).json({ success: true, suppliers, categories, products })
-  } catch (error) {
-    console.error('Error fetching suppliers:', error);
 
-    return res.status(500).json({ success: false, message: "Server error in suppliers" })
+    res.status(200).json({ success: true, suppliers, categories, products });
+  } catch (error) {
+    res.status(500).json({ success: false });
   }
-}
+};
+
 
 const addProduct = async (req, res) => {
   try {
     const { name, description, price, stock, categoryId, supplierId } = req.body;
-    // Create a new category
-    const newProduct = new ProductModel({
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "Image required" });
+    }
+
+    const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+      resource_type: "image",
+    });
+
+    const product = await ProductModel.create({
       name,
       description,
       price,
       stock,
       categoryId,
-      supplierId
+      supplierId,
+      image: uploadResult.secure_url,
     });
+    return res.status(201).json({ success: true, message: "Product added successfully", product });
 
-    await newProduct.save();
-    return res.status(201).json({ success: true, message: 'Product  added succesfully' }) // 201 = Created
   } catch (error) {
     console.error("Error adding Product", error);
     return res.status(500).json({ success: false, message: "server error" }) // 500 = Internal error
@@ -44,27 +54,42 @@ const addProduct = async (req, res) => {
 const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
+    const updateData = { ...req.body };
 
-    const { name, description, price, stock, categoryId, supplierId } = req.body;
-    // Update the product
-    const updateProduct = await ProductModel.findByIdAndUpdate(id, {
-      name,
-      description,
-      price,
-      stock,
-      categoryId,
-      supplierId
-    }, { new: true });
-    if (!updateProduct) {
-      return res.status(404).json({ success: false, message: 'Product not found' });
+    if (req.file) {
+      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+        resource_type: "image",
+      });
+      updateData.image = uploadResult.secure_url;
     }
 
-    return res.status(200).json({ success: true, message: 'Product updated successfully', product: updateProduct });
+
+    // 🚨 Prevent empty update
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ success: false, message: "No update data provided" });
+    }
+
+    const product = await ProductModel.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+
+    // 🚨 Product existence check
+    if (!product) {
+      return res.status(404).json({ success: false, message: "Product not found" });
+    }
+
+    return res.status(200).json({ success: true, message: "Product updated successfully", product });
+
   } catch (error) {
-    console.error('Error updating Product', error);
-    return res.status(500).json({ success: false, message: 'Server error' })
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
   }
-}
+};
 const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;

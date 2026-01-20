@@ -15,13 +15,15 @@ import orderRouter from "./routes/orderRoute.js";
 import dashboardRouter from "./routes/dashboardRoute.js";
 import allOrdersPlacedRoutes from "./routes/allOrdersPlacedRoutes.js";
 import completedOrderHistoryRoutes from "./routes/completedOrderHistoryRoutes.js";
+import cloudinary from "./config/cloudinary.js";
 
 
-  // const __filename = fileURLToPath(import.meta.url);
-  // const __dirname = path.dirname(__filename);
+// const __filename = fileURLToPath(import.meta.url);
+// const __dirname = path.dirname(__filename);
 
 const app = express();
 const port = process.env.PORT || 3000;
+
 
 // ✅ Dynamic origin detection (auto works in dev + production)
 const allowedOrigins = [
@@ -79,8 +81,14 @@ app.use("/api/completed-history", completedOrderHistoryRoutes);
 //   console.log(`Server running on http://localhost:${port}`);
 // });
 const IP = process.env.LOCAL_IP || "localhost";
-app.listen(port, "0.0.0.0", () => {
-  connectDB();
-  console.log(`✅ Server running on http://${IP}:${port}`);
-});
 
+app.listen(port, "0.0.0.0", async () => {
+  try {
+    await connectDB();
+
+    console.log(`✅ Server running on http://${IP}:${port}`);
+  } catch (error) {
+    console.error("❌ Server startup failed:", error);
+    process.exit(1);
+  }
+});

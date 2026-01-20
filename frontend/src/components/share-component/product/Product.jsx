@@ -14,6 +14,8 @@ const Product = () => {
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [loading, setLoading] = useState(false);
+  const [image, setImage] = useState(null);
+
 
   const [formData, setFormData] = useState({
     name: "",
@@ -102,11 +104,25 @@ const Product = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      const response = editProduct
-        ? await axiosInstance.put(`/products/${editProduct}`, formData)
-        : await axiosInstance.post("/products/add", formData);
 
+    try {
+      const data = new FormData();
+      Object.keys(formData).forEach(key => {
+        data.append(key, formData[key]);
+      });
+      if (image) data.append("image", image);
+
+      const url = editProduct ? `/products/${editProduct}` : "/products/add";
+
+      const response = await axiosInstance({
+        method: editProduct ? "put" : "post",
+        url,
+        data,
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      closeModal();
+      fetchProducts();
       if (response.data.success) {
         toast.success(editProduct ? "Product updated successfully!" : "Product added successfully!");
         closeModal();
@@ -185,6 +201,7 @@ const Product = () => {
           suppliers={suppliers}
           onSubmit={handleSubmit}
           onClose={closeModal}
+          setImage={setImage}
         />
       )}
     </div>
