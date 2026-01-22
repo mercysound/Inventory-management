@@ -111,6 +111,69 @@ const deleteProduct = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server error' })
   }
 }
+const getDeletedProducts = async (req, res) => {
+  try {
+    const deletedProducts = await ProductModel
+      .find({ isDeleted: true })
+      .populate("categoryId", "name")
+      .populate("supplierId");
 
-export { getProducts, addProduct, updateProduct, deleteProduct }
+    res.status(200).json({ success: true, products: deletedProducts });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+const restoreProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const product = await ProductModel.findById(id);
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: "Product not found" });
+    }
+
+    if (!product.isDeleted) {
+      return res.status(400).json({ success: false, message: "Product is not deleted" });
+    }
+
+    product.isDeleted = false;
+    await product.save();
+
+    return res.status(200).json({ success: true, message: "Product restored successfully", product });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+const deleteProductPermanent = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const product = await ProductModel.findById(id);
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: "Product not found" });
+    }
+
+    // Optional: delete from Cloudinary
+    if (product.image) {
+      const publicId = product.image.split("/").pop().split(".")[0]; // crude extraction
+      await cloudinary.uploader.destroy(publicId, { resource_type: "image" });
+    }
+
+    await ProductModel.findByIdAndDelete(id);
+
+    return res.status(200).json({ success: true, message: "Product permanently deleted" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+
+
+export { getProducts, addProduct, updateProduct, deleteProduct, getDeletedProducts, restoreProduct, deleteProductPermanent }
 

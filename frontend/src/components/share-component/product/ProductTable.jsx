@@ -1,18 +1,29 @@
 import React from "react";
 import { Pencil, Trash2, Plus } from "lucide-react";
 
-const ProductTable = ({ products, onEdit, onDelete, onAddClick }) => {
+const ProductTable = ({ products, onEdit, onDelete, onAddClick, onViewDeleted, }) => {
   return (
     <div className="w-full bg-white shadow-md rounded-lg overflow-hidden">
       <div className="flex justify-between items-center p-4 flex-col sm:flex-row gap-3">
         <h2 className="text-lg font-bold text-gray-800">Product List</h2>
-        <button
-          onClick={onAddClick}
-          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition"
-        >
-          <Plus size={18} /> Add Product
-        </button>
+
+        <div className="flex gap-2">
+          <button
+            onClick={onAddClick}
+            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition"
+          >
+            <Plus size={18} /> Add Product
+          </button>
+
+          <button
+            onClick={onViewDeleted}
+            className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition"
+          >
+            View Deleted Products
+          </button>
+        </div>
       </div>
+
 
       {/* Responsive Scrollable Table */}
       <div className="overflow-x-auto">

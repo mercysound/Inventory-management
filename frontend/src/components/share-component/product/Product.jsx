@@ -4,6 +4,7 @@ import ProductTable from "./ProductTable";
 import ProductForm from "./ProductForm";
 import ProductSkeleton from "./ProductSkeleton";
 import axiosInstance from "../../../utils/axiosInstance";
+import DeletedProductsPopup from "./DeletedProductsPopup";
 
 const Product = () => {
   const [openModal, setOpenModal] = useState(false);
@@ -15,7 +16,10 @@ const Product = () => {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [loading, setLoading] = useState(false);
   const [image, setImage] = useState(null);
-
+  // for the delete datat popupp
+  const [showDeletedPopup, setShowDeletedPopup] = useState(false);
+  const [deletedProducts, setDeletedProducts] = useState([]);
+  const [loadingDeleted, setLoadingDeleted] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -81,6 +85,7 @@ const Product = () => {
       stock: product.stock,
       categoryId: product.categoryId._id,
       supplierId: product.supplierId._id,
+      image: product.image,
     });
     setOpenModal(true);
   };
@@ -102,17 +107,23 @@ const Product = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
+  const handleSubmit = async () => {
     try {
       const data = new FormData();
-      Object.keys(formData).forEach(key => {
-        data.append(key, formData[key]);
-      });
-      if (image) data.append("image", image);
 
-      const url = editProduct ? `/products/${editProduct}` : "/products/add";
+      Object.keys(formData).forEach((key) => {
+        if (key !== "image") {
+          data.append(key, formData[key]);
+        }
+      });
+
+      if (image) {
+        data.append("image", image);
+      }
+
+      const url = editProduct
+        ? `/products/${editProduct}`
+        : "/products/add";
 
       const response = await axiosInstance({
         method: editProduct ? "put" : "post",
@@ -121,20 +132,23 @@ const Product = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      closeModal();
-      fetchProducts();
       if (response.data.success) {
-        toast.success(editProduct ? "Product updated successfully!" : "Product added successfully!");
+        toast.success(
+          editProduct
+            ? "Product updated successfully!"
+            : "Product added successfully!"
+        );
         closeModal();
         fetchProducts();
       } else {
-        toast.error("Something went wrong. Please try again.");
+        toast.error("Something went wrong.");
       }
     } catch (error) {
       console.error("Error saving product:", error);
-      toast.error("Error saving product. Please try again.");
+      toast.error("Error saving product.");
     }
   };
+
 
   const closeModal = () => {
     setOpenModal(false);
@@ -147,6 +161,59 @@ const Product = () => {
       categoryId: "",
       supplierId: "",
     });
+  };
+
+  // Fetch deleted products
+  const fetchDeletedProducts = async () => {
+    setLoadingDeleted(true);
+    try {
+      const res = await axiosInstance.get("/products/deleted");
+      if (res.data.success) setDeletedProducts(res.data.products);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to fetch deleted products");
+    } finally {
+      setLoadingDeleted(false);
+    }
+  };
+  
+
+  // Open popup
+  const handleViewDeleted = () => {
+    fetchDeletedProducts();
+    setShowDeletedPopup(true);
+  };
+
+  // Restore
+  const handleRestore = async (id) => {
+    try {
+      const response = await axiosInstance.put(`/products/restore/${id}`);
+      if (response.data.success) {
+        toast.success("Product restored!");
+        fetchProducts();
+        fetchDeletedProducts();
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to restore product");
+    }
+  };
+
+  // Permanent delete
+  const handlePermanentDelete = async (id) => {
+    const confirmDelete = confirm("Are you sure? This cannot be undone.");
+    if (!confirmDelete) return;
+
+    try {
+      const response = await axiosInstance.delete(`/products/permanent/${id}`);
+      if (response.data.success) {
+        toast.success("Product permanently deleted!");
+        fetchDeletedProducts();
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete product permanently");
+    }
   };
 
   return (
@@ -186,6 +253,7 @@ const Product = () => {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onAddClick={() => setOpenModal(true)}
+            onViewDeleted={handleViewDeleted} // for delete poppup
           />
         )}
       </div>
@@ -204,6 +272,16 @@ const Product = () => {
           setImage={setImage}
         />
       )}
+
+      <DeletedProductsPopup
+        open={showDeletedPopup}
+        onClose={() => setShowDeletedPopup(false)}
+        products={deletedProducts}
+        onRestore={handleRestore}
+        onPermanentDelete={handlePermanentDelete}
+        fetchDeletedProducts={fetchDeletedProducts}
+        loading={loadingDeleted}
+      />
     </div>
   );
 };
