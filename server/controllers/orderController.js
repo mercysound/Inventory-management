@@ -3,6 +3,7 @@ import OrderModel from "../models/OrderModel.js";
 import ProductModel from "../models/ProductModel.js";
 import AllOrdersPlacedModel from "../models/AllOrdersPlacedModel.js";
 import CompletedOrderHistoryModel from "../models/CompletedOrderHistoryModel.js";
+import { sendAdminOrderPlacedEmail } from "../utils/email/adminOrderPlaced.js";
 // import { STORE_ACCOUNT } from "../config/storeAccount.js";
 const STORE_ACCOUNT = {
   bankName: "XYZ Bank",
@@ -226,34 +227,42 @@ const completeOrder = async (req, res) => {
         paid: true,
         deliveryStatus: "Pending",
       });
-    } else {
-      placed = await CompletedOrderHistoryModel.create({
-        userOrdering: userId,
-        buyerName: buyerName || "Walk-in Customer",
-        paymentMethod,
+
+      await sendAdminOrderPlacedEmail({
+        adminEmail: process.env.ADMIN_EMAIL,
+        buyerName: buyerName || "Customer",
         totalPrice,
-        allQuantity,
-        productList,
-        paid: true,
-        deliveryStatus: "Completed",
+        orderId: placed._id,
       });
-    }
-
-    await OrderModel.deleteMany({ userOrdering: userId });
-
-    return res.json({
-      success: true,
-      message: "Order completed successfully",
-      orderId: placed._id,
-    });
-
-  } catch (error) {
-    console.error("completeOrder error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message,
+    
+  } else {
+    placed = await CompletedOrderHistoryModel.create({
+      userOrdering: userId,
+      buyerName: buyerName || "Walk-in Customer",
+      paymentMethod,
+      totalPrice,
+      allQuantity,
+      productList,
+      paid: true,
+      deliveryStatus: "Completed",
     });
   }
+
+  await OrderModel.deleteMany({ userOrdering: userId });
+
+  return res.json({
+    success: true,
+    message: "Order completed successfully",
+    orderId: placed._id,
+  });
+
+} catch (error) {
+  console.error("completeOrder error:", error);
+  res.status(500).json({
+    success: false,
+    message: error.message,
+  });
+}
 };
 
 
@@ -321,7 +330,7 @@ const generateInvoice = async (req, res) => {
       const query = orderId
         ? { _id: orderId }
         : { userOrdering: req.user._id };
-// (if) for the history receipt method and (else) for the recent order receipt
+      // (if) for the history receipt method and (else) for the recent order receipt
       if (historyReceipt) {
         order = await HistoryModel.findOne(query)
           .populate({

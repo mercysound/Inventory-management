@@ -1,5 +1,14 @@
 import AllOrdersPlacedModel from "../models/AllOrdersPlacedModel.js";
 import CompletedOrderHistoryModel from "../models/CompletedOrderHistoryModel.js";
+import { sendCustomerProcessingEmail } from "../utils/email/customerProcessing.js";
+import { sendCustomerDeliveredEmail } from "../utils/email/customerOrderDelivered.js";
+
+
+// emailHandlers object
+const emailHandlers = {
+  processing: sendCustomerProcessingEmail,
+  delivered: sendCustomerDeliveredEmail,
+};
 
 // ✅ Get all placed orders
 export const getAllPlacedOrders = async (req, res) => {
@@ -39,17 +48,33 @@ export const updateDeliveryStatus = async (req, res) => {
     const { deliveryStatus } = req.body;
 
     // Find the order first
-    const order = await AllOrdersPlacedModel.findById(id);
+    const order = await AllOrdersPlacedModel.findById(id)
+      .populate("userOrdering", "name email");
+
     if (!order)
       return res.status(404).json({ success: false, message: "Order not found" });
+
+    // ✅ Save previous status
+    const previousStatus = order.deliveryStatus;
 
     // Update status
     order.deliveryStatus = deliveryStatus;
     await order.save();
 
+    // 🔔 SEND EMAIL BASED ON STATUS CHANGE
+    if (
+      previousStatus !== deliveryStatus &&
+      emailHandlers[deliveryStatus.toLowerCase()]
+    ) {
+      await emailHandlers[deliveryStatus.toLowerCase()]({
+        customerEmail: order.userOrdering.email,
+        customerName: order.userOrdering.name,
+        orderId: order._id,
+      });
+    }
+
     // ✅ When delivered, move to CompletedOrderHistoryModel
-    if (deliveryStatus === "delivered") {
-      // Create a completed order record
+    if (deliveryStatus.toLowerCase() === "delivered") {
       await CompletedOrderHistoryModel.create({
         userOrdering: order.userOrdering?._id || order.userOrdering,
         buyerName: order.buyerName,
@@ -60,14 +85,14 @@ export const updateDeliveryStatus = async (req, res) => {
         productList: order.productList,
       });
 
-      // ✅ Then delete it from AllOrdersPlacedModel
+      // Then delete from active orders
       await AllOrdersPlacedModel.findByIdAndDelete(id);
     }
 
     res.json({
       success: true,
       message:
-        deliveryStatus === "delivered"
+        deliveryStatus.toLowerCase() === "delivered"
           ? "Order marked delivered and moved to history."
           : "Delivery status updated successfully.",
     });
@@ -78,6 +103,7 @@ export const updateDeliveryStatus = async (req, res) => {
       .json({ success: false, message: "Error updating delivery status" });
   }
 };
+
 
 // ✅ Clear all placed orders
 export const clearAllPlacedOrders = async (req, res) => {

@@ -21,7 +21,15 @@ const ProductForm = ({
     }
   }, [editProduct, formData]);
 
-  // Handle inputs
+  // ESC key listener
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [onClose]);
+
   const handleChange = (e) => {
     setFormData((prev) => ({
       ...prev,
@@ -29,7 +37,6 @@ const ProductForm = ({
     }));
   };
 
-  // Handle image change
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -41,9 +48,9 @@ const ProductForm = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
-      <div className="bg-white p-5 rounded-md shadow w-1/3 relative">
-        <h2 className="text-xl font-bold">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white p-5 rounded-md shadow w-full sm:w-3/4 md:w-1/2 lg:w-1/3 max-h-[90vh] overflow-y-auto relative">
+        <h2 className="text-xl font-bold mb-4">
           {editProduct ? "Edit Product" : "Add Product"}
         </h2>
 
@@ -58,23 +65,23 @@ const ProductForm = ({
         <form
           onSubmit={async (e) => {
             e.preventDefault();
-
-            if (loading) return; // prevent double submit
+            if (loading) return;
 
             setLoading(true);
             try {
-              await onSubmit(); // ✅ parent handles logic
+              await onSubmit();
             } finally {
               setLoading(false);
             }
           }}
+          className="flex flex-col gap-3"
         >
           <input
             name="name"
             value={formData.name}
             onChange={handleChange}
             placeholder="Product Name"
-            className="border p-2 rounded"
+            className="border p-2 rounded w-full"
             required
           />
 
@@ -83,7 +90,7 @@ const ProductForm = ({
             value={formData.description}
             onChange={handleChange}
             placeholder="Description"
-            className="border p-2 rounded"
+            className="border p-2 rounded w-full"
             required
           />
 
@@ -93,7 +100,7 @@ const ProductForm = ({
             value={formData.price}
             onChange={handleChange}
             placeholder="Price"
-            className="border p-2 rounded"
+            className="border p-2 rounded w-full"
             required
           />
 
@@ -103,7 +110,7 @@ const ProductForm = ({
             value={formData.stock}
             onChange={handleChange}
             placeholder="Stock"
-            className="border p-2 rounded"
+            className="border p-2 rounded w-full"
             required
           />
 
@@ -111,7 +118,7 @@ const ProductForm = ({
             name="categoryId"
             value={formData.categoryId}
             onChange={handleChange}
-            className="border p-2 rounded"
+            className="border p-2 rounded w-full"
             required
           >
             <option value="">Select Category</option>
@@ -126,7 +133,7 @@ const ProductForm = ({
             name="supplierId"
             value={formData.supplierId}
             onChange={handleChange}
-            className="border p-2 rounded"
+            className="border p-2 rounded w-full"
             required
           >
             <option value="">Select Supplier</option>
@@ -137,9 +144,9 @@ const ProductForm = ({
             ))}
           </select>
 
-          {/* IMAGE PREVIEW — ALWAYS AUTO LOAD */}
+          {/* IMAGE PREVIEW */}
           {preview && (
-            <div className="w-28 h-28 border rounded overflow-hidden">
+            <div className="w-24 h-24 sm:w-28 sm:h-28 border rounded overflow-hidden">
               <img
                 src={preview}
                 alt="Product preview"
@@ -155,29 +162,29 @@ const ProductForm = ({
             className="border p-2 rounded"
           />
 
-          <div className="flex gap-2">
+          {/* Buttons */}
+          <div className="flex flex-col sm:flex-row gap-2 mt-2">
             <button
               type="submit"
               disabled={loading}
-              className={`w-full p-3 rounded text-white ${loading
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-green-600 hover:bg-green-700"
-                }`}
+              className={`flex-1 p-3 rounded text-white ${
+                loading ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
+              }`}
             >
               {loading
                 ? editProduct
                   ? "Saving..."
                   : "Adding..."
                 : editProduct
-                  ? "Save Changes"
-                  : "Add Product"}
+                ? "Save Changes"
+                : "Add Product"}
             </button>
 
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="w-full p-3 rounded bg-red-500 text-white hover:bg-red-600"
+              className="flex-1 p-3 rounded bg-red-500 text-white hover:bg-red-600"
             >
               Cancel
             </button>

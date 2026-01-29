@@ -184,10 +184,23 @@ const CustomerProducts = () => {
                           />
                         </div>
                       </td>
-                      <td className="p-3 font-semibold text-gray-800 flex items-center gap-2">
-                        <Package size={16} className="text-green-500" />
-                        {product.name}
+                      <td className="p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-md overflow-hidden border md:hidden">
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+
+                          <div className="font-semibold text-gray-800 flex items-center gap-2">
+                            <Package size={16} className="text-green-500" />
+                            {product.name}
+                          </div>
+                        </div>
                       </td>
+
                       <td className="p-3 text-gray-700">{product.categoryId?.name}</td>
                       <td className="p-3 text-gray-700 font-medium">
                         ₦{product.price.toLocaleString()}
@@ -195,10 +208,10 @@ const CustomerProducts = () => {
                       <td className="p-3 text-center">
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-semibold ${product.stock === 0
-                              ? "bg-red-100 text-red-600"
-                              : product.stock < 5
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-green-100 text-green-700"
+                            ? "bg-red-100 text-red-600"
+                            : product.stock < 5
+                              ? "bg-yellow-100 text-yellow-700"
+                              : "bg-green-100 text-green-700"
                             }`}
                         >
                           {product.stock}
