@@ -228,41 +228,48 @@ const completeOrder = async (req, res) => {
         deliveryStatus: "Pending",
       });
 
-      await sendAdminOrderPlacedEmail({
-        adminEmail: process.env.ADMIN_EMAIL,
-        buyerName: buyerName || "Customer",
+      // Try to send email, but don't let it crash the API
+      try {
+        await sendAdminOrderPlacedEmail({
+          adminEmail: process.env.ADMIN_EMAIL,
+          buyerName: buyerName || "Customer",
+          totalPrice,
+          orderId: placed._id,
+        });
+        console.log("Admin email sent successfully");
+      } catch (emailErr) {
+        console.error("Failed to send admin email:", emailErr);
+        // Optionally notify yourself via console/Slack, but continue
+      }
+
+    } else {
+      placed = await CompletedOrderHistoryModel.create({
+        userOrdering: userId,
+        buyerName: buyerName || "Walk-in Customer",
+        paymentMethod,
         totalPrice,
-        orderId: placed._id,
+        allQuantity,
+        productList,
+        paid: true,
+        deliveryStatus: "Completed",
       });
-    
-  } else {
-    placed = await CompletedOrderHistoryModel.create({
-      userOrdering: userId,
-      buyerName: buyerName || "Walk-in Customer",
-      paymentMethod,
-      totalPrice,
-      allQuantity,
-      productList,
-      paid: true,
-      deliveryStatus: "Completed",
+    }
+
+    await OrderModel.deleteMany({ userOrdering: userId });
+
+    return res.json({
+      success: true,
+      message: "Order completed successfully",
+      orderId: placed._id,
+    });
+
+  } catch (error) {
+    console.error("completeOrder error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
-
-  await OrderModel.deleteMany({ userOrdering: userId });
-
-  return res.json({
-    success: true,
-    message: "Order completed successfully",
-    orderId: placed._id,
-  });
-
-} catch (error) {
-  console.error("completeOrder error:", error);
-  res.status(500).json({
-    success: false,
-    message: error.message,
-  });
-}
 };
 
 
@@ -491,8 +498,6 @@ const generateInvoice = async (req, res) => {
   }
 };
 
-
-
 /**
  * reduceOrder - decrease quantity
  */
@@ -515,6 +520,7 @@ const reduceOrder = async (req, res) => {
     return res.status(500).json({ success: false, message: "Error reducing order", error: error.message });
   }
 };
+
 const increaseOrderQuantity = async (req, res) => {
   try {
     const { orderId } = req.params;

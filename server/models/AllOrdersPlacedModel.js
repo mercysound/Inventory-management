@@ -10,7 +10,7 @@ const allOrdersPlacedSchema = new mongoose.Schema(
     },
     buyerName: { type: String },
     paymentMethod: { type: String },
-    deliveryStatus: { type: String, default: "Pending" },
+    deliveryStatus: { type: String, default: "pending" },
     totalPrice: { type: Number, required: true },
     allQuantity: { type: Number, required: true },
     productList: [

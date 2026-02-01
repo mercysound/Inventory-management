@@ -40,8 +40,6 @@ export const getAllPlacedOrders = async (req, res) => {
 
 
 // ✅ Update delivery status
-
-// ✅ Update delivery status
 export const updateDeliveryStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -66,11 +64,15 @@ export const updateDeliveryStatus = async (req, res) => {
       previousStatus !== deliveryStatus &&
       emailHandlers[deliveryStatus.toLowerCase()]
     ) {
-      await emailHandlers[deliveryStatus.toLowerCase()]({
-        customerEmail: order.userOrdering.email,
-        customerName: order.userOrdering.name,
-        orderId: order._id,
-      });
+      try {
+        await emailHandlers[deliveryStatus.toLowerCase()]({
+          customerEmail: order.userOrdering.email,
+          customerName: order.userOrdering.name,
+          orderId: order._id,
+        });
+      } catch (err) {
+        console.error("Email failed:", err.message);
+      }
     }
 
     // ✅ When delivered, move to CompletedOrderHistoryModel

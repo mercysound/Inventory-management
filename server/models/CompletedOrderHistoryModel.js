@@ -10,7 +10,7 @@ const completedOrderHistorySchema = new mongoose.Schema(
     },
     buyerName: String,
     paymentMethod: String,
-    deliveryStatus: { type: String, default: "Delivered" },
+    deliveryStatus: { type: String, default: "delivered" },
     totalPrice: { type: Number, required: true },
     allQuantity: { type: Number, required: true },
     productList: [

@@ -68,13 +68,12 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, updating }) => {
                 <td className="p-3">{order.paymentMethod}</td>
                 <td className="p-3">
                   <span
-                    className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      order.deliveryStatus === "pending"
+                    className={`px-2 py-1 rounded-full text-xs font-medium ${order.deliveryStatus === "pending"
                         ? "bg-yellow-100 text-yellow-800"
                         : order.deliveryStatus === "in transit"
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-green-100 text-green-700"
-                    }`}
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-green-100 text-green-700"
+                      }`}
                   >
                     {order.deliveryStatus}
                   </span>
@@ -99,7 +98,7 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, updating }) => {
                     className="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400"
                   >
                     <option value="pending">Pending</option>
-                    <option value="in transit">In Transit</option>
+                    <option value="processing">In Transit</option>
                     <option value="delivered">Delivered</option>
                   </select>
                 </td>
@@ -130,13 +129,12 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, updating }) => {
                 #{i + 1} — {order.buyerName}
               </h3>
               <span
-                className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  order.deliveryStatus === "pending"
+                className={`px-2 py-1 rounded-full text-xs font-medium ${order.deliveryStatus === "pending"
                     ? "bg-yellow-100 text-yellow-800"
                     : order.deliveryStatus === "in transit"
-                    ? "bg-blue-100 text-blue-700"
-                    : "bg-green-100 text-green-700"
-                }`}
+                      ? "bg-blue-100 text-blue-700"
+                      : "bg-green-100 text-green-700"
+                  }`}
               >
                 {order.deliveryStatus}
               </span>
@@ -198,7 +196,7 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, updating }) => {
                 className="border border-gray-300 rounded-lg px-2 py-1 text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-400"
               >
                 <option value="pending">Pending</option>
-                <option value="in transit">In Transit</option>
+                <option value="processing">In Transit</option>
                 <option value="delivered">Delivered</option>
               </select>
             </div>

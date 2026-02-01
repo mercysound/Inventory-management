@@ -1,4 +1,4 @@
-// import { transporter } from "./mailer.js";
+import { transporter } from "./mailer.js";
 
 export const sendAdminOrderPlacedEmail = async ({
   adminEmail,
