@@ -53,11 +53,32 @@ const optionalAuthMiddleware = async (req, res, next) => {
 };
 
 // ✅ NEW: admin-only middleware
-const adminOnly = (req, res, next) => {
-  if (!req.user || req.user.role !== "admin") {
-    return res.status(403).json({ success: false, message: "Access denied. Admins only." });
-  }
-  next();
+// const adminOnly = (req, res, next) => {
+//   if (!req.user || req.user.role !== "admin") {
+//     return res.status(403).json({ success: false, message: "Access denied. Admins only." });
+//   }
+//   next();
+// };
+// This part replace the admin-only middlware
+ const authorizeRoles = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Access denied",
+      });
+    }
+
+    next();
+  };
 };
 
-export { authMiddleware, optionalAuthMiddleware, adminOnly };
+
+export { authMiddleware, optionalAuthMiddleware, authorizeRoles };

@@ -4,7 +4,7 @@ import {
   deleteCompletedOrder,
   clearCompletedOrders,
 } from "../controllers/completedOrderHistoryController.js";
-import { authMiddleware, adminOnly } from "../middleware/authMiddleware.js";
+import { authMiddleware, authorizeRoles } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 

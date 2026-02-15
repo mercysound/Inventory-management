@@ -6,15 +6,21 @@ import {
   clearAllPlacedOrders,
   deletePlacedOrder,
 } from "../controllers/allOrdersPlacedController.js";
-import { authMiddleware, adminOnly } from "../middleware/authMiddleware.js";
+import { authMiddleware, authorizeRoles } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
 router.get("/", authMiddleware, getAllPlacedOrders);
-router.put("/:id/status", authMiddleware, adminOnly, updateDeliveryStatus);
-router.delete("/clear", authMiddleware, adminOnly, clearAllPlacedOrders);
+router.put("/:id/status", authMiddleware, authorizeRoles("admin"), updateDeliveryStatus);
+router.delete("/clear", authMiddleware, authorizeRoles("admin"), clearAllPlacedOrders);
 
 // ✅ Delete single order
-router.delete("/:id", authMiddleware, adminOnly, deletePlacedOrder);
+router.delete("/:id", authMiddleware, authorizeRoles("admin"), deletePlacedOrder);
+// router.get("/", authMiddleware, getAllPlacedOrders);
+// router.put("/:id/status", authMiddleware, adminOnly, updateDeliveryStatus);
+// router.delete("/clear", authMiddleware, adminOnly, clearAllPlacedOrders);
+
+// // ✅ Delete single order
+// router.delete("/:id", authMiddleware, adminOnly, deletePlacedOrder);
 
 export default router;

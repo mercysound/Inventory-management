@@ -15,9 +15,8 @@ const LandingPage = () => {
     password: "",
     address: "",
     phone: "",
-    role: "customer",
-    adminKey: "",
   });
+
 
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -104,8 +103,9 @@ const LandingPage = () => {
           phone: "",
           email: formData.email,
           password: formData.password,
-          role: "customer",
         });
+
+
       }
     } catch (error) {
       // Handle different error scenarios
@@ -265,37 +265,7 @@ const LandingPage = () => {
                 />
                 {errors.phone && <p className="error-text">{errors.phone}</p>}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Register As
-                </label>
-
-                <select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  className="input-field"
-                >
-                  <option value="customer">Customer</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
             </motion.div>
-          )}
-
-
-          {formData.role === "admin" && (
-            <div>
-              <input
-                type="password"
-                name="adminKey"
-                placeholder="Enter Admin Secret Key"
-                value={formData.adminKey}
-                onChange={handleChange}
-                className="input-field"
-                required
-              />
-            </div>
           )}
 
           <div>
