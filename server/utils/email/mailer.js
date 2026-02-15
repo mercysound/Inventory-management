@@ -8,11 +8,11 @@ export const transporter = nodemailer.createTransport({
   },
 });
 
-// ✅ ADD THIS RIGHT AFTER transporter is created
+// This Runs once when the server starts to Confirms Gmail login works. If it fails, you’ll know before sending any emails
 transporter.verify((err, success) => {
   if (err) {
     console.error("❌ SMTP error:", err.message);
   } else {
-    console.log("✅ SMTP is ready");
+    console.log("✅ SMTP is ready"); 
   }
 });

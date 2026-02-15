@@ -3,11 +3,28 @@ import bcrypt from 'bcrypt'
 
 const addUser = async (req, res) => {
   try {
-    const { name, address, phone, email, password, role } = req.body;
+    const { name, address, phone, email, password, role, adminKey } = req.body;
 
     const existingUser = await UserModel.findOne({ email });
     if (existingUser)
-      return res.status(400).json({ success: false, message: 'User already exists' });
+      return res.status(400).json({ success: false, message: "User already exists" });
+
+    let assignedRole = "customer"; // default
+
+    // 🔐 Secure Role Assignment
+    if (role === "admin") {
+      if (adminKey !== process.env.ADMIN_SECRET_KEY) {
+        return res.status(403).json({
+          success: false,
+          message: "Invalid admin authorization keys",
+        });
+      }
+      assignedRole = "admin";
+    }
+
+    if (role === "staff") {
+      assignedRole = "staff";
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -17,22 +34,24 @@ const addUser = async (req, res) => {
       phone,
       email,
       password: hashedPassword,
-      role,
-      profileCompleted: true,  // 🔥 IMPORTANT
+      role: assignedRole,
+      profileCompleted: true,
     });
 
     await newUser.save();
 
     return res.status(201).json({
       success: true,
-      message: "User added successfully",
+      message: "Account created successfully",
       user: newUser,
     });
+
   } catch (error) {
     console.error("Error adding user", error);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 
 const getUsers = async (req, res) => {

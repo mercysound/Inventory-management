@@ -16,6 +16,7 @@ const LandingPage = () => {
     address: "",
     phone: "",
     role: "customer",
+    adminKey: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -66,124 +67,124 @@ const LandingPage = () => {
 
   // Handle email/password submit
   const handleSubmit = async (e) => {
-  e.preventDefault(); // Prevent form default reload
-  // if (!validateForm()) return; // Optional: validate inputs
+    e.preventDefault(); // Prevent form default reload
+    // if (!validateForm()) return; // Optional: validate inputs
 
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    if (isLogin) {
-      const response = await axiosInstance.post("/auth/login", {
-        email: formData.email,
-        password: formData.password,
-      });
+    try {
+      if (isLogin) {
+        const response = await axiosInstance.post("/auth/login", {
+          email: formData.email,
+          password: formData.password,
+        });
 
+        const { success, message, user, token } = response.data;
+
+        if (success) {
+          await login(user, token); // Save to context/localStorage
+          toast.success("Login successful!");
+
+          // Redirect based on role
+          const role = user.role;
+          if (role === "admin") navigate("/admin-dashboard");
+          else if (role === "staff") navigate("/customer-dashboard");
+          else navigate("/user-dashboard");
+        } else {
+          toast.error(message || "Login failed");
+        }
+      } else {
+        // Signup
+        const response = await axiosInstance.post("/users/register", formData);
+        toast.success(response.data.message || "Signup successful!");
+        setIsLogin(true);
+        setFormData({
+          name: "",
+          address: "",
+          phone: "",
+          email: formData.email,
+          password: formData.password,
+          role: "customer",
+        });
+      }
+    } catch (error) {
+      // Handle different error scenarios
+      if (error.response) {
+        // Backend returned a response
+        toast.error(error.response.data?.message || "Login failed");
+      } else if (error.request) {
+        // Request made but no response received
+        toast.error("No response from server. Check your network.");
+      } else {
+        // Something else
+        toast.error("An unexpected error occurred.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // HANDLE GOOGLE LOGIN SUCCESS
+  // HANDLE GOOGLE LOGIN SUCCESS
+  const handleGoogleSuccess = async (credentialResponse) => {
+    // DEV: Log credentials for debugging only
+    // if (import.meta.env.DEV) {
+    //   console.log("Google credential received:", credentialResponse);
+    // }
+
+    setGoogleLoading(true);
+
+    try {
+      const tokenId = credentialResponse.credential;
+
+      // Send token to backend
+      const response = await axiosInstance.post("/auth/google-login", { tokenId });
       const { success, message, user, token } = response.data;
 
-      if (success) {
-        await login(user, token); // Save to context/localStorage
-        toast.success("Login successful!");
+      if (!success) {
+        // Show error toast
+        toast.error(message || "Google login failed");
+        if (import.meta.env.DEV) console.warn("Google login failed:", message);
+        return;
+      }
 
-        // Redirect based on role
-        const role = user.role;
+      // ✅ Login user in context / localStorage
+      await login(user, token);
+      toast.success("Google login successful!");
+
+      // 🔹 Redirect helpers
+      const redirectByRole = (role) => {
         if (role === "admin") navigate("/admin-dashboard");
         else if (role === "staff") navigate("/customer-dashboard");
         else navigate("/user-dashboard");
+      };
+
+      // 🔹 Check profile completion
+      if (!user.phone || !user.address) {
+        navigate("/complete-profile");
       } else {
-        toast.error(message || "Login failed");
+        redirectByRole(user.role);
       }
-    } else {
-      // Signup
-      const response = await axiosInstance.post("/users/register", formData);
-      toast.success(response.data.message || "Signup successful!");
-      setIsLogin(true);
-      setFormData({
-        name: "",
-        address: "",
-        phone: "",
-        email: formData.email,
-        password: formData.password,
-        role: "customer",
-      });
+
+    } catch (error) {
+      // Handle axios / network errors
+      if (error.response) {
+        // Backend responded with a status outside 2xx
+        toast.error(error.response.data?.message || "Google login failed");
+        if (import.meta.env.DEV) console.error("Response error:", error.response.data);
+      } else if (error.request) {
+        // No response from server
+        toast.error("No response from server. Check your network.");
+        if (import.meta.env.DEV) console.error("Request error:", error.request);
+      } else {
+        // Other unexpected errors
+        toast.error("An unexpected error occurred during Google login.");
+        if (import.meta.env.DEV) console.error("Unexpected error:", error.message);
+      }
+    } finally {
+      setGoogleLoading(false);
     }
-  } catch (error) {
-    // Handle different error scenarios
-    if (error.response) {
-      // Backend returned a response
-      toast.error(error.response.data?.message || "Login failed");
-    } else if (error.request) {
-      // Request made but no response received
-      toast.error("No response from server. Check your network.");
-    } else {
-      // Something else
-      toast.error("An unexpected error occurred.");
-    }
-  } finally {
-    setLoading(false);
-  }
-};
-
-  // HANDLE GOOGLE LOGIN SUCCESS
-  // HANDLE GOOGLE LOGIN SUCCESS
-const handleGoogleSuccess = async (credentialResponse) => {
-  // DEV: Log credentials for debugging only
-  // if (import.meta.env.DEV) {
-  //   console.log("Google credential received:", credentialResponse);
-  // }
-
-  setGoogleLoading(true);
-
-  try {
-    const tokenId = credentialResponse.credential;
-
-    // Send token to backend
-    const response = await axiosInstance.post("/auth/google-login", { tokenId });
-    const { success, message, user, token } = response.data;
-
-    if (!success) {
-      // Show error toast
-      toast.error(message || "Google login failed");
-      if (import.meta.env.DEV) console.warn("Google login failed:", message);
-      return;
-    }
-
-    // ✅ Login user in context / localStorage
-    await login(user, token);
-    toast.success("Google login successful!");
-
-    // 🔹 Redirect helpers
-    const redirectByRole = (role) => {
-      if (role === "admin") navigate("/admin-dashboard");
-      else if (role === "staff") navigate("/customer-dashboard");
-      else navigate("/user-dashboard");
-    };
-
-    // 🔹 Check profile completion
-    if (!user.phone || !user.address) {
-      navigate("/complete-profile");
-    } else {
-      redirectByRole(user.role);
-    }
-
-  } catch (error) {
-    // Handle axios / network errors
-    if (error.response) {
-      // Backend responded with a status outside 2xx
-      toast.error(error.response.data?.message || "Google login failed");
-      if (import.meta.env.DEV) console.error("Response error:", error.response.data);
-    } else if (error.request) {
-      // No response from server
-      toast.error("No response from server. Check your network.");
-      if (import.meta.env.DEV) console.error("Request error:", error.request);
-    } else {
-      // Other unexpected errors
-      toast.error("An unexpected error occurred during Google login.");
-      if (import.meta.env.DEV) console.error("Unexpected error:", error.message);
-    }
-  } finally {
-    setGoogleLoading(false);
-  }
-};
+  };
 
 
 
@@ -264,7 +265,37 @@ const handleGoogleSuccess = async (credentialResponse) => {
                 />
                 {errors.phone && <p className="error-text">{errors.phone}</p>}
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Register As
+                </label>
+
+                <select
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                  className="input-field"
+                >
+                  <option value="customer">Customer</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
             </motion.div>
+          )}
+
+
+          {formData.role === "admin" && (
+            <div>
+              <input
+                type="password"
+                name="adminKey"
+                placeholder="Enter Admin Secret Key"
+                value={formData.adminKey}
+                onChange={handleChange}
+                className="input-field"
+                required
+              />
+            </div>
           )}
 
           <div>

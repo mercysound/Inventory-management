@@ -1,32 +1,37 @@
-import bcrypt from 'bcrypt';
-import User from './models/UserModel.js';
-import connectDb from './db/connection.js';
+// seedAdmin.js
+import bcrypt from "bcrypt";
+import User from "./models/UserModel.js";
+import connectDb from "./db/connection.js";
 
-const register = async () =>{
+const seedAdmin = async () => {
   try {
-    const hashPassword = await bcrypt.hash("admin", 10);
-    const newUser = new User({
-      name: "admin",
-      email: "admin@gmail.com",
-      password: hashPassword,
-      address: "admin address",
-      role: "admin"
-    });
-    connectDb();
-    // const hashPassword = await bcrypt.hash("customer", 10);
-    // const newUser = new User({
-    //   name: "customer",
-    //   email: "customer@gmail.com",
-    //   password: hashPassword,
-    //   address: "admin address",
-    //   role: "customer"
-    // });
-    await newUser.save();
-    console.log("Admin user created Successfully");
-    
-  } catch (error) {
-    console.log(error);
-  }
-}
+    await connectDb();
 
-register()
+    const existingAdmin = await User.findOne({ role: "admin" });
+
+    if (existingAdmin) {
+      console.log("Admin already exists");
+      process.exit();
+    }
+
+    const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
+
+    const adminUser = new User({
+      name: "Admin",
+      email: process.env.ADMIN_EMAIL,
+      password: hashedPassword,
+      role: "admin",
+      address: "Head Office",
+    });
+
+    await adminUser.save();
+
+    console.log("✅ Admin created successfully");
+    process.exit();
+  } catch (error) {
+    console.error(error);
+    process.exit(1);
+  }
+};
+
+seedAdmin();
