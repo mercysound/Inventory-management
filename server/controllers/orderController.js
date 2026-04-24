@@ -4,6 +4,7 @@ import ProductModel from "../models/ProductModel.js";
 import AllOrdersPlacedModel from "../models/AllOrdersPlacedModel.js";
 import CompletedOrderHistoryModel from "../models/CompletedOrderHistoryModel.js";
 import { sendAdminOrderPlacedEmail } from "../utils/email/adminOrderPlaced.js";
+import mongoose from "mongoose";
 // import { STORE_ACCOUNT } from "../config/storeAccount.js";
 const STORE_ACCOUNT = {
   bankName: "XYZ Bank",
@@ -160,51 +161,51 @@ const getOrders = async (req, res) => {
  * completeOrder - saves payment and summary, marks paymentStatus as Paid
  */
 const completeOrder = async (req, res) => {
-  try {
-    const { paymentMethod, buyerName } = req.body;
-    const userId = req.user._id;
+  const { paymentMethod, buyerName } = req.body;
+  const userId = req.user._id;
 
-    if (!paymentMethod) {
-      return res.status(400).json({
-        success: false,
-        message: "Payment method required",
-      });
-    }
+  if (!paymentMethod) {
+    return res.status(400).json({
+      success: false,
+      message: "Payment method required",
+    });
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
 
     const orders = await OrderModel.find({ userOrdering: userId })
-      .populate("product");
+      .populate("product")
+      .session(session);
 
     if (!orders.length) {
-      return res.status(400).json({
-        success: false,
-        message: "No active orders",
-      });
+      throw new Error("No active orders");
     }
 
-    // ✅ Stock validation
     for (const o of orders) {
-      if (!o.product || o.product.stock < o.quantity) {
-        return res.status(400).json({
-          success: false,
-          message: `Insufficient stock for ${o.product?.name}`,
-        });
+
+      const updated = await ProductModel.findOneAndUpdate(
+        {
+          _id: o.product._id,
+          stock: { $gte: o.quantity }
+        },
+        { $inc: { stock: -o.quantity } },
+        { new: true, session }
+      );
+
+      if (!updated) {
+        throw new Error(`Insufficient stock for ${o.product.name}`);
       }
     }
 
-    // ✅ Reduce stock
-    for (const o of orders) {
-      o.product.stock -= o.quantity;
-      await o.product.save();
-    }
-
     const totalPrice = orders.reduce(
-      (sum, o) => sum + o.quantity * o.price,
-      0
+      (sum, o) => sum + o.quantity * o.price, 0
     );
 
     const allQuantity = orders.reduce(
-      (sum, o) => sum + o.quantity,
-      0
+      (sum, o) => sum + o.quantity, 0
     );
 
     const productList = orders.map(o => ({
@@ -217,7 +218,7 @@ const completeOrder = async (req, res) => {
     let placed;
 
     if (req.user.role === "customer") {
-      placed = await AllOrdersPlacedModel.create({
+      placed = await AllOrdersPlacedModel.create([{
         userOrdering: userId,
         buyerName: buyerName || "Customer",
         paymentMethod,
@@ -226,24 +227,9 @@ const completeOrder = async (req, res) => {
         productList,
         paid: true,
         deliveryStatus: "Pending",
-      });
-
-      // Try to send email, but don't let it crash the API
-      try {
-        await sendAdminOrderPlacedEmail({
-          adminEmail: process.env.ADMIN_EMAIL,
-          buyerName: buyerName || "Customer",
-          totalPrice,
-          orderId: placed._id,
-        });
-        console.log("Admin email sent successfully");
-      } catch (emailErr) {
-        console.error("Failed to send admin email:", emailErr);
-        // Optionally notify yourself via console/Slack, but continue
-      }
-
+      }], { session });
     } else {
-      placed = await CompletedOrderHistoryModel.create({
+      placed = await CompletedOrderHistoryModel.create([{
         userOrdering: userId,
         buyerName: buyerName || "Walk-in Customer",
         paymentMethod,
@@ -252,25 +238,36 @@ const completeOrder = async (req, res) => {
         productList,
         paid: true,
         deliveryStatus: "Completed",
-      });
+      }], { session });
     }
 
-    await OrderModel.deleteMany({ userOrdering: userId });
+    await OrderModel.deleteMany(
+      { userOrdering: userId },
+      { session }
+    );
+
+    await session.commitTransaction();
 
     return res.json({
       success: true,
       message: "Order completed successfully",
-      orderId: placed._id,
+      orderId: placed[0]._id,
     });
 
   } catch (error) {
-    console.error("completeOrder error:", error);
-    res.status(500).json({
+
+    await session.abortTransaction();
+
+    return res.status(400).json({
       success: false,
       message: error.message,
     });
+
+  } finally {
+    session.endSession();
   }
 };
+
 
 
 /* generateInvoice - produce a PDF invoice for current user's active orders. */
