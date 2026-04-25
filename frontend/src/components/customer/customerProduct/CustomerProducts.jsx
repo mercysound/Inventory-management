@@ -142,113 +142,174 @@ const CustomerProducts = () => {
         </div>
       </div>
 
-      {/* Product Table */}
+      {/* Product Display */}
       {loading ? (
         <CustomerProductsSkeleton />
       ) : (
-        <div className="overflow-x-auto bg-white shadow-lg rounded-xl border border-gray-100">
-          <table className="min-w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-100 text-gray-700">
-                <th className="p-3 text-sm text-left">S/N</th>
-                <th className="p-3 text-sm text-left hidden md:table-cell">Image</th>
-                <th className="p-3 text-sm text-left">Product</th>
-                <th className="p-3 text-sm text-left">Category</th>
-                <th className="p-3 text-sm text-left">Price</th>
-                <th className="p-3 text-sm text-center">Stock</th>
-                <th className="p-3 text-sm text-left">Description</th>
-                <th className="p-3 text-sm text-center">Action</th>
-              </tr>
-            </thead>
-
-            <AnimatePresence>
-              <tbody>
-                {filteredProducts.length > 0 ? (
-                  filteredProducts.map((product, index) => (
-                    <motion.tr
-                      key={product._id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.2 }}
-                      className="border-t border-gray-200 hover:bg-gray-50 transition-all"
-                    >
-                      <td className="p-3 text-sm">{index + 1}</td>
-                      <td className="p-3 hidden md:table-cell">
-                        <div className="w-16 h-16 rounded-lg overflow-hidden border">
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-md overflow-hidden border md:hidden">
+        <div className="bg-white shadow-lg rounded-xl border border-gray-100">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="min-w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-100 text-gray-700">
+                  <th className="p-4 text-sm text-left">S/N</th>
+                  <th className="p-4 text-sm text-left">Image</th>
+                  <th className="p-4 text-sm text-left">Product</th>
+                  <th className="p-4 text-sm text-left">Category</th>
+                  <th className="p-4 text-sm text-left">Price</th>
+                  <th className="p-4 text-sm text-center">Stock</th>
+                  <th className="p-4 text-sm text-left">Description</th>
+                  <th className="p-4 text-sm text-center">Action</th>
+                </tr>
+              </thead>
+              <AnimatePresence>
+                <tbody>
+                  {filteredProducts.length > 0 ? (
+                    filteredProducts.map((product, index) => (
+                      <motion.tr
+                        key={product._id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2 }}
+                        className="border-t border-gray-200 hover:bg-gray-50 transition-all"
+                      >
+                        <td className="p-4 text-sm">{index + 1}</td>
+                        <td className="p-4">
+                          <div className="w-16 h-16 rounded-lg overflow-hidden border">
                             <img
                               src={product.image}
                               alt={product.name}
                               className="w-full h-full object-cover"
+                              loading="lazy"
                             />
                           </div>
-
+                        </td>
+                        <td className="p-4">
                           <div className="font-semibold text-gray-800 flex items-center gap-2">
                             <Package size={16} className="text-green-500" />
                             {product.name}
                           </div>
-                        </div>
+                        </td>
+                        <td className="p-4 text-gray-700">{product.categoryId?.name}</td>
+                        <td className="p-4 text-gray-700 font-medium">
+                          ₦{product.price.toLocaleString()}
+                        </td>
+                        <td className="p-4 text-center">
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                              product.stock === 0
+                                ? "bg-red-100 text-red-600"
+                                : product.stock < 5
+                                  ? "bg-yellow-100 text-yellow-700"
+                                  : "bg-green-100 text-green-700"
+                            }`}
+                          >
+                            {product.stock}
+                          </span>
+                        </td>
+                        <td className="p-4 text-sm text-gray-600 max-w-xs truncate">
+                          {product.description}
+                        </td>
+                        <td className="p-4 text-center">
+                          {product.stock < 1 ? (
+                            <button className="px-3 py-1 bg-gray-500 text-white rounded-md cursor-not-allowed">
+                              Unavailable
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleOrderChange(product)}
+                              className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-all"
+                            >
+                              Order
+                            </button>
+                          )}
+                        </td>
+                      </motion.tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan="8"
+                        className="text-center text-gray-500 py-6 italic"
+                      >
+                        No products found
                       </td>
+                    </tr>
+                  )}
+                </tbody>
+              </AnimatePresence>
+            </table>
+          </div>
 
-                      <td className="p-3 text-gray-700">{product.categoryId?.name}</td>
-                      <td className="p-3 text-gray-700 font-medium">
-                        ₦{product.price.toLocaleString()}
-                      </td>
-                      <td className="p-3 text-center">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-semibold ${product.stock === 0
+          {/* Mobile Card View */}
+          <div className="md:hidden p-4 space-y-4">
+            <AnimatePresence>
+              {filteredProducts.length > 0 ? (
+                filteredProducts.map((product, index) => (
+                  <motion.div
+                    key={product._id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex gap-4 mb-3">
+                      <div className="w-20 h-20 rounded-lg overflow-hidden border flex-shrink-0">
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-lg text-gray-800 flex items-center gap-2 mb-1">
+                          <Package size={16} className="text-green-500" />
+                          {product.name}
+                        </h3>
+                        <p className="text-sm text-gray-600 mb-1">{product.categoryId?.name}</p>
+                        <p className="text-lg font-bold text-green-600">₦{product.price.toLocaleString()}</p>
+                      </div>
+                    </div>
+                    <div className="mb-3">
+                      <p className="text-sm text-gray-600 line-clamp-2">{product.description}</p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          product.stock === 0
                             ? "bg-red-100 text-red-600"
                             : product.stock < 5
                               ? "bg-yellow-100 text-yellow-700"
                               : "bg-green-100 text-green-700"
-                            }`}
+                        }`}
+                      >
+                        {product.stock} in stock
+                      </span>
+                      {product.stock < 1 ? (
+                        <button className="px-4 py-2 bg-gray-500 text-white rounded-md cursor-not-allowed text-sm">
+                          Unavailable
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleOrderChange(product)}
+                          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-all text-sm"
                         >
-                          {product.stock}
-                        </span>
-                      </td>
-                      <td className="p-3 text-sm text-gray-600 max-w-xs truncate">
-                        {product.description}
-                      </td>
-                      <td className="p-3 text-center">
-                        {product.stock < 1 ? (
-                          <button className="px-3 py-1 bg-gray-500 text-white rounded-md cursor-not-allowed">
-                            Unavailable
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleOrderChange(product)}
-                            className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-all"
-                          >
-                            Order
-                          </button>
-                        )}
-                      </td>
-                    </motion.tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan="7"
-                      className="text-center text-gray-500 py-6 italic"
-                    >
-                      No products found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
+                          Order Now
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                ))
+              ) : (
+                <div className="text-center text-gray-500 py-8 italic">
+                  No products found
+                </div>
+              )}
             </AnimatePresence>
-          </table>
+          </div>
         </div>
       )}
 

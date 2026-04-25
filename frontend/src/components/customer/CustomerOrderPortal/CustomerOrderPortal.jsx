@@ -41,7 +41,7 @@ const CustomerOrderPortal = () => {
       const pending = history.filter(
         (o) =>
           o.deliveryStatus?.toLowerCase() === "pending" ||
-          o.deliveryStatus?.toLowerCase() === "in transit"
+          o.deliveryStatus?.toLowerCase() === "processing"
       );
 
       setPendingOrders(pending);

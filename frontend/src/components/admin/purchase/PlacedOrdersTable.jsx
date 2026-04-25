@@ -46,11 +46,11 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, updating }) => {
                     {order.productList?.map((item, idx) => (
                       <li key={idx} className="flex flex-col">
                         <span className="font-semibold text-gray-800">
-                          {item?.productId?.name || "Unnamed"}{" "}
-                          <span className="text-gray-500 text-sm">
+                          {item?.productId?.name || "Unnamed"}
+                          <span className="text-gray-500 text-sm ml-1">
                             ({item?.productId?.categoryId?.name || "No Category"})
-                          </span>{" "}
-                          ×{item?.quantity || 1}
+                          </span>
+                          <span className="ml-1">×{item?.quantity || 1}</span>
                         </span>
                         {item?.productId?.description && (
                           <span className="text-gray-500 text-sm italic break-words">
@@ -70,7 +70,7 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, updating }) => {
                   <span
                     className={`px-2 py-1 rounded-full text-xs font-medium ${order.deliveryStatus === "pending"
                         ? "bg-yellow-100 text-yellow-800"
-                        : order.deliveryStatus === "in transit"
+                        : order.deliveryStatus === "processing"
                           ? "bg-blue-100 text-blue-700"
                           : "bg-green-100 text-green-700"
                       }`}
@@ -79,7 +79,7 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, updating }) => {
                   </span>
                 </td>
                 <td className="p-3 text-gray-600">
-                  {new Date(order.createdAt).toLocaleDateString()}{" "}
+                  <div>{new Date(order.createdAt).toLocaleDateString()}</div>
                   <span className="text-xs text-gray-400">
                     {new Date(order.createdAt).toLocaleTimeString([], {
                       hour: "2-digit",
@@ -142,8 +142,8 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, updating }) => {
 
             <div className="text-sm text-gray-700 space-y-1">
               <p>
-                <span className="font-semibold">User:</span>{" "}
-                {order.userOrdering?.role || "Unknown"}
+                <span className="font-semibold">User:</span>
+                <span className="ml-1">{order.userOrdering?.role || "Unknown"}</span>
               </p>
 
               <p className="font-semibold">Products:</p>
@@ -151,11 +151,11 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, updating }) => {
                 {order.productList?.map((item, idx) => (
                   <li key={idx} className="flex flex-col">
                     <span className="font-medium text-gray-800">
-                      {item?.productId?.name || "Unnamed"}{" "}
-                      <span className="text-gray-500 text-xs">
+                      {item?.productId?.name || "Unnamed"}
+                      <span className="text-gray-500 text-xs ml-1">
                         ({item?.productId?.categoryId?.name || "No Category"})
-                      </span>{" "}
-                      ×{item?.quantity || 1}
+                      </span>
+                      <span className="ml-1">×{item?.quantity || 1}</span>
                     </span>
                     {item?.productId?.description && (
                       <span className="text-gray-500 text-xs italic break-words">
@@ -167,15 +167,16 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, updating }) => {
               </ul>
 
               <p>
-                <span className="font-semibold">Payment:</span>{" "}
-                {order.paymentMethod}
+                <span className="font-semibold">Payment:</span>
+                <span className="ml-1">{order.paymentMethod}</span>
               </p>
               <p>
-                <span className="font-semibold">Total:</span> ₦
-                {order.totalPrice?.toLocaleString() || 0}
+                <span className="font-semibold">Total:</span>
+                <span className="ml-1">₦{order.totalPrice?.toLocaleString() || 0}</span>
               </p>
               <p className="text-xs text-gray-400">
-                {new Date(order.createdAt).toLocaleDateString()} •{" "}
+                {new Date(order.createdAt).toLocaleDateString()}
+                <span className="mx-1">•</span>
                 {new Date(order.createdAt).toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
@@ -196,7 +197,7 @@ const PlacedOrdersTable = ({ orders, updateDeliveryStatus, updating }) => {
                 className="border border-gray-300 rounded-lg px-2 py-1 text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-400"
               >
                 <option value="pending">Pending</option>
-                <option value="processing">In Transit</option>
+                <option value="processing">Processing</option>
                 <option value="delivered">Delivered</option>
               </select>
             </div>

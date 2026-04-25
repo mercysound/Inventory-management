@@ -3,8 +3,9 @@ import { Pencil, Trash2 } from "lucide-react";
 
 const CategoryTable = ({ categories, onEdit, onDelete }) => {
   return (
-    <div className="lg:w-2/3">
-      <div className="bg-white shadow-lg rounded-xl p-4 border border-gray-100 overflow-x-auto">
+    <div className="w-full lg:w-2/3">
+      {/* Desktop Table View */}
+      <div className="hidden md:block bg-white shadow-lg rounded-xl p-4 border border-gray-100 overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-gray-100 text-gray-700 text-left">
@@ -14,7 +15,6 @@ const CategoryTable = ({ categories, onEdit, onDelete }) => {
               <th className="p-3 text-sm font-semibold text-center">Action</th>
             </tr>
           </thead>
-
           <tbody>
             {categories.map((category, index) => (
               <tr
@@ -42,9 +42,46 @@ const CategoryTable = ({ categories, onEdit, onDelete }) => {
             ))}
           </tbody>
         </table>
-
         {categories.length === 0 && (
           <div className="text-center text-gray-500 py-6">No categories found.</div>
+        )}
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {categories.length === 0 ? (
+          <div className="text-center text-gray-500 py-6">No categories found.</div>
+        ) : (
+          categories.map((category, index) => (
+            <div
+              key={category._id}
+              className="bg-white shadow-lg rounded-xl p-4 border border-gray-100"
+            >
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h3 className="font-semibold text-lg text-gray-800">{category.name}</h3>
+                  <p className="text-sm text-gray-600 mt-1">{category.description}</p>
+                </div>
+                <span className="text-sm text-gray-400">#{index + 1}</span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => onEdit(category)}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-all"
+                >
+                  <Pencil size={16} />
+                  Edit
+                </button>
+                <button
+                  onClick={() => onDelete(category._id)}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-all"
+                >
+                  <Trash2 size={16} />
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))
         )}
       </div>
     </div>

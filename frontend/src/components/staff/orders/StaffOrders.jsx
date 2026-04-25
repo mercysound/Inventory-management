@@ -157,7 +157,6 @@ const StaffOrders = () => {
       }
     } catch (err) {
       toast.error("Failed to complete order");
-      console.error(err);
     } finally {
       setProcessing(false);
     }

@@ -26,7 +26,8 @@ const Users = () => {
       setUsers(response.data.users);
       setFilteredUsers(response.data.users);
     } catch (error) {
-      console.error("Error fetching users", error);
+      console.error("Error fetching users:", error);
+      toast.error("Failed to load users. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -66,16 +67,19 @@ const Users = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
+    if (!window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) return;
 
     try {
       const res = await axiosInstance.delete(`/users/${id}`);
       if (res.data.success) {
         toast.success("User deleted successfully");
         fetchUsers();
+      } else {
+        toast.error("Failed to delete user");
       }
     } catch (err) {
-      toast.error("Error deleting user");
+      console.error("Error deleting user:", err);
+      toast.error("Error deleting user. Please try again.");
     }
   };
 
@@ -88,13 +92,13 @@ const Users = () => {
   };
 
   return (
-    <div className="py-4">
-      <h1 className="text-3xl font-bold mb-6">Users Management</h1>
+    <div className="py-4 px-4 md:px-0">
+      <h1 className="text-2xl md:text-3xl font-bold mb-6 text-gray-800">Users Management</h1>
 
       {loading ? (
         <UsersSkeleton />
       ) : (
-        <div className="flex flex-col lg:flex-row gap-4 h-[85vh]">
+        <div className="flex flex-col lg:flex-row gap-4 lg:h-[85vh]">
           {/* LEFT - SCROLLABLE FORM */}
           <div className="lg:w-1/3 bg-white rounded-xl shadow-md p-4 overflow-y-auto">
             <UsersForm
@@ -108,8 +112,8 @@ const Users = () => {
           <div className="lg:w-2/3 bg-white rounded-xl shadow-md p-4 overflow-y-auto">
             <input
               type="text"
-              placeholder="Search user"
-              className="w-full p-2 border rounded-lg mb-4"
+              placeholder="Search user..."
+              className="w-full p-2 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 focus:outline-none"
               onChange={handleSearch}
             />
 

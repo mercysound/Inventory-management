@@ -1,4 +1,8 @@
+import { setServers, setDefaultResultOrder } from "node:dns";
+setServers(["8.8.8.8", "1.1.1.1"]);
+setDefaultResultOrder("ipv4first");
 import dotenv from "dotenv";
+
 dotenv.config();
 import express from "express";
 import cors from "cors";
@@ -28,6 +32,7 @@ const port = process.env.PORT || 3000;
 // ✅ Dynamic origin detection (auto works in dev + production)
 const allowedOrigins = [
   "http://localhost:5173", // your local frontend (Vite)
+  "http://localhost:5174", // alternative Vite port
   "http://localhost:3000",
   "http://192.168.227.101:5173",      // ✅ your phone accessing via Wi-Fi
   "https://yourfrontend.onrender.com" // your deployed frontend

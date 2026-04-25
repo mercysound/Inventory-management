@@ -106,11 +106,11 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll, onViewReceipt })
                     {order.productList?.map((item, idx) => (
                       <li key={idx} className="flex flex-col">
                         <span className="font-semibold text-gray-800">
-                          {item.productId?.name || "Unnamed"}{" "}
-                          <span className="text-gray-500 text-sm">
+                          {item.productId?.name || "Unnamed"}
+                          <span className="text-gray-500 text-sm ml-1">
                             ({item.productId?.categoryId?.name || "No Category"})
-                          </span>{" "}
-                          ×{item.quantity || 1}
+                          </span>
+                          <span className="ml-1">×{item.quantity || 1}</span>
                         </span>
                         {item.productId?.description && (
                           <span className="text-gray-500 text-sm italic">
@@ -129,7 +129,7 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll, onViewReceipt })
                   <b className="text-green-800">{order.deliveryStatus.toUpperCase()}</b>
                 </td>
                 <td className="p-3 text-gray-600">
-                  {new Date(order.createdAt).toLocaleDateString()}{" "}
+                  <div>{new Date(order.createdAt).toLocaleDateString()}</div>
                   <span className="text-xs text-gray-500">
                     {new Date(order.createdAt).toLocaleTimeString([], {
                       hour: "2-digit",
@@ -183,12 +183,14 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll, onViewReceipt })
 
             {showUser && (
               <p>
-                <span className="font-semibold">User:</span>{" "}
-                {order.userOrdering
-                  ? order.userOrdering.role === "staff"
-                    ? `${order.userOrdering.name} (${order.userOrdering.role})`
-                    : order.userOrdering.role
-                  : "Unknown User"}
+                <span className="font-semibold">User:</span>
+                <span className="ml-1">
+                  {order.userOrdering
+                    ? order.userOrdering.role === "staff"
+                      ? `${order.userOrdering.name} (${order.userOrdering.role})`
+                      : order.userOrdering.role
+                    : "Unknown User"}
+                </span>
               </p>
             )}
 
@@ -198,11 +200,11 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll, onViewReceipt })
                 {order.productList?.map((item, idx) => (
                   <li key={idx} className="flex flex-col">
                     <span className="font-medium text-gray-800">
-                      {item.productId?.name || "Unnamed"}{" "}
-                      <span className="text-gray-500 text-xs">
+                      {item.productId?.name || "Unnamed"}
+                      <span className="text-gray-500 text-xs ml-1">
                         ({item.productId?.categoryId?.name || "No Category"})
-                      </span>{" "}
-                      ×{item.quantity || 1}
+                      </span>
+                      <span className="ml-1">×{item.quantity || 1}</span>
                     </span>
                     {item.productId?.description && (
                       <span className="text-gray-500 text-xs italic">
@@ -214,14 +216,16 @@ const SharedOrderTable = ({ orders, role, onDelete, onClearAll, onViewReceipt })
               </ul>
 
               <p>
-                <span className="font-semibold">Payment:</span> {order.paymentMethod}
+                <span className="font-semibold">Payment:</span>
+                <span className="ml-1">{order.paymentMethod}</span>
               </p>
               <p>
-                <span className="font-semibold">Total:</span> ₦
-                {order.totalPrice?.toLocaleString() || 0}
+                <span className="font-semibold">Total:</span>
+                <span className="ml-1">₦{order.totalPrice?.toLocaleString() || 0}</span>
               </p>
               <p className="text-xs text-gray-400">
-                {new Date(order.createdAt).toLocaleDateString()} •{" "}
+                {new Date(order.createdAt).toLocaleDateString()}
+                <span className="mx-1">•</span>
                 {new Date(order.createdAt).toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",

@@ -13,20 +13,20 @@ const CategoryForm = ({
 }) => {
   return (
     <motion.div
-      className="lg:w-1/3"
+      className="w-full lg:w-1/3"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
       <div className="bg-white shadow-lg rounded-xl p-5 border border-gray-100">
-        <h2 className="text-xl font-semibold mb-4 text-center text-gray-700">
+        <h2 className="text-lg md:text-xl font-semibold mb-4 text-center text-gray-700">
           {editCategory ? "✏️ Edit Category" : "➕ Add New Category"}
         </h2>
         <form className="space-y-4" onSubmit={onSubmit}>
           <input
             type="text"
             placeholder="Category Name"
-            className="border w-full p-3 rounded-md focus:ring-2 focus:ring-blue-400 outline-none"
+            className="border w-full p-3 rounded-md focus:ring-2 focus:ring-blue-400 outline-none transition"
             required
             value={categoryName}
             onChange={onChangeName}
@@ -35,7 +35,7 @@ const CategoryForm = ({
           <input
             type="text"
             placeholder="Category Description"
-            className="border w-full p-3 rounded-md focus:ring-2 focus:ring-blue-400 outline-none"
+            className="border w-full p-3 rounded-md focus:ring-2 focus:ring-blue-400 outline-none transition"
             required
             value={categoryDescription}
             onChange={onChangeDescription}
@@ -43,17 +43,22 @@ const CategoryForm = ({
 
           <div className="flex gap-2">
             <button
-              className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition-all duration-200"
+              className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition-all duration-200 font-medium"
               type="submit"
             >
               {editCategory ? <Pencil size={18} /> : <PlusCircle size={18} />}
-              {editCategory ? "Save Changes" : "Add Category"}
+              <span className="hidden sm:inline">
+                {editCategory ? "Save Changes" : "Add Category"}
+              </span>
+              <span className="sm:hidden">
+                {editCategory ? "Save" : "Add"}
+              </span>
             </button>
 
             {editCategory && (
               <button
                 type="button"
-                className="flex-1 bg-gray-500 text-white p-3 rounded-md hover:bg-gray-600 transition-all duration-200"
+                className="flex-1 bg-gray-500 text-white p-3 rounded-md hover:bg-gray-600 transition-all duration-200 font-medium"
                 onClick={onCancel}
               >
                 Cancel

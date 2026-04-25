@@ -4,24 +4,30 @@ import { FaBars } from "react-icons/fa";
 import Sidebar from "../components/share-component/sidebar/Sidebar";
 
 const Dashboard = () => {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(window.innerWidth >= 768);
 
   const toggleSidebar = () => setIsOpen(!isOpen);
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Sidebar */}
-      <Sidebar isOpen={isOpen} toggleSidebar={toggleSidebar} />
+    <div className="flex h-screen overflow-hidden bg-gray-100">
+      {/* Sidebar - Fixed on mobile, relative on desktop */}
+      <div className="hidden md:block md:w-64 md:flex-shrink-0">
+        <Sidebar isOpen={true} toggleSidebar={toggleSidebar} />
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      {isOpen && (
+        <div className="md:hidden fixed inset-0 z-30 bg-black bg-opacity-50" onClick={() => setIsOpen(false)} />
+      )}
+      <div className="md:hidden">
+        <Sidebar isOpen={isOpen} toggleSidebar={toggleSidebar} />
+      </div>
 
       {/* Main Content */}
-      <div
-        className={`flex-1 flex flex-col transition-all duration-300 ${
-          isOpen ? "ml-64" : "ml-0"
-        }`}
-      >
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Mobile Top Bar */}
         <div className="md:hidden flex items-center justify-between p-4 bg-gray-900 text-white shadow-md">
-          <button onClick={toggleSidebar} className="p-2 rounded hover:bg-gray-800">
+          <button onClick={() => setIsOpen(!isOpen)} className="p-2 rounded hover:bg-gray-800">
             <FaBars size={20} />
           </button>
           <span className="font-bold">MELECH SH Dashboard</span>

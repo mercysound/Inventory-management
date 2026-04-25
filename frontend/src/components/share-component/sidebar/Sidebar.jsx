@@ -1,14 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
-  FaBox,
-  FaCog,
-  FaHome,
-  FaShoppingCart,
-  FaSignOutAlt,
-  FaTable,
-  FaTruck,
-  FaUsers,
-  FaTimes,
+  FaBox, FaCog, FaHome, FaShoppingCart, FaSignOutAlt, FaTable, FaTruck,FaUsers, FaTimes, FaHistory 
 } from "react-icons/fa";
 import { NavLink, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -24,7 +16,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     { name: "Products", path: "/admin-dashboard/products", icon: <FaBox /> },
     { name: "Suppliers", path: "/admin-dashboard/suppliers", icon: <FaTruck /> },
     { name: "Placed Orders", path: "/admin-dashboard/placed-orders", icon: <FaShoppingCart /> },
-    { name: "Complete Orders", path: "/admin-dashboard/completed-history", icon: <FaShoppingCart /> },
+    { name: "History", path: "/admin-dashboard/completed-history", icon: <FaHistory /> },
     { name: "Users", path: "/admin-dashboard/users", icon: <FaUsers /> },
     { name: "Profile", path: "/admin-dashboard/profile", icon: <FaCog /> },
     { name: "Logout", path: "/logout", icon: <FaSignOutAlt /> },
@@ -33,7 +25,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   const customerMenu = [
     { name: "Products", path: "/customer-dashboard", icon: <FaBox /> },
     { name: "Orders", path: "/customer-dashboard/orders", icon: <FaShoppingCart /> },
-    { name: "Complete Orders", path: "/customer-dashboard/completed-history", icon: <FaShoppingCart /> }, //
+    { name: "History", path: "/customer-dashboard/completed-history", icon: <FaHistory  /> }, //
     { name: "Profile", path: "/customer-dashboard/profile", icon: <FaCog /> },
     { name: "Logout", path: "/logout", icon: <FaSignOutAlt /> },
   ];
@@ -41,7 +33,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   const customerUserMenu = [
     { name: "Products", path: "/user-dashboard", icon: <FaBox /> },
     { name: "Orders", path: "/user-dashboard/orders", icon: <FaShoppingCart /> },
-    { name: "Complete Orders", path: "/user-dashboard/completed-history", icon: <FaShoppingCart /> },
+    { name: "History", path: "/user-dashboard/completed-history", icon: <FaHistory  /> },
     { name: "Profile", path: "/user-dashboard/profile", icon: <FaCog /> },
     { name: "Logout", path: "/logout", icon: <FaSignOutAlt /> },
   ];
@@ -62,10 +54,10 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
           animate={{ x: 0 }}
           exit={{ x: -250 }}
           transition={{ duration: 0.3 }}
-          className="fixed top-0 left-0 h-screen w-64 bg-gradient-to-b from-gray-900 to-gray-800 text-white shadow-lg flex flex-col z-40"
+          className="fixed md:static top-0 left-0 h-screen w-64 bg-gradient-to-b from-gray-900 to-gray-800 text-white shadow-lg flex flex-col z-40"
         >
           <div className="h-16 flex items-center justify-between border-b border-gray-700 px-4">
-            <span className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-pink-400">
+            <span className="text-lg md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-pink-400">
               MELECH SH
             </span>
             <button

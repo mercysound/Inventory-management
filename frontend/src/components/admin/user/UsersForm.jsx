@@ -3,7 +3,7 @@ import React from "react";
 const UsersForm = ({ formData, handleChange, handleSubmit }) => {
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-4">Add New User</h2>
+      <h2 className="text-lg md:text-xl font-semibold mb-4 text-gray-800">Add New User</h2>
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <input
@@ -12,7 +12,7 @@ const UsersForm = ({ formData, handleChange, handleSubmit }) => {
           placeholder="Full Name"
           value={formData.name}
           onChange={handleChange}
-          className="w-full border p-3 rounded-lg"
+          className="input-field"
           required
         />
 
@@ -22,7 +22,7 @@ const UsersForm = ({ formData, handleChange, handleSubmit }) => {
           placeholder="Email Address"
           value={formData.email}
           onChange={handleChange}
-          className="w-full border p-3 rounded-lg"
+          className="input-field"
           required
         />
 
@@ -32,17 +32,17 @@ const UsersForm = ({ formData, handleChange, handleSubmit }) => {
           placeholder="Password"
           value={formData.password}
           onChange={handleChange}
-          className="w-full border p-3 rounded-lg"
+          className="input-field"
           required
         />
 
         <input
           name="phone"
-          type="text"
+          type="tel"
           placeholder="Phone Number"
           value={formData.phone}
           onChange={handleChange}
-          className="w-full border p-3 rounded-lg"
+          className="input-field"
         />
 
         <input
@@ -51,14 +51,15 @@ const UsersForm = ({ formData, handleChange, handleSubmit }) => {
           placeholder="Home Address"
           value={formData.address}
           onChange={handleChange}
-          className="w-full border p-3 rounded-lg"
+          className="input-field"
         />
 
         <select
           name="role"
           value={formData.role}
           onChange={handleChange}
-          className="w-full border p-3 rounded-lg"
+          className="input-field"
+          required
         >
           <option value="">Select Role</option>
           <option value="admin">Admin</option>
@@ -67,7 +68,7 @@ const UsersForm = ({ formData, handleChange, handleSubmit }) => {
 
         <button
           type="submit"
-          className="w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-700"
+          className="w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 transition-colors font-medium"
         >
           Save User
         </button>

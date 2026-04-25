@@ -20,12 +20,15 @@ const Category = () => {
       const response = await axiosInstance.get(`/category`);
       setCategories(response.data.categories);
     } catch (error) {
-      console.error("Error fetching categories", error);
+      console.error("Error fetching categories:", error);
       if (error.response?.status === 401) {
         if (error.response.data.message.includes("Token has expired")) {
           localStorage.removeItem("pos-token");
+          toast.error("Session expired. Please login again.");
           navigate("/login");
         }
+      } else {
+        toast.error("Failed to load categories");
       }
     } finally {
       setLoading(false);
