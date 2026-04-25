@@ -6,9 +6,14 @@ import dotenv from "dotenv";
 dotenv.config();
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import mongoSanitize from "express-mongo-sanitize";
 // import path from "path";
 // import { fileURLToPath } from "url";
 import connectDB from "./db/connection.js";
+import { requestLogger } from "./middleware/logger.js";
+import { errorHandler } from "./middleware/errorHandler.js";
 
 import authRoutes from "./routes/auth.js";
 import categoryRoutes from "./routes/categoryRoute.js";
@@ -27,6 +32,47 @@ import cloudinary from "./config/cloudinary.js";
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Security middleware
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: {
+    success: false,
+    statusCode: 429,
+    message: "Too many requests from this IP, please try again later.",
+    timestamp: new Date().toISOString(),
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5, // stricter limit for auth endpoints
+  message: {
+    success: false,
+    statusCode: 429,
+    message: "Too many login attempts, please try again later.",
+    timestamp: new Date().toISOString(),
+  },
+});
+
+// Request logging
+app.use(requestLogger);
+
+// Apply rate limiting
+app.use("/api/", limiter);
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/google-login", authLimiter);
+
+// Sanitize data against NoSQL injection
+app.use(mongoSanitize());
 
 
 // ✅ Dynamic origin detection (auto works in dev + production)
@@ -71,6 +117,9 @@ app.use("/api/orders", orderRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/placed-orders", allOrdersPlacedRoutes);
 app.use("/api/completed-history", completedOrderHistoryRoutes);
+
+// Global error handler (must be last)
+app.use(errorHandler);
 
 // // Serve frontend
 // app.use(express.static(path.join(__dirname, "../frontend/dist")));

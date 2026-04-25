@@ -1,8 +1,8 @@
-// src/utils/axiosInstance.js
+// src/utils/api.js
 import axios from "axios";
 import { toast } from "react-toastify";
 
-const axiosInstance = axios.create({
+const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
   timeout: 10000,
   headers: {
@@ -11,7 +11,7 @@ const axiosInstance = axios.create({
 });
 
 // Request interceptor
-axiosInstance.interceptors.request.use(
+api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("pos-token");
     if (token) {
@@ -23,11 +23,11 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor
-axiosInstance.interceptors.response.use(
+// Response interceptor with token refresh
+api.interceptors.response.use(
   (response) => {
     const duration = Date.now() - response.config.metadata.startTime;
-    console.log(`✅ ${response.config.method?.toUpperCase()} ${response.status} (${duration}ms)`);
+    console.log(`✅ ${response.config.method?.toUpperCase()} ${response.config.url} (${duration}ms)`);
     return response;
   },
   async (error) => {
@@ -47,7 +47,7 @@ axiosInstance.interceptors.response.use(
         const { accessToken } = response.data;
         localStorage.setItem("pos-token", accessToken);
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        return axiosInstance(originalRequest);
+        return api(originalRequest);
       } catch (refreshError) {
         localStorage.removeItem("pos-token");
         localStorage.removeItem("pos-user");
@@ -67,4 +67,4 @@ axiosInstance.interceptors.response.use(
   }
 );
 
-export default axiosInstance;
+export default api;
