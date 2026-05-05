@@ -286,8 +286,8 @@ const generateInvoice = async (req, res) => {
     const {
       customerName = "Guest Customer",
       paymentMethod = "Not Specified",
-      mode = "preview",          // preview | final
-      orderSource = "online",    // online | staff
+      mode = "preview",
+      orderSource = "online",
       orderId,
       historyReceipt
     } = req.query;
@@ -295,9 +295,10 @@ const generateInvoice = async (req, res) => {
     const paymentStatus = mode === "final" ? "Paid" : "Unpaid";
 
     let orders = [];
+    let receiptOrderId = orderId || null;
 
     /* ======================================================
-       1️⃣ PREVIEW → ALWAYS FROM CART
+       1️⃣ PREVIEW → FROM CART
     ====================================================== */
     if (mode === "preview") {
       const activeOrders = await OrderModel.find({
@@ -314,7 +315,6 @@ const generateInvoice = async (req, res) => {
       orders = activeOrders.map((o) => ({
         product: {
           name: o.product?.name,
-          description: o.product?.description,
           categoryName: o.product?.categoryId?.name,
         },
         quantity: o.quantity,
@@ -324,33 +324,30 @@ const generateInvoice = async (req, res) => {
     }
 
     /* ======================================================
-       2️⃣ FINAL → FROM CORRECT HISTORY MODEL
+       2️⃣ FINAL → FROM HISTORY MODEL
     ====================================================== */
-
     if (mode === "final") {
       let HistoryModel;
 
       if (historyReceipt) {
-        HistoryModel = CompletedOrderHistoryModel
+        HistoryModel = CompletedOrderHistoryModel;
       } else {
         HistoryModel = orderSource === "staff"
           ? CompletedOrderHistoryModel
           : AllOrdersPlacedModel;
-      };
-
-
-      let order;
+      }
 
       const query = orderId
         ? { _id: orderId }
         : { userOrdering: req.user._id };
-      // (if) for the history receipt method and (else) for the recent order receipt
+
+      let order;
+
       if (historyReceipt) {
-        order = await HistoryModel.findOne(query)
-          .populate({
-            path: "productList.productId",
-            populate: { path: "categoryId", select: "name" },
-          });
+        order = await HistoryModel.findOne(query).populate({
+          path: "productList.productId",
+          populate: { path: "categoryId", select: "name" },
+        });
       } else {
         order = await HistoryModel.findOne(query)
           .populate({
@@ -360,15 +357,16 @@ const generateInvoice = async (req, res) => {
           .sort({ createdAt: -1 });
       }
 
-
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
       }
 
+      // ✅ capture the real order ID for the receipt
+      receiptOrderId = order._id;
+
       orders = order.productList.map((i) => ({
         product: {
           name: i.productId?.name,
-          description: i.productId?.description,
           categoryName: i.productId?.categoryId?.name,
         },
         quantity: i.quantity,
@@ -384,124 +382,189 @@ const generateInvoice = async (req, res) => {
     /* ======================================================
        3️⃣ TOTAL
     ====================================================== */
-    const totalAmount = orders.reduce(
-      (sum, o) => sum + o.totalPrice,
-      0
-    );
+    const totalAmount = orders.reduce((sum, o) => sum + o.totalPrice, 0);
 
     /* ======================================================
-       4️⃣ PDF GENERATION (UNCHANGED – YOUR UI IS GOOD)
+       4️⃣ RECEIPT PDF — COMPACT THERMAL STYLE
     ====================================================== */
-    const doc = new PDFDocument({ margin: 40 });
+    const receiptWidth = 300;
+    const margin = 20;
+    const contentWidth = receiptWidth - margin * 2;
+
+    const doc = new PDFDocument({
+      margin,
+      size: [receiptWidth, 800], // narrow receipt width, tall enough
+    });
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", "inline; filename=invoice.pdf");
+    res.setHeader("Content-Disposition", "inline; filename=receipt.pdf");
     doc.pipe(res);
 
-    doc.fontSize(20).fillColor("#1E3A8A").text("MELECH STORE", {
-      align: "center",
-    });
-    doc.fontSize(12).fillColor("#000").text("Sales Invoice", {
-      align: "center",
-    });
+    // ── STORE NAME ──
+    doc
+      .fontSize(14)
+      .font("Helvetica-Bold")
+      .fillColor("#1E3A8A")
+      .text("MELECH STORE", margin, 20, { align: "center", width: contentWidth });
 
-    doc.moveDown();
-    doc.text(`Customer: ${customerName}`);
-    doc.text(`Payment Method: ${paymentMethod}`);
-    doc.text(`Payment Status: ${paymentStatus}`);
-    doc.text(`Date: ${new Date().toLocaleString()}`);
-    doc.moveDown();
+    doc
+      .fontSize(8)
+      .font("Helvetica")
+      .fillColor("#555")
+      .text("Official Sales Receipt", margin, doc.y + 2, {
+        align: "center",
+        width: contentWidth,
+      });
 
-    if (paymentStatus === "Unpaid") {
-      doc.font("Helvetica-Bold").text("Payment Instructions");
-      doc.font("Helvetica");
-      doc.text(`Bank: ${STORE_ACCOUNT.bankName}`);
-      doc.text(`Account Name: ${STORE_ACCOUNT.accountName}`);
-      doc.text(`Account Number: ${STORE_ACCOUNT.accountNumber}`);
-      doc.moveDown();
-    }
-
-    // ================= TABLE LAYOUT =================
-    const cols = {
-      product: 45,
-      category: 160,
-      description: 260,
-      qty: 390,
-      price: 430,
-      total: 500,
+    // ── DIVIDER ──
+    const divider = () => {
+      doc
+        .moveTo(margin, doc.y + 5)
+        .lineTo(receiptWidth - margin, doc.y + 5)
+        .dash(2, { space: 2 })
+        .strokeColor("#aaa")
+        .stroke()
+        .undash();
     };
 
-    const startY = doc.y;
+    divider();
 
-    // Table Header
+    // ── ORDER INFO ──
+    doc.moveDown(0.8);
+    const infoY = doc.y;
+    doc.fontSize(7.5).font("Helvetica").fillColor("#000");
+
+    const infoLines = [
+      ["Order ID:", receiptOrderId ? String(receiptOrderId).slice(-10).toUpperCase() : "N/A"],
+      ["Date:", new Date().toLocaleString()],
+      ["Customer:", customerName],
+      ["Payment:", paymentMethod],
+      ["Status:", paymentStatus],
+    ];
+
+    infoLines.forEach(([label, value]) => {
+      const lineY = doc.y;
+      doc.font("Helvetica-Bold").text(label, margin, lineY, { continued: false, width: 70 });
+      doc.font("Helvetica").text(value, margin + 72, lineY, { width: contentWidth - 72 });
+      doc.moveDown(0.3);
+    });
+
+    divider();
+
+    // ── ITEMS HEADER ──
+    doc.moveDown(0.5);
+    const col = {
+      name: margin,
+      qty: margin + 100,
+      price: margin + 130,
+      total: margin + 185,
+    };
+
     doc
-      .fontSize(11)
-      .fillColor("#FFF")
-      .rect(40, startY, 520, 20)
+      .fontSize(7.5)
+      .font("Helvetica-Bold")
+      .fillColor("#fff")
+      .rect(margin, doc.y, contentWidth, 14)
       .fill("#1E3A8A")
       .stroke();
 
-    doc.fillColor("#FFF").font("Helvetica-Bold");
-    doc.text("Product", cols.product, startY + 5);
-    doc.text("Category", cols.category, startY + 5);
-    doc.text("Description", cols.description, startY + 5);
-    doc.text("Qty", cols.qty, startY + 5);
-    doc.text("Price", cols.price, startY + 5);
-    doc.text("Total", cols.total, startY + 5);
+    const headerY = doc.y - 14;
+    doc.fillColor("#fff");
+    doc.text("Item", col.name, headerY + 3, { width: 95 });
+    doc.text("Qty", col.qty, headerY + 3, { width: 30 });
+    doc.text("Price", col.price, headerY + 3, { width: 55 });
+    doc.text("Total", col.total, headerY + 3, { width: 55 });
 
-    // ================= TABLE ROWS =================
-    doc.fillColor("#000").font("Helvetica");
-    let y = startY + 25;
+    // ── ITEMS ROWS ──
+    doc.fillColor("#000").font("Helvetica").fontSize(7.5);
+    let y = doc.y + 4;
 
-    for (const [index, o] of orders.entries()) {
-      const desc = o.product.description || "—";
-      const descHeight = doc.heightOfString(desc, { width: 120 });
-      const rowHeight = Math.max(20, descHeight + 8);
+    orders.forEach((o, index) => {
+      const name = o.product.name || "—";
+      const category = o.product.categoryName ? `(${o.product.categoryName})` : "";
+      const nameText = `${name} ${category}`;
+      const nameHeight = doc.heightOfString(nameText, { width: 95 });
+      const rowHeight = Math.max(16, nameHeight + 6);
 
-      // Alternate row background
+      // alternating row background
       doc
-        .rect(40, y, 520, rowHeight)
-        .fill(index % 2 === 0 ? "#F9FAFB" : "#FFFFFF")
+        .rect(margin, y, contentWidth, rowHeight)
+        .fill(index % 2 === 0 ? "#F3F4F6" : "#FFFFFF")
         .stroke();
 
       doc.fillColor("#000");
-      doc.text(o.product.name, cols.product, y + 5, { width: 110 });
-      doc.text(o.product.categoryName || "-", cols.category, y + 5, {
-        width: 100,
-      });
-      doc.text(desc, cols.description, y + 5, { width: 120 });
-      doc.text(String(o.quantity), cols.qty, y + 5);
-      doc.text(`₦${o.price.toLocaleString()}`, cols.price, y + 5);
-      doc.text(`₦${o.totalPrice.toLocaleString()}`, cols.total, y + 5);
+      doc.text(nameText, col.name, y + 3, { width: 95 });
+      doc.text(String(o.quantity), col.qty, y + 3, { width: 30 });
+      doc.text(`₦${o.price.toLocaleString()}`, col.price, y + 3, { width: 55 });
+      doc.text(`₦${o.totalPrice.toLocaleString()}`, col.total, y + 3, { width: 55 });
 
       y += rowHeight;
+    });
+
+    // ── TOTAL ──
+    y += 6;
+    doc
+      .moveTo(margin, y)
+      .lineTo(receiptWidth - margin, y)
+      .strokeColor("#000")
+      .stroke();
+
+    y += 6;
+    doc
+      .fontSize(9)
+      .font("Helvetica-Bold")
+      .fillColor("#000")
+      .text("TOTAL:", col.name, y)
+      .text(`₦${totalAmount.toLocaleString()}`, col.total, y, { width: 55 });
+
+    y += 20;
+
+    // ── PAYMENT INSTRUCTIONS (if unpaid) ──
+    if (paymentStatus === "Unpaid") {
+      divider();
+      doc.moveDown(0.5);
+      doc
+        .fontSize(7.5)
+        .font("Helvetica-Bold")
+        .fillColor("#b91c1c")
+        .text("PAYMENT INSTRUCTIONS", margin, doc.y, {
+          align: "center",
+          width: contentWidth,
+        });
+
+      doc.font("Helvetica").fillColor("#000").moveDown(0.3);
+      [
+        ["Bank:", STORE_ACCOUNT.bankName],
+        ["Account Name:", STORE_ACCOUNT.accountName],
+        ["Account No:", STORE_ACCOUNT.accountNumber],
+      ].forEach(([label, value]) => {
+        const lineY = doc.y;
+        doc.font("Helvetica-Bold").text(label, margin, lineY, { width: 75 });
+        doc.font("Helvetica").text(value, margin + 77, lineY, { width: contentWidth - 77 });
+        doc.moveDown(0.3);
+      });
     }
 
-    // ================= TOTAL =================
-    y += 10;
-    doc.moveTo(40, y).lineTo(560, y).stroke();
-    y += 10;
-    doc.font("Helvetica-Bold");
-    doc.text("Grand Total:", 400, y);
-    doc.text(`₦${totalAmount.toLocaleString()}`, 500, y);
-
-    // ================= FOOTER =================
-    doc.moveDown(2);
-    doc.fontSize(10).fillColor("gray").font("Helvetica");
-    doc.text("Thank you for shopping with MELECH STORE!", 40, doc.y + 10);
-    doc.text(
-      "Generated automatically — no signature required",
-      40,
-      doc.y + 25
-    );
+    // ── FOOTER ──
+    divider();
+    doc.moveDown(0.5);
+    doc
+      .fontSize(7)
+      .font("Helvetica")
+      .fillColor("gray")
+      .text("Thank you for shopping with MELECH STORE!", margin, doc.y, {
+        align: "center",
+        width: contentWidth,
+      });
+    doc.text("No signature required — auto-generated receipt", margin, doc.y + 4, {
+      align: "center",
+      width: contentWidth,
+    });
 
     doc.end();
   } catch (error) {
     console.error("generateInvoice error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
