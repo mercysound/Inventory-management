@@ -112,13 +112,18 @@ const Product = () => {
       const data = new FormData();
 
       Object.keys(formData).forEach((key) => {
-        if (key !== "image") {
+        if (key !== "image" && key !== "removeImage") {
           data.append(key, formData[key]);
         }
       });
 
       if (image) {
         data.append("image", image);
+      }
+
+      // ✅ ADD THIS HERE
+      if (formData.removeImage) {
+        data.append("removeImage", "true");
       }
 
       const url = editProduct
@@ -151,17 +156,21 @@ const Product = () => {
 
 
   const closeModal = () => {
-    setOpenModal(false);
-    setEditProduct(null);
-    setFormData({
-      name: "",
-      description: "",
-      price: "",
-      stock: "",
-      categoryId: "",
-      supplierId: "",
-    });
-  };
+  setOpenModal(false);
+  setEditProduct(null);
+  setImage(null);
+
+  setFormData({
+    name: "",
+    description: "",
+    price: "",
+    stock: "",
+    categoryId: "",
+    supplierId: "",
+    image: "",
+    removeImage: false, // ✅ ADD THIS
+  });
+};
 
   // Fetch deleted products
   const fetchDeletedProducts = async () => {
@@ -176,7 +185,7 @@ const Product = () => {
       setLoadingDeleted(false);
     }
   };
-  
+
 
   // Open popup
   const handleViewDeleted = () => {

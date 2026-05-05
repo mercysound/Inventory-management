@@ -8,7 +8,9 @@ const userSchema = new mongoose.Schema({
   address: { type: String },   // optional, will complete profile later if missing
   role: { type: String, enum: ["admin", "staff", "customer"], default: "customer" },
   picture: { type: String },    // optional, store Google profile picture
-  profileCompleted: { type: Boolean, default: false }
+  profileCompleted: { type: Boolean, default: false },
+  resetPasswordToken: { type: String },
+  resetPasswordExpires: { type: Date }
 }, {
   timestamps: true // createdAt, updatedAt
 });

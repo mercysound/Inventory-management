@@ -8,19 +8,12 @@ const orderSchema = new mongoose.Schema({
   totalPrice: { type: Number, required: true },
   orderDate: { type: Date, default: Date.now },
   productDescription: { type: String },
-  deliveryStatus: { type: String, default: "Pending"}
-
-  // New fields
-  // paymentMethod: { type: String, default: null }, // e.g. "Cash", "POS"
-  // paymentStatus: { 
-  //   type: String, 
-  //   enum: ["Unpaid", "Paid"], 
-  //   default: "Unpaid" 
-  // }, // <-- this ensures orders start as Unpaid
-
-  // buyerName: { type: String },
-  // deliveryStatus: { type: String, default: "pending" },
-});
+  deliveryStatus: { type: String, default: "Pending" },
+  paymentMethod: { type: String },
+  paymentStatus: { type: String, enum: ["Unpaid", "Paid"], default: "Unpaid" },
+  paid: { type: Boolean, default: false },
+  buyerName: { type: String },
+}, { timestamps: true });
 
 const OrderModel = mongoose.model("Order", orderSchema);
 export default OrderModel;

@@ -4,6 +4,15 @@ setDefaultResultOrder("ipv4first");
 import dotenv from "dotenv";
 
 dotenv.config();
+
+// Validate required environment variables
+const requiredEnvVars = ['MONGO_URI', 'JWT_SECRET', 'GOOGLE_CLIENT_ID', 'CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'];
+const missingVars = requiredEnvVars.filter(v => !process.env[v]);
+if (missingVars.length) {
+  console.error(`❌ Missing required environment variables: ${missingVars.join(', ')}`);
+  process.exit(1);
+}
+
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -31,7 +40,7 @@ import cloudinary from "./config/cloudinary.js";
 // const __dirname = path.dirname(__filename);
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 5002;
 
 // Security middleware
 app.use(helmet({
@@ -97,8 +106,10 @@ app.use(
         callback(new Error("Not allowed by CORS"));
       }
     },
-    credentials: true, // allows cookies or tokens to be sent
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    maxAge: 86400
   })
 );
 
@@ -143,6 +154,14 @@ app.listen(port, "0.0.0.0", async () => {
     console.log(`✅ Server running on http://${IP}:${port}`);
   } catch (error) {
     console.error("❌ Server startup failed:", error);
+    process.exit(1);
+  }
+});
+
+// Handle port conflict
+app.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(`❌ Port ${port} is already in use. Free it or change PORT in .env`);
     process.exit(1);
   }
 });

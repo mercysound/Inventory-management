@@ -18,9 +18,10 @@ const Category = () => {
     try {
       setLoading(true);
       const response = await axiosInstance.get(`/category`);
-      setCategories(response.data.categories);
+      setCategories(response.data.categories || []);
     } catch (error) {
       console.error("Error fetching categories:", error);
+      setCategories([]);
       if (error.response?.status === 401) {
         if (error.response.data.message.includes("Token has expired")) {
           localStorage.removeItem("pos-token");

@@ -37,18 +37,27 @@ const authMiddleware = async (req, res, next) => {
 
 const optionalAuthMiddleware = async (req, res, next) => {
   try {
-    let token = req.headers.authorization?.split(" ")[1] || req.query.token || null;
-    if (!token) return res.status(401).json({ success: false, message: "No token provided" });
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select("-password");
-    if (!user) return res.status(401).json({ success: false, message: "Invalid user" });
-
-    req.user = user;
+    const token = req.headers.authorization?.split(" ")[1] || req.query.token;
+    
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id).select("-password");
+        if (user) {
+          req.user = user;
+        }
+      } catch (err) {
+        // Token is invalid/expired, but we continue anyway (truly optional)
+        console.log("Token validation skipped in optional auth");
+      }
+    }
+    
+    // Continue regardless of token
     next();
   } catch (error) {
-    console.error("optional auth error:", error);
-    return res.status(401).json({ success: false, message: "Unauthorized" });
+    console.error("Optional auth error:", error);
+    // Continue on error
+    next();
   }
 };
 

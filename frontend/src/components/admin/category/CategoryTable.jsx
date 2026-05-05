@@ -2,6 +2,8 @@ import React from "react";
 import { Pencil, Trash2 } from "lucide-react";
 
 const CategoryTable = ({ categories, onEdit, onDelete }) => {
+  const safeCategories = categories || [];
+
   return (
     <div className="w-full lg:w-2/3">
       {/* Desktop Table View */}
@@ -16,7 +18,7 @@ const CategoryTable = ({ categories, onEdit, onDelete }) => {
             </tr>
           </thead>
           <tbody>
-            {categories.map((category, index) => (
+            {safeCategories.map((category, index) => (
               <tr
                 key={category._id}
                 className="border-t border-gray-200 hover:bg-gray-50 transition-all"
@@ -42,17 +44,17 @@ const CategoryTable = ({ categories, onEdit, onDelete }) => {
             ))}
           </tbody>
         </table>
-        {categories.length === 0 && (
+        {safeCategories.length === 0 && (
           <div className="text-center text-gray-500 py-6">No categories found.</div>
         )}
       </div>
 
       {/* Mobile Card View */}
       <div className="md:hidden space-y-4">
-        {categories.length === 0 ? (
+        {safeCategories.length === 0 ? (
           <div className="text-center text-gray-500 py-6">No categories found.</div>
         ) : (
-          categories.map((category, index) => (
+          safeCategories.map((category, index) => (
             <div
               key={category._id}
               className="bg-white shadow-lg rounded-xl p-4 border border-gray-100"

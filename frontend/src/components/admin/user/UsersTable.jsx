@@ -15,6 +15,7 @@ const UsersTable = ({ users, handleDelete }) => {
                 <th className="border p-3 text-left">Name</th>
                 <th className="border p-3 text-left">Email</th>
                 <th className="border p-3 text-left">Address</th>
+                <th className="border p-3 text-left">Phone</th>
                 <th className="border p-3 text-left">Role</th>
                 <th className="border p-3 text-center">Action</th>
               </tr>
@@ -26,6 +27,7 @@ const UsersTable = ({ users, handleDelete }) => {
                   <td className="border p-3 font-medium">{user.name}</td>
                   <td className="border p-3">{user.email}</td>
                   <td className="border p-3">{user.address}</td>
+                  <td className="border p-3">{user.phone}</td>
                   <td className="border p-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                       user.role === 'admin' ? 'bg-purple-100 text-purple-800' :

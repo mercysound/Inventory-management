@@ -4,6 +4,8 @@ import ProductModel from "../models/ProductModel.js";
 import AllOrdersPlacedModel from "../models/AllOrdersPlacedModel.js";
 import CompletedOrderHistoryModel from "../models/CompletedOrderHistoryModel.js";
 import { sendAdminOrderPlacedEmail } from "../utils/email/adminOrderPlaced.js";
+import { sendResponse, sendError } from '../utils/apiResponse.js';
+import { getPaginationParams, getPaginationMeta } from '../utils/pagination.js';
 import mongoose from "mongoose";
 // import { STORE_ACCOUNT } from "../config/storeAccount.js";
 const STORE_ACCOUNT = {
@@ -20,24 +22,54 @@ const addOrder = async (req, res) => {
   try {
     const { productId, quantity, total, price } = req.body;
     const userId = req.user._id;
+
     const product = await ProductModel.findById(productId);
-    if (!product) return res.status(404).json({ error: "product not found in order" });
+    if (!product) {
+      return sendError(res, 404, "Product not found in order");
+    }
 
-    if (quantity > product.stock) return res.status(400).json({ error: "Not enough stock" });
+    if (quantity > product.stock) {
+      return sendError(res, 400, "Not enough stock");
+    }
 
+    // ✅ CHECK IF ORDER ALREADY EXISTS
+    const existing = await OrderModel.findOne({
+      userOrdering: userId,
+      product: productId,
+    });
+
+    if (existing) {
+      // ✅ UPDATE INSTEAD OF DUPLICATE
+      const newQty = existing.quantity + quantity;
+
+      if (newQty > product.stock) {
+        return sendError(res, 400, "Not enough stock available");
+      }
+
+      existing.quantity = newQty;
+      existing.totalPrice = newQty * (price || existing.price);
+      existing.price = price || existing.price;
+
+      await existing.save();
+
+      return sendResponse(res, 200, existing, "Order updated instead of duplicate");
+    }
+
+    // ✅ CREATE NEW ORDER (ONLY IF NONE EXISTS)
     const orderObj = new OrderModel({
       userOrdering: userId,
       product: productId,
       quantity,
       totalPrice: total,
       price,
-      // paymentStatus: "Unpaid", // Default state
     });
+
     await orderObj.save();
-    return res.status(200).json({ success: true, message: "Order added successfully" });
+
+    return sendResponse(res, 200, orderObj, "Order added successfully");
   } catch (error) {
     console.error("addOrder error:", error);
-    return res.status(500).json({ success: false, error: "server error in adding order" });
+    return sendError(res, 500, "Failed to add order");
   }
 };
 
@@ -54,14 +86,10 @@ const getOrderByProduct = async (req, res) => {
       product: productId,
     });
 
-    if (!order) {
-      return res.status(200).json({ success: true, order: null });
-    }
-
-    return res.status(200).json({ success: true, order });
+    return sendResponse(res, 200, order, "Order fetched successfully");
   } catch (error) {
     console.error("getOrderByProduct error:", error);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return sendError(res, 500, "Failed to fetch order");
   }
 };
 
@@ -75,41 +103,36 @@ const updateOrder = async (req, res) => {
 
     const order = await OrderModel.findById(orderId).populate("product");
     if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found" });
+      return sendError(res, 404, "Order not found");
     }
 
-    // Make sure current user owns this order
     if (String(order.userOrdering) !== String(req.user._id)) {
-      return res.status(403).json({ success: false, message: "Unauthorized" });
+      return sendError(res, 403, "Unauthorized");
     }
 
-    // Validate quantity
     const qty = Number(quantity);
     if (!qty || qty < 1) {
-      return res.status(400).json({ success: false, message: "Quantity must be at least 1" });
+      return sendError(res, 400, "Quantity must be at least 1");
     }
 
-    // Re-check product stock
     const product = await ProductModel.findById(order.product._id);
     if (!product) {
-      return res.status(404).json({ success: false, message: "Product not found" });
+      return sendError(res, 404, "Product not found");
     }
 
     if (qty > product.stock) {
-      return res.status(400).json({ success: false, message: "Not enough stock available" });
+      return sendError(res, 400, "Not enough stock available");
     }
 
     order.quantity = qty;
-    // If total provided use it; otherwise compute from price * qty
     order.totalPrice = total || (price || order.price) * qty;
-    // ensure price is set correctly on order
     order.price = price || order.price;
     await order.save();
 
-    return res.status(200).json({ success: true, message: "Order updated", updatedOrder: order });
+    return sendResponse(res, 200, order, "Order updated successfully");
   } catch (error) {
     console.error("updateOrder error:", error);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return sendError(res, 500, "Failed to update order");
   }
 };
 /**
@@ -120,23 +143,23 @@ const getOrders = async (req, res) => {
     const userId = req.user._id;
     let query = {};
 
-    // 🧠 Determine what to fetch based on user role
     if (req.user.role === "staff" || req.user.role === "customer") {
-      // Both staff and customers should only see their own orders
       query = { userOrdering: userId };
-    } else if (req.user.role === "admin") {
-      // Admin sees all orders — leave query empty
-      query = {};
     }
+
+    const { skip, limit, page, sort } = getPaginationParams(req);
+    const total = await OrderModel.countDocuments(query);
 
     const orders = await OrderModel.find(query)
       .populate({
         path: "product",
-        select: "name description price categoryId",
+        select: "name description price image categoryId",
         populate: { path: "categoryId", select: "name" },
-      });
+      })
+      .sort(sort)
+      .skip(skip)
+      .limit(limit);
 
-    // 🧹 Clean up data before sending it to frontend
     const sanitizedOrders = orders.map((o) => ({
       _id: o._id,
       product: o.product,
@@ -147,12 +170,11 @@ const getOrders = async (req, res) => {
       userOrdering: o.userOrdering,
     }));
 
-    return res.status(200).json({ success: true, orders: sanitizedOrders });
+    const meta = getPaginationMeta(total, limit, page);
+    return sendResponse(res, 200, sanitizedOrders, "Orders retrieved successfully", meta);
   } catch (error) {
     console.error("getOrders error:", error);
-    return res
-      .status(500)
-      .json({ success: false, error: "Server error in fetching orders" });
+    return sendError(res, 500, "Failed to fetch orders");
   }
 };
 
@@ -164,12 +186,10 @@ const completeOrder = async (req, res) => {
   const { paymentMethod, buyerName } = req.body;
   const userId = req.user._id;
 
+  //used chargtp to change it
   if (!paymentMethod) {
-    return res.status(400).json({
-      success: false,
-      message: "Payment method required",
-    });
-  }
+  return sendError(res, 400, "Payment method is required");
+}
 
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -248,21 +268,11 @@ const completeOrder = async (req, res) => {
 
     await session.commitTransaction();
 
-    return res.json({
-      success: true,
-      message: "Order completed successfully",
-      orderId: placed[0]._id,
-    });
+    return sendResponse(res, 200, { orderId: placed[0]._id }, "Order completed successfully");
 
   } catch (error) {
-
     await session.abortTransaction();
-
-    return res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-
+    return sendError(res, 400, error.message || "Failed to complete order");
   } finally {
     session.endSession();
   }
@@ -502,7 +512,7 @@ const reduceOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
     const order = await OrderModel.findById(orderId);
-    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+    if (!order) return sendError(res, 404, "Order not found");
 
     if (order.quantity <= 1) {
       await OrderModel.findByIdAndDelete(orderId);
@@ -511,10 +521,10 @@ const reduceOrder = async (req, res) => {
       order.totalPrice = order.price * order.quantity;
       await order.save();
     }
-    return res.json({ success: true, message: "Order reduced successfully" });
+    return sendResponse(res, 200, order, "Order reduced successfully");
   } catch (error) {
     console.error("reduceOrder error:", error);
-    return res.status(500).json({ success: false, message: "Error reducing order", error: error.message });
+    return sendError(res, 500, "Error reducing order");
   }
 };
 
@@ -524,35 +534,26 @@ const increaseOrderQuantity = async (req, res) => {
 
     const order = await OrderModel.findById(orderId).populate("product");
     if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found" });
+      return sendError(res, 404, "Order not found");
     }
 
     const product = await ProductModel.findById(order.product._id);
     if (!product) {
-      return res.status(404).json({ success: false, message: "Product not found" });
+      return sendError(res, 404, "Product not found");
     }
 
-    // Prevent going beyond available stock
     if (order.quantity >= product.stock) {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot increase quantity beyond available stock.",
-      });
+      return sendError(res, 400, "Cannot increase quantity beyond available stock.");
     }
 
-    // Update order
     order.quantity += 1;
     order.totalPrice = order.price * order.quantity;
     await order.save();
 
-    res.json({
-      success: true,
-      message: "Quantity increased successfully",
-      updatedOrder: order,
-    });
+    return sendResponse(res, 200, order, "Quantity increased successfully");
   } catch (error) {
     console.error("Error increasing order quantity:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    return sendError(res, 500, "Failed to increase order quantity");
   }
 };
 /**
@@ -562,11 +563,11 @@ const deleteOrderItem = async (req, res) => {
   try {
     const { orderId } = req.params;
     const deleted = await OrderModel.findByIdAndDelete(orderId);
-    if (!deleted) return res.status(404).json({ success: false, message: "Order not found" });
-    return res.json({ success: true, message: "Order item deleted successfully" });
+    if (!deleted) return sendError(res, 404, "Order not found");
+    return sendResponse(res, 200, null, "Order item deleted successfully");
   } catch (error) {
     console.error("deleteOrderItem error:", error);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return sendError(res, 500, "Failed to delete order item");
   }
 };
 
@@ -576,10 +577,10 @@ const deleteOrderItem = async (req, res) => {
 const clearUserOrders = async (req, res) => {
   try {
     await OrderModel.deleteMany({ userOrdering: req.user._id });
-    return res.json({ success: true, message: "Your orders cleared" });
+    return sendResponse(res, 200, null, "User orders cleared successfully");
   } catch (error) {
     console.error("clearUserOrders error:", error);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return sendError(res, 500, "Failed to clear user orders");
   }
 };
 

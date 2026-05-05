@@ -1,15 +1,23 @@
 import { createContext, useState, useContext } from "react";
+import api from "../utils/api";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
-    const storedUser = localStorage.getItem("pos-user");
-    return storedUser ? JSON.parse(storedUser) : null;
+    try {
+      const storedUser = localStorage.getItem("pos-user");
+      return storedUser && storedUser !== "undefined" ? JSON.parse(storedUser) : null;
+    } catch (error) {
+      console.error("Error parsing stored user data:", error);
+      localStorage.removeItem("pos-user");
+      return null;
+    }
   });
 
   const [token, setToken] = useState(() => {
-    return localStorage.getItem("pos-token") || "";
+    const storedToken = localStorage.getItem("pos-token");
+    return storedToken && storedToken !== "undefined" ? storedToken : "";
   });
 
   const login = (userData, tokenData) => {
@@ -19,11 +27,17 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("pos-token", tokenData);
   };
 
-  const logout = () => {
-    setUser(null);
-    setToken("");
-    localStorage.removeItem("pos-user");
-    localStorage.removeItem("pos-token");
+  const logout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch (error) {
+      console.error("Logout API error:", error);
+    } finally {
+      setUser(null);
+      setToken("");
+      localStorage.removeItem("pos-user");
+      localStorage.removeItem("pos-token");
+    }
   };
 
   return (

@@ -1,5 +1,6 @@
 import express from "express";
 import { authMiddleware, optionalAuthMiddleware } from "../middleware/authMiddleware.js";
+import { validate } from '../middleware/validate.js';
 import {
   addOrder,
   getOrders,
@@ -12,17 +13,15 @@ import {
   getOrderByProduct,
   updateOrder,
 } from "../controllers/orderController.js";
+import { createOrderSchema, completeOrderSchema, updateOrderSchema } from '../validators/schemas.js';
 
 const router = express.Router();
 
 router.get("/", authMiddleware, getOrders);
-router.post("/add", authMiddleware, addOrder);
+router.post("/add", authMiddleware, validate(createOrderSchema), addOrder);
 
-// ✅ UNIVERSAL COMPLETE ORDER (staff + customer)
-router.post("/complete", authMiddleware, completeOrder);
-
-// (Optional legacy support)
-router.post("/payment", authMiddleware, completeOrder);
+router.post("/complete", authMiddleware, validate(completeOrderSchema), completeOrder);
+router.post("/payment", authMiddleware, validate(completeOrderSchema), completeOrder);
 
 router.delete("/clear", authMiddleware, clearUserOrders);
 router.post("/reduce/:orderId", authMiddleware, reduceOrder);
@@ -31,8 +30,7 @@ router.delete("/remove/:orderId", authMiddleware, deleteOrderItem);
 
 router.get("/invoice", optionalAuthMiddleware, generateInvoice);
 
-// extra
 router.get("/product/:productId", authMiddleware, getOrderByProduct);
-router.patch("/update/:orderId", authMiddleware, updateOrder);
+router.patch("/update/:orderId", authMiddleware, validate(updateOrderSchema), updateOrder);
 
 export default router;

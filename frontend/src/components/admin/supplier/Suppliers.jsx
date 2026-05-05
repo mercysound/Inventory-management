@@ -17,7 +17,7 @@ const Suppliers = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    number: "",
+    phone: "",
     address: "",
   });
 
@@ -49,7 +49,7 @@ const Suppliers = () => {
     setFormData({
       name: supplier.name,
       email: supplier.email,
-      number: supplier.number,
+      phone: supplier.phone,
       address: supplier.address,
     });
     setEditSupplier(supplier._id);
@@ -59,7 +59,7 @@ const Suppliers = () => {
   const closeModal = () => {
     setOpenModal(false);
     setEditSupplier(null);
-    setFormData({ name: "", email: "", number: "", address: "" });
+    setFormData({ name: "", email: "", phone: "", address: "" });
   };
 
   const handleSubmit = async (e) => {
@@ -80,8 +80,8 @@ const Suppliers = () => {
         toast.error("Something went wrong. Try again.");
       }
     } catch (error) {
-      if (error.response?.status === 400) toast.error("Supplier already exists");
-      else toast.error("Something went wrong");
+      const errorMessage = error.response?.data?.message || error.response?.data?.errors?.[0]?.message || "Something went wrong";
+      toast.error(errorMessage);
     }
   };
 

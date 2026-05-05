@@ -1,5 +1,8 @@
 import UserModel from '../models/UserModel.js'
 import bcrypt from 'bcrypt'
+import jwt from 'jsonwebtoken'
+import { sendResponse, sendError } from '../utils/apiResponse.js';
+import { getPaginationParams, getPaginationMeta } from '../utils/pagination.js';
 
 const addUser = async (req, res) => {
   try {
@@ -7,7 +10,7 @@ const addUser = async (req, res) => {
 
     const existingUser = await UserModel.findOne({ email });
     if (existingUser)
-      return res.status(400).json({ success: false, message: "User already exists" });
+      return sendError(res, 400, "User already exists");
 
     let assignedRole = "customer"; // default
 
@@ -16,7 +19,7 @@ const addUser = async (req, res) => {
       if (["admin", "staff", "customer"].includes(role)) { 
         assignedRole = role;
       }
-    } // this part doesn't needed bcs it's already donein schema num
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -30,13 +33,30 @@ const addUser = async (req, res) => {
       profileCompleted: true,
     });
 
-    return res.status(201).json({
-      success: true,
-      message: "User created successfully",
-    });
+    // Generate JWT token for auto-login
+    const token = jwt.sign(
+      { id: newUser._id, role: newUser.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '2d' }
+    );
+
+    return sendResponse(res, 201, {
+      token,
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        picture: newUser.picture || "",
+        phone: newUser.phone || "",
+        address: newUser.address || "",
+        profileCompleted: newUser.profileCompleted,
+      }
+    }, "User created successfully");
 
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error('Error adding user:', error);
+    return sendError(res, 500, `Failed to create user: ${error.message}`);
   }
 };
 
@@ -45,73 +65,99 @@ const addUser = async (req, res) => {
 
 const getUsers = async (req, res) => {
   try {
-    const users = await UserModel.find();
-    return res.status(200).json({ success: true, users })
+    const { skip, limit, page, sort } = getPaginationParams(req);
+    const total = await UserModel.countDocuments();
+    
+    const users = await UserModel.find()
+      .select('-password')
+      .sort(sort)
+      .skip(skip)
+      .limit(limit);
+    
+    const meta = getPaginationMeta(total, limit, page);
+    return sendResponse(res, 200, { users }, "Users retrieved successfully", meta);
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server error in categories" })
+    console.error('Error fetching users:', error);
+    return sendError(res, 500, "Failed to fetch users");
   }
-}
+};
+
 const getUser = async (req, res) => {
   try {
-    const userId = req.user._id; /// assuming the user ID is stored in req.user after authentication
+    const userId = req.user._id;
 
-    // Fetch the user from the Database
-    const user = await UserModel.findById(userId).select('-password'); // exclude password from the response
+    const user = await UserModel.findById(userId).select('-password');
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return sendError(res, 404, "User not found");
     }
-    return res.status(200).json({ success: true, user });
+    return sendResponse(res, 200, user, "User retrieved successfully");
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Server error in categories" })
+    console.error('Error fetching user:', error);
+    return sendError(res, 500, "Failed to fetch user");
   }
-}
+};
 
 const updateUserprofile = async (req, res) => {
   try {
-    const userId = req.user._id; // Assuring the user ID is stored in req.user after authentication
-    const { name, email, address, password } = req.body;
+    const userId = req.user._id;
+    const { name, email, address, oldPassword, password } = req.body;
+
+    const user = await UserModel.findById(userId);
+    if (!user) return sendError(res, 404, "User not found");
 
     const updateData = { name, email, address };
-    if (password && password.trim() !== '') {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      updateData.password = hashedPassword
+
+    // Only process password change if both oldPassword and new password are provided
+    if (password && password.trim() !== "") {
+      if (!oldPassword) {
+        return sendError(res, 400, "Current password is required to set a new password");
+      }
+
+      // ✅ Verify old password
+      const isMatch = await bcrypt.compare(oldPassword, user.password);
+      if (!isMatch) {
+        return sendError(res, 400, "Current password is incorrect");
+      }
+
+      updateData.password = await bcrypt.hash(password, 10);
     }
 
-    const user = await UserModel.findByIdAndUpdate(userId, updateData, { new: true }) // Exclude password from the response
-    if (!user) {
-      return res.status(404).json({ success: false, message: "user not found" });
-    }
-    return res.status(201).json({ success: true, message: 'User added succesfully' })
+    const updatedUser = await UserModel.findByIdAndUpdate(
+      userId,
+      updateData,
+      { new: true }
+    ).select("-password");
+
+    return sendResponse(res, 200, updatedUser, "Profile updated successfully");
   } catch (error) {
-    console.error("Error adding user", error);
-    return res.status(500).json({ success: false, message: "server error" })
+    console.error("Error updating user profile:", error);
+    return sendError(res, 500, "Failed to update user profile");
   }
-}
+};
 
 const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
 
-    //check if the category exists
     const existingUser = await UserModel.findById(id);
     if (!existingUser) {
-      return res.status(404).json({ success: false, message: 'User not found' })
+      return sendError(res, 404, "User not found");
     }
 
     await UserModel.findByIdAndDelete(id);
-    return res.status(200).json({ success: true, message: 'user deleted successfully' })
+    return sendResponse(res, 200, null, "User deleted successfully");
   } catch (error) {
     console.error('Error deleting user:', error);
-    return res.status(500).json({ success: false, message: 'Server error' })
+    return sendError(res, 500, "Failed to delete user");
   }
-}
+};
 
 const updateProfile = async (req, res) => {
   try {
     const { phone, address } = req.body;
-    const userId = req.user.id;
+    const userId = req.user._id;
 
-    if (!phone) return res.status(400).json({ success: false, message: "Phone number is required" });
+    if (!phone) return sendError(res, 400, "Phone number is required");
 
     const updatedUser = await UserModel.findByIdAndUpdate(
       userId,
@@ -119,10 +165,22 @@ const updateProfile = async (req, res) => {
       { new: true }
     ).select("-password");
 
-    return res.status(200).json({ success: true, message: "Profile updated successfully", user: updatedUser });
+    // Return with 'user' key for frontend compatibility
+    return sendResponse(res, 200, {
+      user: {
+        id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        picture: updatedUser.picture || "",
+        phone: updatedUser.phone || "",
+        address: updatedUser.address || "",
+        profileCompleted: updatedUser.profileCompleted,
+      }
+    }, "Profile updated successfully");
   } catch (error) {
-    console.error("Complete profile error:", error);
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("Error updating profile:", error);
+    return sendError(res, 500, `Failed to update profile: ${error.message}`);
   }
 };
 

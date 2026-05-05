@@ -58,6 +58,7 @@ const LandingPage = () => {
     if (!isLogin) {
       if (!formData.name.trim()) newErrors.name = "Full name required";
       if (!formData.phone.trim()) newErrors.phone = "Phone number required";
+      if (!formData.address.trim()) newErrors.address = "Address required";
     }
 
     setErrors(newErrors);
@@ -66,8 +67,8 @@ const LandingPage = () => {
 
   // Handle email/password submit
   const handleSubmit = async (e) => {
-    e.preventDefault(); // Prevent form default reload
-    // if (!validateForm()) return; // Optional: validate inputs
+    e.preventDefault();
+    if (!validateForm()) return;
 
     setLoading(true);
 
@@ -95,17 +96,34 @@ const LandingPage = () => {
       } else {
         // Signup
         const response = await axiosInstance.post("/users/register", formData);
-        toast.success(response.data.message || "Signup successful!");
-        setIsLogin(true);
-        setFormData({
-          name: "",
-          address: "",
-          phone: "",
-          email: formData.email,
-          password: formData.password,
-        });
+        const { success, message, user, token } = response.data;
 
+        if (success && token && user) {
+          // Auto-login after signup
+          await login(user, token);
+          toast.success("Signup successful! Welcome!");
 
+          // Check if profile is complete
+          if (!user.phone || !user.address) {
+            navigate("/complete-profile");
+          } else {
+            // Redirect based on role
+            const role = user.role;
+            if (role === "admin") navigate("/admin-dashboard");
+            else if (role === "staff") navigate("/customer-dashboard");
+            else navigate("/user-dashboard");
+          }
+        } else {
+          toast.success(message || "Signup successful! Please login.");
+          setIsLogin(true);
+          setFormData({
+            name: "",
+            address: "",
+            phone: "",
+            email: formData.email,
+            password: formData.password,
+          });
+        }
       }
     } catch (error) {
       // Handle different error scenarios
@@ -242,26 +260,28 @@ const LandingPage = () => {
                 {errors.name && <p className="error-text">{errors.name}</p>}
               </div>
 
-              <input
-                type="text"
-                name="address"
-                placeholder="Address"
-                value={formData.address}
-                onChange={handleChange}
-                className="input-field"
-                required
-              />
+              <div>
+                <input
+                  type="text"
+                  name="address"
+                  placeholder="Address *"
+                  value={formData.address}
+                  onChange={handleChange}
+                  className="input-field"
+                  required
+                />
+                {errors.address && <p className="error-text">{errors.address}</p>}
+              </div>
 
               <div>
                 <input
                   type="tel"
                   name="phone"
-                  // pattern="^(\+234|0)[7-9][0-1]\d{8}$"
-                  placeholder="Phone Number (e.g. 08012345678)"
-
+                  placeholder="Phone Number (e.g. 08012345678) *"
                   value={formData.phone}
                   onChange={handleChange}
                   className="input-field"
+                  required
                 />
                 {errors.phone && <p className="error-text">{errors.phone}</p>}
               </div>
@@ -321,6 +341,17 @@ const LandingPage = () => {
           </button>
         </p>
 
+        {isLogin && (
+          <p className="text-center text-gray-600 mt-2">
+            <button
+              onClick={() => navigate("/forgot-password")}
+              className="text-indigo-700 hover:underline text-sm"
+            >
+              Forgot your password?
+            </button>
+          </p>
+        )}
+
         {/* GOOGLE LOGIN */}
         <div className="my-6">
           <div className="flex items-center gap-3 my-6">
@@ -332,7 +363,10 @@ const LandingPage = () => {
           <GoogleLogin
             clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}
             onSuccess={handleGoogleSuccess}
-            onError={() => toast.error("Google login failed")}
+            onError={() => {
+              console.error("Google OAuth error");
+              toast.error("Google sign-in failed. Please try again.");
+            }}
             useOneTap={false}
             theme="outline"
             size="large"
@@ -344,10 +378,13 @@ const LandingPage = () => {
                 initial="initial"
                 whileHover="hover"
                 whileTap="tap"
-                onClick={renderProps.onClick}
+                onClick={() => {
+                  console.log("Google button clicked");
+                  renderProps.onClick();
+                }}
                 disabled={renderProps.disabled || googleLoading}
-                className={`w-full flex items-center justify-center gap-3 
-        bg-white border border-gray-300 shadow-sm 
+                className={`w-full flex items-center justify-center gap-3
+        bg-white border border-gray-300 shadow-sm
         hover:shadow-md py-2.5 rounded-xl transition-all
         ${renderProps.disabled || googleLoading
                     ? "opacity-60 cursor-not-allowed"

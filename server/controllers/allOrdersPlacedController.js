@@ -2,6 +2,7 @@ import AllOrdersPlacedModel from "../models/AllOrdersPlacedModel.js";
 import CompletedOrderHistoryModel from "../models/CompletedOrderHistoryModel.js";
 import { sendCustomerProcessingEmail } from "../utils/email/customerProcessing.js";
 import { sendCustomerDeliveredEmail } from "../utils/email/customerOrderDelivered.js";
+import { sendResponse, sendError } from '../utils/apiResponse.js';
 
 
 // emailHandlers object
@@ -29,12 +30,10 @@ export const getAllPlacedOrders = async (req, res) => {
       })
       .sort({ createdAt: -1 });
 
-    res.json({ success: true, orders });
+    return sendResponse(res, 200, { orders }, "Placed orders retrieved successfully");
   } catch (error) {
     console.error("getAllPlacedOrders error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Error fetching placed orders" });
+    return sendError(res, 500, "Error fetching placed orders");
   }
 };
 
@@ -50,9 +49,8 @@ export const updateDeliveryStatus = async (req, res) => {
       .populate("userOrdering", "name email");
 
     if (!order)
-      return res.status(404).json({ success: false, message: "Order not found" });
+      return sendError(res, 404, "Order not found");
 
-    // ✅ Save previous status
     const previousStatus = order.deliveryStatus;
 
     // Update status
@@ -91,18 +89,12 @@ export const updateDeliveryStatus = async (req, res) => {
       await AllOrdersPlacedModel.findByIdAndDelete(id);
     }
 
-    res.json({
-      success: true,
-      message:
-        deliveryStatus.toLowerCase() === "delivered"
-          ? "Order marked delivered and moved to history."
-          : "Delivery status updated successfully.",
-    });
+    return sendResponse(res, 200, null, deliveryStatus.toLowerCase() === "delivered"
+      ? "Order marked delivered and moved to history."
+      : "Delivery status updated successfully.");
   } catch (error) {
     console.error("updateDeliveryStatus error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Error updating delivery status" });
+    return sendError(res, 500, "Error updating delivery status");
   }
 };
 
@@ -111,25 +103,25 @@ export const updateDeliveryStatus = async (req, res) => {
 export const clearAllPlacedOrders = async (req, res) => {
   try {
     await AllOrdersPlacedModel.deleteMany({});
-    res.json({ success: true, message: "All placed orders cleared successfully" });
+    return sendResponse(res, 200, null, "All placed orders cleared successfully");
   } catch (error) {
     console.error("clearAllPlacedOrders error:", error);
-    res.status(500).json({ success: false, message: "Error clearing orders" });
+    return sendError(res, 500, "Error clearing orders");
   }
 };
-// ✅ Delete single placed order
+
 export const deletePlacedOrder = async (req, res) => {
   try {
     const { id } = req.params;
     const deleted = await AllOrdersPlacedModel.findByIdAndDelete(id);
 
     if (!deleted) {
-      return res.status(404).json({ success: false, message: "Order not found" });
+      return sendError(res, 404, "Order not found");
     }
 
-    res.json({ success: true, message: "Order deleted successfully" });
+    return sendResponse(res, 200, null, "Order deleted successfully");
   } catch (error) {
     console.error("deletePlacedOrder error:", error);
-    res.status(500).json({ success: false, message: "Error deleting order" });
+    return sendError(res, 500, "Error deleting order");
   }
 };

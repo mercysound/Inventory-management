@@ -46,7 +46,7 @@ const getCategories = async (req, res) => {
 
     const meta = getPaginationMeta(total, limit, page);
 
-    return sendResponse(res, 200, categories, 'Categories retrieved successfully', meta);
+    return sendResponse(res, 200, { categories }, 'Categories retrieved successfully', meta);
   } catch (error) {
     console.error("Error fetching categories:", error);
     return sendError(res, 500, 'Failed to fetch categories');

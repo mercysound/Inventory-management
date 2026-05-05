@@ -32,11 +32,11 @@ const SupplierForm = ({
         </button>
 
         <form className="flex flex-col gap-3 mt-4" onSubmit={handleSubmit}>
-          {["name", "email", "number", "address"].map((field) => (
+          {["name", "email", "phone", "address"].map((field) => (
             <input
               key={field}
               required
-              type={field === "number" ? "number" : "text"}
+              type={field === "phone" ? "tel" : "text"}
               placeholder={`Supplier ${field.charAt(0).toUpperCase() + field.slice(1)}`}
               name={field}
               value={formData[field]}

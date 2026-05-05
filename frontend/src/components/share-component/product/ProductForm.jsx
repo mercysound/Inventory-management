@@ -18,8 +18,10 @@ const ProductForm = ({
   useEffect(() => {
     if (editProduct && formData?.image) {
       setPreview(formData.image);
+    } else if (!editProduct) {
+      setPreview(""); // ✅ clear preview when opening for a new product
     }
-  }, [editProduct, formData]);
+  }, [editProduct, formData?.image]);
 
   // ESC key listener
   useEffect(() => {
@@ -37,12 +39,25 @@ const ProductForm = ({
     }));
   };
 
+  // ✅ IMAGE UPLOAD
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     setImage(file);
     setPreview(URL.createObjectURL(file));
+  };
+
+  // ❌ REMOVE IMAGE
+  const handleRemoveImage = () => {
+    setPreview("");
+    setImage(null);
+
+    setFormData((prev) => ({
+      ...prev,
+      image: "",
+      removeImage: true, // ✅ IMPORTANT FLAG
+    }));
   };
 
   if (!open) return null;
@@ -54,8 +69,9 @@ const ProductForm = ({
           {editProduct ? "Edit Product" : "Add Product"}
         </h2>
 
+        {/* CLOSE BUTTON - add disabled */}
         <button
-          className="absolute top-3 right-4 font-bold text-lg"
+          className="absolute top-3 right-4 font-bold text-lg disabled:opacity-40 disabled:cursor-not-allowed"
           onClick={onClose}
           disabled={loading}
         >
@@ -76,6 +92,7 @@ const ProductForm = ({
           }}
           className="flex flex-col gap-3"
         >
+          {/* NAME */}
           <input
             name="name"
             value={formData.name}
@@ -85,6 +102,7 @@ const ProductForm = ({
             required
           />
 
+          {/* DESCRIPTION */}
           <input
             name="description"
             value={formData.description}
@@ -94,26 +112,63 @@ const ProductForm = ({
             required
           />
 
+          {/* PRICE */}
           <input
             type="number"
             name="price"
             value={formData.price}
-            onChange={handleChange}
+            onChange={(e) => {
+              const value = e.target.value;
+
+              if (value === "") {
+                setFormData((prev) => ({ ...prev, price: "" }));
+                return;
+              }
+
+              const num = Number(value);
+              if (num < 0) return; // block negatives
+
+              setFormData((prev) => ({ ...prev, price: num }));
+            }}
             placeholder="Price"
             className="border p-2 rounded w-full"
+            min="0"
             required
           />
 
+          {/* STOCK (NO NEGATIVE) */}
           <input
             type="number"
             name="stock"
             value={formData.stock}
-            onChange={handleChange}
+            onChange={(e) => {
+              const value = e.target.value;
+
+              // allow empty input (important UX fix)
+              if (value === "") {
+                setFormData((prev) => ({
+                  ...prev,
+                  stock: "",
+                }));
+                return;
+              }
+
+              const num = Number(value);
+
+              if (num < 0) return; // block negatives
+
+              setFormData((prev) => ({
+                ...prev,
+                stock: num,
+              }));
+            }}
             placeholder="Stock"
             className="border p-2 rounded w-full"
+            min="0"
             required
           />
 
+          {/* CATEGORY */}
           <select
             name="categoryId"
             value={formData.categoryId}
@@ -129,6 +184,7 @@ const ProductForm = ({
             ))}
           </select>
 
+          {/* SUPPLIER */}
           <select
             name="supplierId"
             value={formData.supplierId}
@@ -144,17 +200,27 @@ const ProductForm = ({
             ))}
           </select>
 
-          {/* IMAGE PREVIEW */}
+          {/* IMAGE PREVIEW WITH REMOVE BUTTON */}
           {preview && (
-            <div className="w-24 h-24 sm:w-28 sm:h-28 border rounded overflow-hidden">
+            <div className="relative w-24 h-24 sm:w-28 sm:h-28 border rounded overflow-hidden">
               <img
                 src={preview}
                 alt="Product preview"
                 className="w-full h-full object-cover"
               />
+
+              {/* ❌ REMOVE IMAGE BUTTON */}
+              <button
+                type="button"
+                onClick={handleRemoveImage}
+                className="absolute top-1 right-1 bg-black/70 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+              >
+                ✕
+              </button>
             </div>
           )}
 
+          {/* IMAGE INPUT */}
           <input
             type="file"
             accept="image/*"
@@ -162,29 +228,30 @@ const ProductForm = ({
             className="border p-2 rounded"
           />
 
-          {/* Buttons */}
+          {/* ACTION BUTTONS */}
           <div className="flex flex-col sm:flex-row gap-2 mt-2">
             <button
               type="submit"
               disabled={loading}
-              className={`flex-1 p-3 rounded text-white ${
-                loading ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
-              }`}
+              className={`flex-1 p-3 rounded text-white ${loading
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-green-600 hover:bg-green-700"
+                }`}
             >
               {loading
                 ? editProduct
                   ? "Saving..."
                   : "Adding..."
                 : editProduct
-                ? "Save Changes"
-                : "Add Product"}
+                  ? "Save Changes"
+                  : "Add Product"}
             </button>
 
             <button
               type="button"
               onClick={onClose}
-              disabled={loading}
-              className="flex-1 p-3 rounded bg-red-500 text-white hover:bg-red-600"
+              disabled={loading} 
+              className="flex-1 p-3 rounded bg-red-500 text-white hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Cancel
             </button>

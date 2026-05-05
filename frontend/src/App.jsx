@@ -22,6 +22,8 @@ import Product from "./components/share-component/product/Product.jsx";
 import Logout from "./components/share-component/logout/Logout.jsx";
 import CompleteProfile from "./components/share-component/complete-profile/CompleteProfile.jsx";
 import StaffOrders from "./components/staff/orders/StaffOrders.jsx";
+import ForgotPassword from "./pages/ForgotPassword.jsx";
+import ResetPassword from "./pages/ResetPassword.jsx";
 
 
 export const BASE_URL = import.meta.env.VITE_API_URL;
@@ -36,6 +38,10 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           {/* Complete Profile Page */}
           <Route path="/complete-profile" element={<CompleteProfile />} />
+          {/* Forgot Password Page */}
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          {/* Reset Password Page */}
+          <Route path="/reset-password" element={<ResetPassword />} />
           {/* Admin Dashboard */}
           <Route
             path="/admin-dashboard/*"

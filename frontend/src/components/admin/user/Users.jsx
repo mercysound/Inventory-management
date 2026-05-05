@@ -55,9 +55,16 @@ const Users = () => {
         fetchUsers();
       }
     } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Error adding user, please try again"
-      );
+      const res = error.response?.data;
+
+      console.log("FULL ERROR:", res);
+
+      if (res?.errors && res.errors.length > 0) {
+        // Show first validation error
+        toast.error(res.errors[0].message);
+      } else {
+        toast.error(res?.message || "Error adding user");
+      }
     }
   };
 

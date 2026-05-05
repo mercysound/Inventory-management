@@ -26,7 +26,7 @@ const CustomerOrderPortal = () => {
       setLoading(true);
 
       const orderRes = await axiosInstance.get("/orders");
-      const cartOrders = orderRes.data.orders || [];
+      const cartOrders = orderRes.data.data || orderRes.data.orders || [];
 
       const normalized = cartOrders.map((o) => ({
         ...o,
@@ -105,14 +105,20 @@ const CustomerOrderPortal = () => {
 
   // ================= PAYSTACK SUCCESS =================
   const handlePaymentSuccess = async () => {
-    toast.success("Payment successful");
-
     try {
-      // 1️⃣ Complete order
-      await axiosInstance.post("/orders/complete", {
+      // 1️⃣ Complete order only after Paystack confirms payment
+      const completeRes = await axiosInstance.post("/orders/complete", {
         paymentMethod: "Paystack",
         buyerName: user?.name || "Customer",
       });
+
+      if (!completeRes.data.success) {
+        const errorMessage = completeRes.data.message || "Order completion failed";
+        toast.error(errorMessage);
+        return;
+      }
+
+      toast.success("Payment successful");
 
       // 2️⃣ Fetch FINAL receipt (PDF)
       const query = new URLSearchParams({
@@ -135,12 +141,13 @@ const CustomerOrderPortal = () => {
       // ✅ open modal
       setShowReceiptPrompt(true);
 
-      // clear UI
+      // clear UI only after successful completion
       setOrders([]);
       fetchOrders();
     } catch (err) {
-      console.error(err);
-      toast.error("Order completion failed");
+      console.error("Order completion failed:", err);
+      const errorMessage = err?.response?.data?.message || err?.response?.data?.error || err.message || "Order completion failed";
+      toast.error(errorMessage);
     }
   };
 

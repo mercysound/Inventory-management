@@ -60,67 +60,52 @@ const CustomerProducts = () => {
   };
 
   // When user clicks "Order" — check for existing order for this product first
-  const handleOrderChange = async (product) => {
-    try {
-      // Reset orderData to avoid stale values
-      setOrderData({
-        orderId: "",
-        productId: product._id,
-        quantity: 1,
-        total: product.price,
-        stock: product.stock,
-        price: product.price,
-      });
+const handleOrderChange = async (product) => {
+  try {
+    setOrderData({
+      orderId: "",
+      productId: product._id,
+      productName: product.name,
+      productImage: product.image,
+      productDescription: product.description,
+      productCategory: product.categoryId?.name || "",
+      quantity: 1,
+      total: product.price,
+      stock: product.stock,
+      price: product.price,
+    });
 
-      // Fetch existing order for this product (if any)
-      const res = await axiosInstance.get(`/orders/product/${product._id}`);
-      if (res.data.success && res.data.order) {
-        const existing = res.data.order;
-        setOrderData({
-          orderId: existing._id,
-          productId: product._id,
-          productName: product.name,
-          productImage: product.image,
-          productDescription: product.description,
-          productCategory: product.categoryId?.name || "",
-          quantity: existing.quantity,
-          total: existing.totalPrice ?? existing.quantity * product.price,
-          stock: product.stock,
-          price: existing.price ?? product.price,
-        });
-      } else {
-        // no existing order — keep default (new order)
-        setOrderData((prev) => ({
-          ...prev,
-          productId: product._id,
-          productName: product.name,
-          productImage: product.image,
-          productDescription: product.description,
-          productCategory: product.categoryId?.name || "",
-          total: product.price,
-          stock: product.stock,
-          price: product.price,
-        }));
-      }
-    } catch (err) {
-      // If request fails, still open modal with defaults
-      console.error("Error fetching existing order:", err);
+    const res = await axiosInstance.get(`/orders/product/${product._id}`);
+
+    console.log("ORDER RESPONSE 👉", res.data);
+
+    // 🔥 FIX
+    const existing =
+      res.data.order ||
+      res.data.data ||
+      res.data._doc ||
+      res.data;
+
+    if (res.data.success && existing && existing._id) {
       setOrderData({
-        orderId: "",
+        orderId: existing._id,
         productId: product._id,
         productName: product.name,
         productImage: product.image,
         productDescription: product.description,
         productCategory: product.categoryId?.name || "",
-        quantity: 1,
-        total: product.price,
+        quantity: existing.quantity,
+        total: existing.totalPrice ?? existing.quantity * product.price,
         stock: product.stock,
-        price: product.price,
+        price: existing.price ?? product.price,
       });
-    } finally {
-      setOpenModal(true);
     }
-  };
+  } catch (err) {
+    console.error("Error fetching existing order:", err);
+  } finally {
+    setOpenModal(true);
+  }
+};
 
   const closeModal = () => setOpenModal(false);
 

@@ -1,5 +1,6 @@
 import CompletedOrderHistoryModel from "../models/CompletedOrderHistoryModel.js";
 import User from "../models/UserModel.js";
+import { sendResponse, sendError } from '../utils/apiResponse.js';
 import mongoose from "mongoose";
 
 /**
@@ -34,13 +35,10 @@ export const getCompletedHistory = async (req, res) => {
       })
       .sort({ createdAt: -1 });
 
-    return res.status(200).json({ success: true, orders });
+    return sendResponse(res, 200, { orders }, "Completed order history retrieved successfully");
   } catch (err) {
     console.error("getCompletedHistory error:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    return sendError(res, 500, "Failed to fetch completed history");
   }
 };
 
@@ -59,7 +57,7 @@ export const deleteCompletedOrder = async (req, res) => {
 
     const order = await CompletedOrderHistoryModel.findById(id);
     if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found" });
+      return sendError(res, 404, "Order not found");
     }
 
     console.log(`🗑️ Deleting order ${id} by ${role}`);
@@ -83,19 +81,13 @@ export const deleteCompletedOrder = async (req, res) => {
     if (customerDeleted && adminDeleted) {
       await order.deleteOne();
       console.log(`✅ Permanently deleted order ${id}`);
-      return res.status(200).json({
-        success: true,
-        message: "Order permanently deleted from database",
-      });
+      return sendResponse(res, 200, null, "Order permanently deleted from database");
     }
 
-    return res.status(200).json({
-      success: true,
-      message: "Order deleted from your view only",
-    });
+    return sendResponse(res, 200, null, "Order deleted from your view only");
   } catch (error) {
     console.error("❌ deleteCompletedOrder error:", error);
-    res.status(500).json({ success: false, message: "Error deleting order" });
+    return sendError(res, 500, "Error deleting order");
   }
 };
 
@@ -132,10 +124,10 @@ export const clearCompletedOrders = async (req, res) => {
       });
     }
 
-    res.status(200).json({ success: true, message: "Orders cleared successfully" });
+    return sendResponse(res, 200, null, "Orders cleared successfully");
   } catch (error) {
     console.error("❌ clearCompletedOrders error:", error);
-    res.status(500).json({ success: false, message: error.message || "Error clearing orders" });
+    return sendError(res, 500, error.message || "Error clearing orders");
   }
 };
 

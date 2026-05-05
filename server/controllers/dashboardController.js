@@ -1,5 +1,6 @@
 import AllOrdersPlacedModel from "../models/AllOrdersPlacedModel.js";
 import ProductModel from "../models/ProductModel.js";
+import { sendResponse, sendError } from '../utils/apiResponse.js';
 
 const getData = async (req, res) => {
   try {
@@ -94,12 +95,10 @@ const getData = async (req, res) => {
       lowStock,
     };
 
-    return res.status(200).json({ success: true, dashboardData });
+    return sendResponse(res, 200, { dashboardData }, "Dashboard data retrieved successfully");
   } catch (error) {
     console.error("Dashboard error:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Error fetching dashboard summary" });
+    return sendError(res, 500, "Error fetching dashboard summary");
   }
 };
 

@@ -12,7 +12,7 @@ const STORE_ACCOUNT = {
   accountNumber: "1234567890",
 };
 
-const PAYMENT_OPTIONS = ["Cash", "Card", "POS", "Bank Transfer"];
+const PAYMENT_OPTIONS = ["card", "bank_transfer", "cash_on_delivery", "paystack"];
 
 const StaffOrders = () => {
   const [orders, setOrders] = useState([]);
@@ -30,7 +30,9 @@ const StaffOrders = () => {
     try {
       setLoading(true);
       const res = await axiosInstance.get("/orders");
-      const data = Array.isArray(res.data) ? res.data : res.data.orders || [];
+      const data = Array.isArray(res.data)
+        ? res.data
+        : res.data.data || res.data.orders || [];
       setOrders(data);
     } catch (err) {
       toast.error("Failed to fetch orders.");
@@ -117,50 +119,65 @@ const StaffOrders = () => {
       setProcessing(false);
     }
   };
+ // 🔥 Add this helper at top:
+const handleApiError = (err) => {
+  const res = err.response?.data;
+
+  console.log("API ERROR:", res);
+
+  if (res?.errors?.length) {
+    res.errors.forEach(e => toast.error(e.message));
+  } else {
+    toast.error(res?.message || "Something went wrong");
+  }
+};
+// Replace other catch blocks like this:
+// catch (err) {
+//   handleApiError(err);
+// }
+//........................
 
   // ==================== COMPLETE ORDER ====================
   const completeOrder = async () => {
-    if (!paymentMethod) return toast.error("Select payment method first");
-    if (!orders.length) return toast.error("No orders to complete");
+  if (!paymentMethod) return toast.error("Select payment method first");
+  if (!orders.length) return toast.error("No orders to complete");
 
-    setProcessing(true);
+  setProcessing(true);
 
-    try {
-      const res = await axiosInstance.post("/orders/complete", {
+  try {
+    const res = await axiosInstance.post("/orders/complete", {
+      paymentMethod,
+      buyerName: customerName || "Walk-in Customer",
+    });
+
+    if (res.data.success) {
+      toast.success("Order completed successfully");
+
+      const query = new URLSearchParams({
+        mode: "final",
+        orderSource: "staff",
+        customerName: customerName || "Walk-in Customer",
         paymentMethod,
-        buyerName: customerName || "Walk-in Customer",
+      }).toString();
+
+      const invoiceRes = await axiosInstance.get(`/orders/invoice?${query}`, {
+        responseType: "blob",
       });
 
-      if (res.data.success) {
-        toast.success("Order completed successfully");
+      setReceiptBlob(invoiceRes.data);
+      setReceiptMode("final");
+      setShowReceiptModal(true);
 
-        // Fetch final receipt
-        const query = new URLSearchParams({
-          mode: "final",
-          orderSource: "staff",
-          customerName: customerName || "Walk-in Customer",
-          paymentMethod,
-        }).toString();
-
-        const invoiceRes = await axiosInstance.get(`/orders/invoice?${query}`, {
-          responseType: "blob",
-        });
-
-        setReceiptBlob(invoiceRes.data);
-        setReceiptMode("final");
-        setShowReceiptModal(true);
-
-        // Clear local orders
-        setOrders([]);
-        setCustomerName("");
-        setPaymentMethod("");
-      }
-    } catch (err) {
-      toast.error("Failed to complete order");
-    } finally {
-      setProcessing(false);
+      setOrders([]);
+      setCustomerName("");
+      setPaymentMethod("");
     }
-  };
+  } catch (err) {
+    handleApiError(err); // ✅ FIXED
+  } finally {
+    setProcessing(false);
+  }
+};
 
   // ==================== DOWNLOAD RECEIPT ====================
   const handleDownloadReceipt = () => {
