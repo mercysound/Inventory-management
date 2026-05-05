@@ -16,6 +16,10 @@ const CustomerProducts = () => {
   const [orderData, setOrderData] = useState({
     orderId: "", // new field to store existing order id if any
     productId: "",
+    productName: "",
+    productImage: "",
+    productDescription: "",
+    productCategory: "",
     quantity: 1,
     total: 0,
     stock: 0,
@@ -75,6 +79,10 @@ const CustomerProducts = () => {
         setOrderData({
           orderId: existing._id,
           productId: product._id,
+          productName: product.name,
+          productImage: product.image,
+          productDescription: product.description,
+          productCategory: product.categoryId?.name || "",
           quantity: existing.quantity,
           total: existing.totalPrice ?? existing.quantity * product.price,
           stock: product.stock,
@@ -85,6 +93,10 @@ const CustomerProducts = () => {
         setOrderData((prev) => ({
           ...prev,
           productId: product._id,
+          productName: product.name,
+          productImage: product.image,
+          productDescription: product.description,
+          productCategory: product.categoryId?.name || "",
           total: product.price,
           stock: product.stock,
           price: product.price,
@@ -96,6 +108,10 @@ const CustomerProducts = () => {
       setOrderData({
         orderId: "",
         productId: product._id,
+        productName: product.name,
+        productImage: product.image,
+        productDescription: product.description,
+        productCategory: product.categoryId?.name || "",
         quantity: 1,
         total: product.price,
         stock: product.stock,

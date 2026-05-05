@@ -114,6 +114,37 @@ const OrderModal = ({ orderData, setOrderData, closeModal, refreshProducts }) =>
 
         <h2 className="text-xl font-bold mb-4">Place Order</h2>
 
+        <div className="border border-gray-200 rounded-lg bg-gray-50 p-4 mb-4">
+          <div className="flex gap-4">
+            <div className="w-24 h-24 rounded-lg overflow-hidden border bg-white flex-shrink-0">
+              {orderData.productImage ? (
+                <img
+                  src={orderData.productImage}
+                  alt={orderData.productName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400">No Image</div>
+              )}
+            </div>
+
+            <div className="flex-1">
+              <div className="text-lg font-semibold text-gray-800">{orderData.productName}</div>
+              <div className="text-sm text-gray-500 mb-2">{orderData.productCategory}</div>
+              <p className="text-sm text-gray-600 line-clamp-3">{orderData.productDescription}</p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-gray-700">
+            <div>
+              <span className="font-semibold">Unit Price: </span>₦{Number(orderData.price || 0).toLocaleString()}
+            </div>
+            <div>
+              <span className="font-semibold">Available: </span>{orderData.stock}
+            </div>
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex items-center gap-2">
             <button
