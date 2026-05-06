@@ -1,7 +1,6 @@
 import express from 'express';
 import { authMiddleware, authorizeRoles } from '../middleware/authMiddleware.js';
 import { validate } from '../middleware/validate.js';
-
 import {
   addUser,
   getUsers,
@@ -9,29 +8,51 @@ import {
   getUser,
   updateUserprofile,
   updateProfile,
+  updateUser,
+  emailBroadcast,
+  emailBroadcastStatus,   // NEW
 } from '../controllers/userController.js';
-import { userSchema, userUpdateSchema, completeProfileSchema } from '../validators/schemas.js';
+import {
+  userSchema,
+  userUpdateSchema,
+  completeProfileSchema,
+  updateUserSchema,
+  emailBroadcastSchema
+} from '../validators/schemas.js';
 
 const router = express.Router();
 
-router.post('/register', validate(userSchema), addUser); // public
+// ── Public ──────────────────────────────────────────────────────────────────
+router.post('/register', validate(userSchema), addUser);
 
-// Only admin can add staff/admin internally
-router.post('/add', authMiddleware, authorizeRoles("admin"), validate(userSchema), addUser);
+// ── Admin: user management ────────────────────────────────────────────────
+router.post('/add', authMiddleware, authorizeRoles('admin'), validate(userSchema), addUser);
+router.get('/', authMiddleware, authorizeRoles('admin'), getUsers);
+router.put('/:id', authMiddleware, authorizeRoles('admin'), validate(updateUserSchema), updateUser);
+router.delete('/:id', authMiddleware, authorizeRoles('admin'), deleteUser);
 
-// Only admin can view all users
-router.get('/', authMiddleware, authorizeRoles("admin"), getUsers);
+// ── Admin: email broadcast ─────────────────────────────────────────────────
+// Start a broadcast job → responds immediately with jobId
+router.post(
+  '/email-broadcast',
+  authMiddleware,
+  authorizeRoles('admin'),
+  validate(emailBroadcastSchema),
+  emailBroadcast
+);
+// Poll job status → { status, total, sent, failed, failedList, finishedAt }
+router.get(
+  '/email-broadcast/:jobId',
+  authMiddleware,
+  authorizeRoles('admin'),
+  emailBroadcastStatus
+);
 
-// Only admin can delete
-router.delete('/:id', authMiddleware, authorizeRoles("admin"), deleteUser);
-
-// Any logged in user can view their own profile
+// ── Authenticated user: own profile ───────────────────────────────────────
 router.get('/profile', authMiddleware, getUser);
-
-// Any logged in user can update their own profile
 router.put('/profile', authMiddleware, validate(userUpdateSchema), updateUserprofile);
-
-// Complete profile
-router.put("/complete-profile", authMiddleware, validate(completeProfileSchema), updateProfile);
+router.put('/complete-profile', authMiddleware, validate(completeProfileSchema), updateProfile);
 
 export default router;
+
+

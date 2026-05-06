@@ -150,3 +150,32 @@ export const paginationSchema = Joi.object({
   sort: Joi.string().optional(),
   order: Joi.string().valid("asc", "desc").default("desc"),
 });
+
+
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ADD THESE TWO SCHEMAS to your validators/schemas.js  (Joi example shown)
+// ──────────────────────────────────────────────────────────────────────────────
+
+export const updateUserSchema = Joi.object({
+  name:    Joi.string().min(2).max(100),
+  email:   Joi.string().email(),
+  phone:   Joi.string().allow('', null),
+  address: Joi.string().allow('', null),
+  role:    Joi.string().valid('admin', 'staff', 'customer'),
+}).min(1);
+
+export const emailBroadcastSchema = Joi.object({
+  targetRole:  Joi.string().valid('all', 'admin', 'staff', 'customer').allow(null),
+  singleEmail: Joi.string().email().allow(null, ''),
+  subject:     Joi.string().min(1).max(200).required(),
+  body:        Joi.string().min(1).required(),
+  attachments: Joi.array().items(
+    Joi.object({
+      name:   Joi.string().required(),
+      type:   Joi.string().required(),
+      base64: Joi.string().required(),
+      size:   Joi.number(),
+    })
+  ).max(5).default([]),
+}).or('targetRole', 'singleEmail');

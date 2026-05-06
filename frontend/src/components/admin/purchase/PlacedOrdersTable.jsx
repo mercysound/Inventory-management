@@ -1,5 +1,8 @@
 import React, { useState } from "react";
-import { FaTrashAlt, FaSortUp, FaSortDown, FaSort, FaChevronDown, FaChevronUp } from "react-icons/fa";
+import {
+  FaTrashAlt, FaSortUp, FaSortDown,
+  FaSort, FaChevronDown, FaChevronUp,
+} from "react-icons/fa";
 
 const StatusBadge = ({ status }) => {
   const map = {
@@ -18,7 +21,8 @@ const StatusBadge = ({ status }) => {
 };
 
 const SortIcon = ({ field, sortField, sortDir }) => {
-  if (sortField !== field) return <FaSort className="inline ml-1 text-gray-400 text-xs" />;
+  if (sortField !== field)
+    return <FaSort className="inline ml-1 text-gray-400 text-xs" />;
   return sortDir === "asc"
     ? <FaSortUp className="inline ml-1 text-indigo-500 text-xs" />
     : <FaSortDown className="inline ml-1 text-indigo-500 text-xs" />;
@@ -29,7 +33,7 @@ const PlacedOrdersTable = ({
   allOrders,
   updateDeliveryStatus,
   deleteOrder,
-  updating,
+  updatingId, // ✅ specific row id instead of boolean flag
   sortField,
   sortDir,
   onSort,
@@ -38,7 +42,9 @@ const PlacedOrdersTable = ({
 }) => {
   const [expandedRows, setExpandedRows] = useState({});
 
-  const grandTotal = (allOrders || orders).reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+  const grandTotal = (allOrders || orders).reduce(
+    (sum, o) => sum + (o.totalPrice || 0), 0
+  );
 
   const toggleExpand = (id) =>
     setExpandedRows((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -64,7 +70,8 @@ const PlacedOrdersTable = ({
                 className="p-3 text-left cursor-pointer hover:bg-gray-200"
                 onClick={() => onSort("buyerName")}
               >
-                Buyer <SortIcon field="buyerName" sortField={sortField} sortDir={sortDir} />
+                Buyer{" "}
+                <SortIcon field="buyerName" sortField={sortField} sortDir={sortDir} />
               </th>
               <th className="p-3 text-left">User</th>
               <th className="p-3 text-left">Products</th>
@@ -72,7 +79,8 @@ const PlacedOrdersTable = ({
                 className="p-3 text-left cursor-pointer hover:bg-gray-200"
                 onClick={() => onSort("totalPrice")}
               >
-                Total <SortIcon field="totalPrice" sortField={sortField} sortDir={sortDir} />
+                Total{" "}
+                <SortIcon field="totalPrice" sortField={sortField} sortDir={sortDir} />
               </th>
               <th className="p-3 text-left">Payment</th>
               <th className="p-3 text-left">Status</th>
@@ -80,7 +88,8 @@ const PlacedOrdersTable = ({
                 className="p-3 text-left cursor-pointer hover:bg-gray-200"
                 onClick={() => onSort("createdAt")}
               >
-                Date <SortIcon field="createdAt" sortField={sortField} sortDir={sortDir} />
+                Date{" "}
+                <SortIcon field="createdAt" sortField={sortField} sortDir={sortDir} />
               </th>
               <th className="p-3 text-left">Actions</th>
             </tr>
@@ -121,7 +130,10 @@ const PlacedOrdersTable = ({
                     </span>
                     <button
                       className="text-blue-500 underline text-xs ml-1"
-                      onClick={(e) => { e.stopPropagation(); toggleExpand(order._id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleExpand(order._id);
+                      }}
                     >
                       {expandedRows[order._id] ? "hide" : "view"}
                     </button>
@@ -145,13 +157,22 @@ const PlacedOrdersTable = ({
                   </td>
 
                   {/* Actions */}
-                  <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                  <td
+                    className="p-3 relative"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* ✅ Ping indicator on the updating row only */}
+                    {updatingId === order._id && (
+                      <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-400 rounded-full animate-ping" />
+                    )}
                     <div className="flex flex-col gap-2">
                       <select
                         value={order.deliveryStatus}
-                        onChange={(e) => updateDeliveryStatus(order._id, e.target.value)}
-                        disabled={updating}
-                        className="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:opacity-50"
+                        onChange={(e) =>
+                          updateDeliveryStatus(order._id, e.target.value)
+                        }
+                        className="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                        // ✅ no disabled — optimistic update makes it feel instant
                       >
                         <option value="pending">Pending</option>
                         <option value="processing">Processing</option>
@@ -172,7 +193,8 @@ const PlacedOrdersTable = ({
                   <tr className="bg-indigo-50 border-t">
                     <td colSpan={10} className="px-6 py-3">
                       <p className="text-xs font-semibold text-gray-500 uppercase mb-2">
-                        Full Order ID: <span className="font-mono">{String(order._id)}</span>
+                        Full Order ID:{" "}
+                        <span className="font-mono">{String(order._id)}</span>
                       </p>
                       <ul className="space-y-2">
                         {order.productList?.map((item, idx) => (
@@ -193,7 +215,8 @@ const PlacedOrdersTable = ({
                                 </p>
                               )}
                               <p className="text-green-700 text-xs font-medium mt-0.5">
-                                ₦{item.price?.toLocaleString()} each · Total: ₦{item.totalPrice?.toLocaleString()}
+                                ₦{item.price?.toLocaleString()} each · Total: ₦
+                                {item.totalPrice?.toLocaleString()}
                               </p>
                             </div>
                           </li>
@@ -211,7 +234,15 @@ const PlacedOrdersTable = ({
       {/* ── MOBILE CARDS ── */}
       <div className="md:hidden p-3 space-y-4">
         {orders.map((order, i) => (
-          <div key={order._id} className="border border-gray-200 rounded-xl shadow-sm p-4 bg-white">
+          <div
+            key={order._id}
+            className="border border-gray-200 rounded-xl shadow-sm p-4 bg-white relative"
+          >
+            {/* ✅ Ping indicator on mobile too */}
+            {updatingId === order._id && (
+              <span className="absolute top-3 right-3 w-2 h-2 bg-indigo-400 rounded-full animate-ping" />
+            )}
+
             <div className="flex justify-between items-start mb-1">
               <h3 className="font-semibold text-gray-800">
                 #{(currentPage - 1) * pageSize + i + 1} — {order.buyerName}
@@ -236,23 +267,29 @@ const PlacedOrdersTable = ({
               onClick={() => toggleExpand(order._id)}
             >
               {expandedRows[order._id] ? <FaChevronUp /> : <FaChevronDown />}
-              {expandedRows[order._id] ? "Hide" : "Show"} {order.productList?.length} item(s)
+              {expandedRows[order._id] ? "Hide" : "Show"}{" "}
+              {order.productList?.length} item(s)
             </button>
 
             {expandedRows[order._id] && (
               <ul className="space-y-2 mb-2 pl-2 border-l-2 border-indigo-100">
                 {order.productList?.map((item, idx) => (
                   <li key={idx} className="text-sm">
-                    <span className="font-medium text-gray-800">{item.productId?.name || "Unnamed"}</span>
+                    <span className="font-medium text-gray-800">
+                      {item.productId?.name || "Unnamed"}
+                    </span>
                     <span className="text-gray-400 text-xs ml-1">
                       ({item.productId?.categoryId?.name || "—"})
                     </span>
                     <span className="ml-1 text-xs">×{item.quantity}</span>
                     {item.productId?.description && (
-                      <p className="text-gray-400 text-xs italic">{item.productId.description}</p>
+                      <p className="text-gray-400 text-xs italic">
+                        {item.productId.description}
+                      </p>
                     )}
                     <p className="text-green-700 text-xs">
-                      ₦{item.price?.toLocaleString()} each · ₦{item.totalPrice?.toLocaleString()} total
+                      ₦{item.price?.toLocaleString()} each · ₦
+                      {item.totalPrice?.toLocaleString()} total
                     </p>
                   </li>
                 ))}
@@ -260,25 +297,34 @@ const PlacedOrdersTable = ({
             )}
 
             <div className="text-sm text-gray-700 space-y-1">
-              <p><span className="font-semibold">Payment:</span> {order.paymentMethod}</p>
+              <p>
+                <span className="font-semibold">Payment:</span>{" "}
+                {order.paymentMethod}
+              </p>
               <p>
                 <span className="font-semibold">Total:</span>{" "}
-                <span className="text-green-700 font-semibold">₦{order.totalPrice?.toLocaleString()}</span>
+                <span className="text-green-700 font-semibold">
+                  ₦{order.totalPrice?.toLocaleString()}
+                </span>
               </p>
               <p className="text-xs text-gray-400">
                 {new Date(order.createdAt).toLocaleDateString()}
                 <span className="mx-1">·</span>
-                {new Date(order.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                {new Date(order.createdAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </p>
             </div>
 
             <div className="mt-3 space-y-2">
-              {updating && <span className="text-xs text-gray-400">Updating...</span>}
               <select
                 value={order.deliveryStatus}
-                onChange={(e) => updateDeliveryStatus(order._id, e.target.value)}
-                disabled={updating}
-                className="border border-gray-300 rounded-lg px-2 py-1 text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:opacity-50"
+                onChange={(e) =>
+                  updateDeliveryStatus(order._id, e.target.value)
+                }
+                className="border border-gray-300 rounded-lg px-2 py-1 text-sm w-full focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                // ✅ no disabled — optimistic update handles it
               >
                 <option value="pending">Pending</option>
                 <option value="processing">Processing</option>
@@ -304,4 +350,4 @@ const PlacedOrdersTable = ({
   );
 };
 
-export default PlacedOrdersTable;
+export default React.memo(PlacedOrdersTable); // ✅ prevents re-renders when props haven't changed

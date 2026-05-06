@@ -74,7 +74,7 @@ const OrderCard = ({ order, index }) => (
         </span>
       </div>
     </div>
-
+          {/* <hr className="border-gray-50" /> */}
     {/* Products */}
     {order.productList?.length > 0 && (
       <div className="border-t border-gray-50 pt-3 space-y-1.5">
@@ -102,6 +102,7 @@ const OrderCard = ({ order, index }) => (
               <p className="text-xs font-semibold text-gray-700">
                 ₦{((item?.price || 0) * (item?.quantity || 1)).toLocaleString()}
               </p>
+              
             </div>
           </div>
         ))}
@@ -110,6 +111,9 @@ const OrderCard = ({ order, index }) => (
 
     {/* Footer row */}
     <div className="flex items-center justify-between border-t border-gray-50 pt-3">
+      <span className="text-xs text-gray-500">
+                Order_ID: ...{String(order._id).slice(-8).toUpperCase()}
+              </span>
       <span className="text-xs text-gray-500">{order.paymentMethod}</span>
       <span className="font-bold text-green-700 text-base">
         ₦{order.totalPrice?.toLocaleString() || 0}
@@ -227,6 +231,7 @@ const PendingOrdersModal = ({ isOpen, onClose, pendingOrders = [] }) => {
                   <OrderCard key={order._id} order={order} index={i} />
                 ))
               )}
+              
             </div>
 
             {/* ── Modal footer / grand total ─────────────────────────── */}
