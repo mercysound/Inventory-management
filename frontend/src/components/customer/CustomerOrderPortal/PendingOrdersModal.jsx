@@ -2,189 +2,242 @@ import React, { useEffect, useState } from "react";
 import axiosInstance from "../../../utils/axiosInstance";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
+import { X, PackageCheck, Truck, Clock, RefreshCw } from "lucide-react";
 import SkeletonLoader from "../../common/SkeletonLoader";
 
-const PendingOrdersModal = ({ isOpen, onClose }) => {
-  const [completedOrders, setCompletedOrders] = useState([]);
+// ─── Status badge ──────────────────────────────────────────────────────────
+const StatusBadge = ({ status }) => {
+  const s = status?.toLowerCase() || "pending";
+  const config = {
+    pending: {
+      bg: "bg-amber-50",
+      text: "text-amber-700",
+      border: "border-amber-200",
+      icon: <Clock size={11} />,
+    },
+    "in transit": {
+      bg: "bg-blue-50",
+      text: "text-blue-700",
+      border: "border-blue-200",
+      icon: <Truck size={11} />,
+    },
+    processing: {
+      bg: "bg-purple-50",
+      text: "text-purple-700",
+      border: "border-purple-200",
+      icon: <RefreshCw size={11} />,
+    },
+    completed: {
+      bg: "bg-green-50",
+      text: "text-green-700",
+      border: "border-green-200",
+      icon: <PackageCheck size={11} />,
+    },
+  };
+  const c = config[s] || config.pending;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-semibold border ${c.bg} ${c.text} ${c.border}`}
+    >
+      {c.icon}
+      {status}
+    </span>
+  );
+};
+
+// ─── Order row card (mobile-friendly) ──────────────────────────────────────
+const OrderCard = ({ order, index }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 8 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: index * 0.04 }}
+    className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3"
+  >
+    {/* Header row */}
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">
+          Order #{index + 1}
+        </p>
+        <p className="font-semibold text-gray-800 mt-0.5">
+          {order.userOrdering?.name || order.buyerName || "Unknown"}
+        </p>
+      </div>
+      <div className="flex flex-col items-end gap-1">
+        <StatusBadge status={order.deliveryStatus} />
+        <span className="text-xs text-gray-400">
+          {new Date(order.createdAt).toLocaleDateString("en-NG", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          })}
+        </span>
+      </div>
+    </div>
+
+    {/* Products */}
+    {order.productList?.length > 0 && (
+      <div className="border-t border-gray-50 pt-3 space-y-1.5">
+        {order.productList.map((item, idx) => (
+          <div key={idx} className="flex items-start justify-between gap-2">
+            <div>
+              <span className="text-sm font-medium text-gray-700">
+                {item?.productId?.name || "Unnamed"}
+              </span>
+              {item?.productId?.categoryId?.name && (
+                <span className="ml-1.5 text-xs text-gray-400">
+                  ({item.productId.categoryId.name})
+                </span>
+              )}
+              {item?.productId?.description && (
+                <p className="text-xs text-gray-400 italic mt-0.5 line-clamp-1">
+                  {item.productId.description}
+                </p>
+              )}
+            </div>
+            <div className="text-right flex-shrink-0">
+              <span className="text-xs text-gray-500">
+                ×{item?.quantity || 1}
+              </span>
+              <p className="text-xs font-semibold text-gray-700">
+                ₦{((item?.price || 0) * (item?.quantity || 1)).toLocaleString()}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+
+    {/* Footer row */}
+    <div className="flex items-center justify-between border-t border-gray-50 pt-3">
+      <span className="text-xs text-gray-500">{order.paymentMethod}</span>
+      <span className="font-bold text-green-700 text-base">
+        ₦{order.totalPrice?.toLocaleString() || 0}
+      </span>
+    </div>
+  </motion.div>
+);
+
+// ─── Main modal ─────────────────────────────────────────────────────────────
+/**
+ * Props:
+ *  - isOpen         {boolean}
+ *  - onClose        {fn}
+ *  - pendingOrders  {array}  passed from parent (avoids redundant fetch)
+ *                            If you want the modal to show ALL placed orders,
+ *                            pass the full `history` array instead.
+ */
+const PendingOrdersModal = ({ isOpen, onClose, pendingOrders = [] }) => {
+  // If pendingOrders is provided from parent we use it directly.
+  // Optionally re-fetch if needed (e.g. parent didn't pass updated data).
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (isOpen) fetchCompletedOrders();
-  }, [isOpen]);
+    if (!isOpen) return;
 
-  const fetchCompletedOrders = async () => {
-    try {
-      setLoading(true);
-      const res = await axiosInstance.get("/placed-orders");
-      if (res.data.success) {
-        setCompletedOrders(res.data.orders || []);
-      }
-    } catch {
-      toast.error("Failed to fetch completed orders");
-    } finally {
-      setLoading(false);
+    // Use prop data if available, otherwise fetch
+    if (pendingOrders.length > 0) {
+      setOrders(pendingOrders);
+      return;
     }
-  };
 
-  const grandTotal = completedOrders.reduce(
-    (sum, o) => sum + (o.totalPrice || 0),
-    0
-  );
+    const fetchAll = async () => {
+      try {
+        setLoading(true);
+        const res = await axiosInstance.get("/placed-orders");
+        if (res.data.success) {
+          setOrders(res.data.orders || []);
+        }
+      } catch {
+        toast.error("Failed to fetch orders");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAll();
+  }, [isOpen, pendingOrders]);
+
+  // Keep in sync when parent prop updates
+  useEffect(() => {
+    if (pendingOrders.length > 0) setOrders(pendingOrders);
+  }, [pendingOrders]);
+
+  const grandTotal = orders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
 
   return (
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 flex items-center justify-center z-50 
-          bg-gradient-to-br from-purple-200/40 via-blue-200/40 to-pink-200/40
-          backdrop-blur-2xl"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          onClick={onClose}
         >
-          {/* GLASS CARD */}
           <motion.div
-            className="relative w-[95%] md:w-[90%] lg:w-[70%] 
-            max-h-[90vh] overflow-y-auto
-            bg-white/30 backdrop-blur-xl
-            border border-white/40 shadow-xl rounded-3xl p-5 md:p-8"
-            initial={{ y: 40, opacity: 0 }}
+            className="relative w-full max-w-2xl max-h-[90vh] flex flex-col
+              bg-white rounded-2xl shadow-2xl overflow-hidden"
+            initial={{ y: 32, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 40, opacity: 0 }}
+            exit={{ y: 32, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 28 }}
+            onClick={(e) => e.stopPropagation()}
           >
-            {/* Close button */}
-            <button
-              onClick={onClose}
-              className="absolute top-4 right-4 bg-white/50 hover:bg-white/70 
-              p-2 rounded-full transition shadow-lg"
-            >
-              <X size={20} className="text-gray-800" />
-            </button>
-
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between md:items-center 
-            mb-6 border-b border-white/50 pb-3 pr-10 gap-3">
-              <h3 className="text-2xl md:text-3xl font-bold text-gray-800">
-                Pending Orders
-              </h3>
-              <div className="text-sm text-gray-800 bg-white/40 px-4 py-1.5 
-              rounded-lg border border-white/60 shadow-sm">
-                Total Orders: {completedOrders.length}
+            {/* ── Modal header ──────────────────────────────────────── */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <Clock size={16} className="text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900">Pending Orders</h3>
+                  <p className="text-xs text-gray-400">
+                    {orders.length} order{orders.length !== 1 ? "s" : ""} awaiting fulfilment
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={onClose}
+                className="w-8 h-8 flex items-center justify-center rounded-full
+                  text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"
+              >
+                <X size={18} />
+              </button>
             </div>
 
-            {/* Content */}
-            {loading ? (
-              <SkeletonLoader rows={6} />
-            ) : completedOrders.length === 0 ? (
-              <p className="text-center text-gray-700 py-10 text-lg">
-                No completed or delivered orders yet.
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm text-gray-800 border-separate border-spacing-y-2">
-                  <thead className="bg-white/50 text-gray-700 uppercase text-xs rounded-lg">
-                    <tr>
-                      <th className="p-3 text-left">#</th>
-                      <th className="p-3 text-left">User</th>
-                      <th className="p-3 text-left">Products</th>
-                      <th className="p-3 text-left">Total</th>
-                      <th className="p-3 text-left">Payment</th>
-                      <th className="p-3 text-left">Status</th>
-                      <th className="p-3 text-left">Date</th>
-                    </tr>
-                  </thead>
+            {/* ── Modal body ─────────────────────────────────────────── */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-3">
+              {loading ? (
+                <SkeletonLoader rows={4} />
+              ) : orders.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+                  <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
+                    <PackageCheck size={24} className="text-gray-300" />
+                  </div>
+                  <p className="text-gray-500 font-medium">No pending orders</p>
+                  <p className="text-sm text-gray-400">
+                    All your orders have been fulfilled or no orders have been placed yet.
+                  </p>
+                </div>
+              ) : (
+                orders.map((order, i) => (
+                  <OrderCard key={order._id} order={order} index={i} />
+                ))
+              )}
+            </div>
 
-                  <tbody>
-                    {completedOrders.map((order, i) => (
-                      <tr
-                        key={order._id}
-                        className="bg-white/60 backdrop-blur-md border border-white/60 
-                        rounded-xl hover:bg-white/80 transition"
-                      >
-                        <td className="p-4 font-medium">{i + 1}</td>
-
-                        {/* User */}
-                        <td className="p-4 font-semibold">
-                          {order.userOrdering?.name || "Unknown"}
-                        </td>
-
-                        {/* PRODUCTS WITH DESCRIPTION */}
-                        <td className="p-4">
-                          <ul className="space-y-2">
-                            {order.productList?.map((item, idx) => (
-                              <li key={idx} className="pb-2 border-b border-gray-300 last:border-none">
-                                <p className="font-semibold">
-                                  {item?.productId?.name || "Unnamed"}{" "}
-                                  <span className="text-gray-500 text-xs">
-                                    ({item?.productId?.categoryId?.name ||
-                                      "No Category"})
-                                  </span>{" "}
-                                  ×{item?.quantity || 1}
-                                </p>
-
-                                {/* DESCRIPTION */}
-                                {item?.productId?.description && (
-                                  <p className="text-xs text-gray-600 italic pl-3">
-                                    {item.productId.description}
-                                  </p>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        </td>
-
-                        {/* Total */}
-                        <td className="p-4 font-bold text-green-700">
-                          ₦{order.totalPrice?.toLocaleString() || 0}
-                        </td>
-
-                        {/* Payment */}
-                        <td className="p-4">{order.paymentMethod}</td>
-
-                        {/* FIXED STATUS BADGE (NO LINE BREAK) */}
-                        <td className="p-4">
-                          <span
-                            className={`inline-flex items-center whitespace-nowrap 
-                              px-4 py-2 rounded-full text-xs font-semibold
-                              ${
-                                order.deliveryStatus === "pending"
-                                  ? "bg-yellow-300/40 text-yellow-800"
-                                  : order.deliveryStatus === "in transit"
-                                  ? "bg-blue-300/40 text-blue-800"
-                                  : "bg-green-300/40 text-green-800"
-                              }
-                            `}
-                          >
-                            {order.deliveryStatus}
-                          </span>
-                        </td>
-
-                        {/* Date & Time */}
-                        <td className="p-4">
-                          {new Date(order.createdAt).toLocaleDateString()}
-                          <br />
-                          <span className="text-xs text-gray-500">
-                            {new Date(order.createdAt).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-
-                    {/* FOOTER TOTAL */}
-                    <tr className="bg-white/70 border border-white/60 rounded-xl">
-                      <td colSpan="3"></td>
-                      <td className="p-4 text-right font-bold text-gray-800 text-lg">
-                        Grand Total: ₦{grandTotal.toLocaleString()}
-                      </td>
-                      <td colSpan="3"></td>
-                    </tr>
-                  </tbody>
-                </table>
+            {/* ── Modal footer / grand total ─────────────────────────── */}
+            {orders.length > 0 && (
+              <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100 bg-gray-50 flex-shrink-0">
+                <span className="text-sm text-gray-500 font-medium">
+                  Grand Total ({orders.length} orders)
+                </span>
+                <span className="text-lg font-bold text-gray-900">
+                  ₦{grandTotal.toLocaleString()}
+                </span>
               </div>
             )}
           </motion.div>

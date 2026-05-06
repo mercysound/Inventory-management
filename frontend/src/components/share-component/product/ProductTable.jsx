@@ -1,126 +1,218 @@
-import React from "react";
-import { Pencil, Trash2, Plus } from "lucide-react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
+import { Pencil, Trash2, Plus, Trash } from "lucide-react";
 
-const ProductTable = ({ products, onEdit, onDelete, onAddClick, onViewDeleted, }) => {
+const PAGE_SIZE = 20; // rows per batch
+
+const StockBadge = ({ stock }) => {
+  if (stock === 0)
+    return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-600 border border-red-100">{stock}</span>;
+  if (stock < 5)
+    return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-100">{stock}</span>;
+  return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-50 text-green-700 border border-green-100">{stock}</span>;
+};
+
+const SkeletonRows = () =>
+  [...Array(4)].map((_, i) => (
+    <tr key={i} className="animate-pulse border-b border-gray-50">
+      <td className="px-4 py-3"><div className="h-3 w-4 bg-gray-200 rounded" /></td>
+      <td className="px-4 py-3"><div className="w-9 h-9 bg-gray-200 rounded-md" /></td>
+      <td className="px-4 py-3"><div className="h-3 bg-gray-200 rounded" style={{ width: `${90 + (i * 17) % 60}px` }} /></td>
+      <td className="px-4 py-3"><div className="h-5 w-20 bg-gray-100 rounded-full" /></td>
+      <td className="px-4 py-3"><div className="h-3 w-16 bg-gray-200 rounded" /></td>
+      <td className="px-4 py-3"><div className="h-5 w-8 bg-gray-100 rounded-full" /></td>
+      <td className="px-4 py-3"><div className="h-3 bg-gray-100 rounded w-32" /></td>
+      <td className="px-4 py-3">
+        <div className="flex gap-1.5 justify-center">
+          <div className="w-7 h-7 bg-gray-200 rounded-md" />
+          <div className="w-7 h-7 bg-gray-200 rounded-md" />
+        </div>
+      </td>
+    </tr>
+  ));
+
+const ProductTable = ({ products, onEdit, onDelete, onAddClick, onViewDeleted }) => {
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [isLoading, setIsLoading] = useState(false);
+  const sentinelRef = useRef(null);
+  const tableWrapRef = useRef(null);
+
+  const visibleProducts = products.slice(0, visibleCount);
+  const hasMore = visibleCount < products.length;
+
+  const outOfStock = products.filter((p) => p.stock === 0).length;
+  const lowStock = products.filter((p) => p.stock > 0 && p.stock < 5).length;
+
+  const loadMore = useCallback(() => {
+    if (isLoading || !hasMore) return;
+    setIsLoading(true);
+    // Small delay so skeleton is visible — remove if your data is async anyway
+    setTimeout(() => {
+      setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, products.length));
+      setIsLoading(false);
+    }, 300);
+  }, [isLoading, hasMore, products.length]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    const wrap = tableWrapRef.current;
+    if (!sentinel || !wrap) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) loadMore(); },
+      { root: wrap, threshold: 0.1 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadMore]);
+
+  // Reset scroll position when products list changes (search/filter)
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+    if (tableWrapRef.current) tableWrapRef.current.scrollTop = 0;
+  }, [products]);
+
   return (
-    <div className="w-full bg-white shadow-md rounded-lg overflow-hidden">
-      <div className="flex justify-between items-center p-4 flex-col sm:flex-row gap-3">
-        <h2 className="text-lg font-bold text-gray-800">Product List</h2>
+    <div className="w-full bg-white shadow-sm rounded-xl overflow-hidden border border-gray-100">
 
+      {/* Stat bar */}
+      <div className="flex items-center gap-4 px-5 py-2.5 bg-gray-50 border-b border-gray-100 text-xs text-gray-500">
+        <span className="font-medium text-gray-700">{products.length} products</span>
+        {outOfStock > 0 && (
+          <span className="flex items-center gap-1 text-red-500 font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-400 inline-block" />
+            {outOfStock} out of stock
+          </span>
+        )}
+        {lowStock > 0 && (
+          <span className="flex items-center gap-1 text-amber-600 font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+            {lowStock} low stock
+          </span>
+        )}
+        <span className="ml-auto text-gray-400">
+          Showing {visibleProducts.length} of {products.length}
+        </span>
+      </div>
+
+      {/* Toolbar */}
+      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+        <h2 className="text-sm font-semibold text-gray-800">Product list</h2>
         <div className="flex gap-2">
           <button
-            onClick={onAddClick}
-            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition"
-          >
-            <Plus size={18} /> Add Product
-          </button>
-
-          <button
             onClick={onViewDeleted}
-            className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
           >
-            View Deleted Products
+            <Trash size={13} /> View deleted
+          </button>
+          <button
+            onClick={onAddClick}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition"
+          >
+            <Plus size={13} /> Add product
           </button>
         </div>
       </div>
 
-
-      {/* Responsive Scrollable Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm sm:text-base">
-          <thead className="bg-gray-100 text-gray-700">
+      {/* Scrollable table */}
+      <div
+        ref={tableWrapRef}
+        className="overflow-y-auto"
+        style={{ maxHeight: "calc(100vh - 280px)" }} // fills available screen height
+      >
+        <table className="w-full border-collapse text-sm">
+          <thead className="sticky top-0 z-10">
             <tr>
-              <th className="border border-gray-200 p-2 text-left">S/N</th>
-              <th className="border border-gray-200 p-2 text-left">Image</th>
-              <th className="border border-gray-200 p-2 text-left">Name</th>
-              <th className="border border-gray-200 p-2 text-left">Category</th>
-              <th className="border border-gray-200 p-2 text-left">Price</th>
-              <th className="border border-gray-200 p-2 text-left">Stock</th>
-              <th className="border border-gray-200 p-2 text-left">Description</th>
-              <th className="border border-gray-200 p-2 text-center">Actions</th>
+              {["#", "Image", "Name", "Category", "Price", "Stock", "Description", ""].map((h, i) => (
+                <th
+                  key={i}
+                  className="text-left px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide bg-gray-50 border-b border-gray-100 text-gray-500 whitespace-nowrap"
+                >
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {products && products.length > 0 ? (
-              products.map((product, index) => (
-                <tr
-                  key={product._id}
-                  className="hover:bg-gray-50 transition border-b"
-                >
-                  <td className="p-2 border border-gray-200">{index + 1}</td>
-                  {/* // ProductTable.jsx — replace the image <td>: */}
-                    <td className="p-2 border border-gray-200">
-                      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded overflow-hidden mx-auto flex items-center justify-center bg-gray-100">
+            {visibleProducts.length > 0 ? (
+              <>
+                {visibleProducts.map((product, index) => (
+                  <tr
+                    key={product._id}
+                    className="hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-none align-middle"
+                  >
+                    <td className="px-4 py-3 text-gray-400 text-xs">{index + 1}</td>
+
+                    <td className="px-4 py-3">
+                      <div className="w-9 h-9 rounded-md border border-gray-100 overflow-hidden bg-gray-50 flex items-center justify-center flex-shrink-0">
                         {product.image ? (
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
+                          <img src={product.image} alt={product.name} className="w-full h-full object-cover" loading="lazy" />
                         ) : (
-                          <span className="text-xs text-gray-400 text-center px-1">No image</span>
+                          <span className="text-[9px] text-gray-400 text-center px-0.5 leading-tight">No image</span>
                         )}
                       </div>
                     </td>
 
-                    <td className="p-2 border border-gray-200">{product.name}</td>
-                    <td className="p-2 border border-gray-200">
-                      {product.categoryId?.name || "N/A"}
+                    <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">{product.name}</td>
+
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-600 border border-blue-100 whitespace-nowrap">
+                        {product.categoryId?.name || "N/A"}
+                      </span>
                     </td>
-                    <td className="p-2 border border-gray-200 text-green-700 font-semibold">
-                      ₦{product.price}
+
+                    <td className="px-4 py-3 font-semibold text-green-700 whitespace-nowrap">
+                      ₦{Number(product.price).toLocaleString()}
                     </td>
-                    <td className="p-2 border border-gray-200 text-center">
-                      {product.stock === 0 ? (
-                        <span className="bg-red-100 text-red-600 px-2 py-1 rounded-md text-xs font-semibold">
-                          {product.stock}
-                        </span>
-                      ) : product.stock < 5 ? (
-                        <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-md text-xs font-semibold">
-                          {product.stock}
-                        </span>
-                      ) : (
-                        <span className="bg-green-100 text-green-700 px-2 py-1 rounded-md text-xs font-semibold">
-                          {product.stock}
-                        </span>
-                      )}
+
+                    <td className="px-4 py-3"><StockBadge stock={product.stock} /></td>
+
+                    <td className="px-4 py-3 text-gray-400 text-xs max-w-[180px]">
+                      <p className="line-clamp-2">{product.description || "—"}</p>
                     </td>
-                    <td className="p-2 border border-gray-200">
-                      {product.description || "—"}
-                    </td>
-                    <td className="p-2 border border-gray-200 text-center">
-                      <div className="flex justify-center items-center gap-3">
+
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => onEdit(product)}
-                          className="text-blue-600 hover:text-blue-800"
-                          title="Edit Product"
+                          className="w-7 h-7 flex items-center justify-center rounded-md text-blue-500 hover:bg-blue-50 transition"
+                          title="Edit product"
                         >
-                          <Pencil size={18} />
+                          <Pencil size={14} />
                         </button>
                         <button
                           onClick={() => onDelete(product._id)}
-                          className="text-red-600 hover:text-red-800"
-                          title="Delete Product"
+                          className="w-7 h-7 flex items-center justify-center rounded-md text-red-400 hover:bg-red-50 transition"
+                          title="Delete product"
                         >
-                          <Trash2 size={18} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </td>
-                </tr>
-              ))
+                  </tr>
+                ))}
+
+                {/* Skeleton rows while loading next batch */}
+                {isLoading && <SkeletonRows />}
+              </>
             ) : (
               <tr>
-                <td
-                  colSpan="7"
-                  className="text-center text-gray-500 py-6 italic"
-                >
+                <td colSpan="8" className="text-center text-gray-400 py-14 italic text-sm">
                   No products found
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+
+        {/* Intersection sentinel */}
+        <div ref={sentinelRef} style={{ height: 1 }} />
+
+        {/* End of list */}
+        {!hasMore && products.length > 0 && (
+          <p className="text-center text-xs text-gray-400 py-4 border-t border-gray-50">
+            All {products.length} products loaded
+          </p>
+        )}
       </div>
     </div>
   );
