@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { Pencil, Trash2, Plus, Trash } from "lucide-react";
+import { Pencil, Trash2, Plus, Trash, Phone, Mail } from "lucide-react";
 
-const PAGE_SIZE = 20; // rows per batch
+const PAGE_SIZE = 20;
 
 const StockBadge = ({ stock }) => {
   if (stock === 0)
@@ -45,7 +45,6 @@ const ProductTable = ({ products, onEdit, onDelete, onAddClick, onViewDeleted })
   const loadMore = useCallback(() => {
     if (isLoading || !hasMore) return;
     setIsLoading(true);
-    // Small delay so skeleton is visible — remove if your data is async anyway
     setTimeout(() => {
       setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, products.length));
       setIsLoading(false);
@@ -56,7 +55,6 @@ const ProductTable = ({ products, onEdit, onDelete, onAddClick, onViewDeleted })
     const sentinel = sentinelRef.current;
     const wrap = tableWrapRef.current;
     if (!sentinel || !wrap) return;
-
     const observer = new IntersectionObserver(
       (entries) => { if (entries[0].isIntersecting) loadMore(); },
       { root: wrap, threshold: 0.1 }
@@ -65,7 +63,6 @@ const ProductTable = ({ products, onEdit, onDelete, onAddClick, onViewDeleted })
     return () => observer.disconnect();
   }, [loadMore]);
 
-  // Reset scroll position when products list changes (search/filter)
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
     if (tableWrapRef.current) tableWrapRef.current.scrollTop = 0;
@@ -74,7 +71,7 @@ const ProductTable = ({ products, onEdit, onDelete, onAddClick, onViewDeleted })
   return (
     <div className="w-full bg-white shadow-sm rounded-xl overflow-hidden border border-gray-100">
 
-      {/* Stat bar */}
+      {/* STAT BAR */}
       <div className="flex items-center gap-4 px-5 py-2.5 bg-gray-50 border-b border-gray-100 text-xs text-gray-500">
         <span className="font-medium text-gray-700">{products.length} products</span>
         {outOfStock > 0 && (
@@ -94,7 +91,7 @@ const ProductTable = ({ products, onEdit, onDelete, onAddClick, onViewDeleted })
         </span>
       </div>
 
-      {/* Toolbar */}
+      {/* TOOLBAR */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
         <h2 className="text-sm font-semibold text-gray-800">Product list</h2>
         <div className="flex gap-2">
@@ -113,11 +110,11 @@ const ProductTable = ({ products, onEdit, onDelete, onAddClick, onViewDeleted })
         </div>
       </div>
 
-      {/* Scrollable table */}
+      {/* SCROLLABLE TABLE */}
       <div
         ref={tableWrapRef}
         className="overflow-y-auto"
-        style={{ maxHeight: "calc(100vh - 280px)" }} // fills available screen height
+        style={{ maxHeight: "calc(100vh - 280px)" }}
       >
         <table className="w-full border-collapse text-sm">
           <thead className="sticky top-0 z-10">
@@ -142,34 +139,78 @@ const ProductTable = ({ products, onEdit, onDelete, onAddClick, onViewDeleted })
                   >
                     <td className="px-4 py-3 text-gray-400 text-xs">{index + 1}</td>
 
+                    {/* Image */}
                     <td className="px-4 py-3">
                       <div className="w-9 h-9 rounded-md border border-gray-100 overflow-hidden bg-gray-50 flex items-center justify-center flex-shrink-0">
                         {product.image ? (
-                          <img src={product.image} alt={product.name} className="w-full h-full object-cover" loading="lazy" />
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
                         ) : (
-                          <span className="text-[9px] text-gray-400 text-center px-0.5 leading-tight">No image</span>
+                          <span className="text-[9px] text-gray-400 text-center px-0.5 leading-tight">
+                            No image
+                          </span>
                         )}
                       </div>
                     </td>
 
-                    <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">{product.name}</td>
+                    {/* Name */}
+                    <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">
+                      {product.name}
+                    </td>
 
+                    {/* Category */}
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-600 border border-blue-100 whitespace-nowrap">
                         {product.categoryId?.name || "N/A"}
                       </span>
                     </td>
 
+                    {/* Price */}
                     <td className="px-4 py-3 font-semibold text-green-700 whitespace-nowrap">
-                      ₦{Number(product.price).toLocaleString()}
+                      &#8358;{Number(product.price).toLocaleString()}
                     </td>
 
-                    <td className="px-4 py-3"><StockBadge stock={product.stock} /></td>
+                    {/* Stock + reorder hint */}
+                    <td className="px-4 py-3">
+                      <StockBadge stock={product.stock} />
+                      {product.stock < 5 && product.supplierId && (
+                        <div className="mt-1.5 flex flex-col gap-0.5">
+                          <span className="text-[10px] text-gray-400">Reorder from:</span>
+                          <span className="text-[10px] font-medium text-gray-600">
+                            {product.supplierId.name}
+                          </span>
+                          {product.supplierId.phone && (
+                            <a
+                              href={`tel:${product.supplierId.phone}`}
+                              className="inline-flex items-center gap-1 text-[10px] text-amber-600 hover:underline"
+                            >
+                              <Phone size={9} />
+                              {product.supplierId.phone}
+                            </a>
+                          )}
+                          {product.supplierId.email && (
+                            <a
+                              href={`mailto:${product.supplierId.email}`}
+                              className="inline-flex items-center gap-1 text-[10px] text-blue-500 hover:underline"
+                            >
+                              <Mail size={9} />
+                              {product.supplierId.email}
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </td>
 
+                    {/* Description */}
                     <td className="px-4 py-3 text-gray-400 text-xs max-w-[180px]">
                       <p className="line-clamp-2">{product.description || "—"}</p>
                     </td>
 
+                    {/* Actions */}
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-1">
                         <button
@@ -190,8 +231,6 @@ const ProductTable = ({ products, onEdit, onDelete, onAddClick, onViewDeleted })
                     </td>
                   </tr>
                 ))}
-
-                {/* Skeleton rows while loading next batch */}
                 {isLoading && <SkeletonRows />}
               </>
             ) : (
@@ -204,10 +243,8 @@ const ProductTable = ({ products, onEdit, onDelete, onAddClick, onViewDeleted })
           </tbody>
         </table>
 
-        {/* Intersection sentinel */}
         <div ref={sentinelRef} style={{ height: 1 }} />
 
-        {/* End of list */}
         {!hasMore && products.length > 0 && (
           <p className="text-center text-xs text-gray-400 py-4 border-t border-gray-50">
             All {products.length} products loaded

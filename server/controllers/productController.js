@@ -42,8 +42,7 @@ const addProduct = async (req, res) => {
   try {
     const { name, description, price, stock, categoryId, supplierId } = req.body;
 
-    let imageUrl = null; // default if no image
-
+    let imageUrl = null;
     if (req.file) {
       const uploadResult = await cloudinary.uploader.upload(req.file.path, {
         resource_type: "image",
@@ -57,11 +56,11 @@ const addProduct = async (req, res) => {
       price,
       stock,
       categoryId,
-      supplierId,
-      image: imageUrl, // can be null
+      supplierId: supplierId || null, // ✅ gracefully handle empty string
+      image: imageUrl,
     });
-    return sendResponse(res, 201, product, "Product added successfully");
 
+    return sendResponse(res, 201, product, "Product added successfully");
   } catch (error) {
     console.error("Error adding product:", error);
     return sendError(res, 500, "Failed to add product");

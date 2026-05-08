@@ -22,26 +22,29 @@ export const categorySchema = Joi.object({
   categoryDescription: Joi.string().required().trim().max(500),
 });
 
-// Product validation schemas
+// Product — supplierId optional
 export const productSchema = Joi.object({
   name: Joi.string().required().trim().min(2).max(100),
   description: Joi.string().required().trim().max(1000),
   price: Joi.number().required().positive().precision(2),
   stock: Joi.number().required().integer().min(0),
   categoryId: Joi.string().required().hex().length(24),
-  supplierId: Joi.string().required().hex().length(24),
+  supplierId: Joi.string().hex().length(24).allow("", null).optional(), // ✅ optional
   images: Joi.array().items(Joi.string().uri()).max(10).optional(),
-   image: Joi.string().allow(null, "").optional(),
-  removeImage: Joi.string().allow("true", "false").optional(), 
+  image: Joi.string().allow(null, "").optional(),
+  removeImage: Joi.string().allow("true", "false").optional(),
 });
 
+
 // Supplier validation schemas
+// Supplier — only name required
 export const supplierSchema = Joi.object({
-  name: Joi.string().required().trim().min(1),
-  email: Joi.string().required().trim(),
-  phone: Joi.string().required().trim(),
-  address: Joi.string().required().trim(),
-  contactPerson: Joi.string().trim().optional(),
+  name: Joi.string().required().trim().min(1).max(100),
+  email: Joi.string().email().allow("", null).optional(),
+  phone: Joi.string().allow("", null).optional(),
+  address: Joi.string().allow("", null).optional(),
+  contactPerson: Joi.string().allow("", null).optional(),
+  notes: Joi.string().allow("", null).optional(),
 });
 
 // Order validation schemas
@@ -107,33 +110,24 @@ export const validateResetTokenSchema = Joi.object({
 });
 
 export const productUpdateSchema = productSchema.fork([
-  "name",
-  "description",
-  "price",
-  "stock",
-  "categoryId",
-  "supplierId",
-  "images",
-  "image",        // ✅ ADD THIS
-  "removeImage",
+  "name", "description", "price", "stock",
+  "categoryId", "supplierId", "images", "image", "removeImage",
 ], (field) => field.optional());
 
-export const supplierUpdateSchema = supplierSchema.fork([
+export const supplierUpdateSchema = supplierSchema.fork(
+  ["name"], (field) => field.optional()
+);
+
+export const userUpdateSchema = userSchema.fork([
   "name",
   "email",
+  "password",
   "phone",
   "address",
-  "contactPerson",
-], (field) => field.optional());
-
-export const userUpdateSchema = Joi.object({
-  name:            Joi.string().min(2).max(50).optional(),
-  email:           Joi.string().email().optional(),
-  phone:           Joi.string().allow('', null).optional(),
-  address:         Joi.string().allow('', null).optional(),
-  oldPassword:     Joi.string().optional(),
-  password:        Joi.string().min(6).optional(),
-  confirmPassword: Joi.string().optional(),
+  "role",
+], (field) => field.optional()).keys({
+  oldPassword: Joi.string().optional(),      // ✅ ADD
+  confirmPassword: Joi.string().optional(),  // ✅ ADD (validation handled in frontend/controller)
 });
 
 export const completeProfileSchema = Joi.object({

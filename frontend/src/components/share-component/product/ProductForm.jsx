@@ -209,7 +209,6 @@ const ProductForm = ({
                 value={formData.supplierId}
                 onChange={handleChange}
                 className="border border-gray-200 p-2.5 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
-                required
               >
                 <option value="">Select supplier</option>
                 {suppliers?.map((sup) => (
