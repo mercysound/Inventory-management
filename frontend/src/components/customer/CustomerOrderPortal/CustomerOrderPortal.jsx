@@ -14,6 +14,7 @@ import PaystackButton from "./PaystackButton";
 import { useAuth } from "../../../context/AuthContext";
 import PendingOrdersModal from "./PendingOrdersModal";
 import ReceiptModal from "../../share-component/receipt/ReceiptModal";
+import CartSkeleton from "./Cartskeleton";
 
 // ─── tiny stat card ────────────────────────────────────────────────────────
 const StatCard = ({ icon: Icon, label, value, color }) => (
@@ -388,15 +389,8 @@ const CustomerOrderPortal = () => {
   };
 
   // ── Skeleton ────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="p-4 md:p-6 space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-24 bg-gray-100 rounded-xl animate-pulse" />
-        ))}
-      </div>
-    );
-  }
+  if (loading) return <CartSkeleton />;
+
 
   // ── Render ──────────────────────────────────────────────────────────────
   return (

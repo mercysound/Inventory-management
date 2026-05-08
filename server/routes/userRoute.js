@@ -10,7 +10,7 @@ import {
   updateProfile,
   updateUser,
   emailBroadcast,
-  emailBroadcastStatus,   // NEW
+  emailBroadcastStatus,
 } from '../controllers/userController.js';
 import {
   userSchema,
@@ -22,37 +22,26 @@ import {
 
 const router = express.Router();
 
-// ── Public ──────────────────────────────────────────────────────────────────
+// ── Public ───────────────────────────────────────────────────────────────────
 router.post('/register', validate(userSchema), addUser);
 
-// ── Admin: user management ────────────────────────────────────────────────
+// ── Authenticated user: own profile ──────────────────────────────────────────
+// ✅ CRITICAL: These MUST come BEFORE /:id routes.
+// Express matches routes top-to-bottom. If /:id is registered first,
+// PUT /profile matches it with id="profile" → hits admin-only guard → 403.
+router.get('/profile', authMiddleware, getUser);
+router.put('/profile', authMiddleware, updateUserprofile);
+router.put('/complete-profile', authMiddleware, validate(completeProfileSchema), updateProfile);
+
+// ── Admin: email broadcast ────────────────────────────────────────────────────
+// Also before /:id so /email-broadcast doesn't match /:id
+router.post('/email-broadcast', authMiddleware, authorizeRoles('admin'), validate(emailBroadcastSchema), emailBroadcast);
+router.get('/email-broadcast/:jobId', authMiddleware, authorizeRoles('admin'), emailBroadcastStatus);
+
+// ── Admin: user management ────────────────────────────────────────────────────
 router.post('/add', authMiddleware, authorizeRoles('admin'), validate(userSchema), addUser);
 router.get('/', authMiddleware, authorizeRoles('admin'), getUsers);
 router.put('/:id', authMiddleware, authorizeRoles('admin'), validate(updateUserSchema), updateUser);
 router.delete('/:id', authMiddleware, authorizeRoles('admin'), deleteUser);
 
-// ── Admin: email broadcast ─────────────────────────────────────────────────
-// Start a broadcast job → responds immediately with jobId
-router.post(
-  '/email-broadcast',
-  authMiddleware,
-  authorizeRoles('admin'),
-  validate(emailBroadcastSchema),
-  emailBroadcast
-);
-// Poll job status → { status, total, sent, failed, failedList, finishedAt }
-router.get(
-  '/email-broadcast/:jobId',
-  authMiddleware,
-  authorizeRoles('admin'),
-  emailBroadcastStatus
-);
-
-// ── Authenticated user: own profile ───────────────────────────────────────
-router.get('/profile', authMiddleware, getUser);
-router.put('/profile', authMiddleware, validate(userUpdateSchema), updateUserprofile);
-router.put('/complete-profile', authMiddleware, validate(completeProfileSchema), updateProfile);
-
 export default router;
-
-

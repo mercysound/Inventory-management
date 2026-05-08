@@ -126,16 +126,14 @@ export const supplierUpdateSchema = supplierSchema.fork([
   "contactPerson",
 ], (field) => field.optional());
 
-export const userUpdateSchema = userSchema.fork([
-  "name",
-  "email",
-  "password",
-  "phone",
-  "address",
-  "role",
-], (field) => field.optional()).keys({
-  oldPassword: Joi.string().optional(),      // ✅ ADD
-  confirmPassword: Joi.string().optional(),  // ✅ ADD (validation handled in frontend/controller)
+export const userUpdateSchema = Joi.object({
+  name:            Joi.string().min(2).max(50).optional(),
+  email:           Joi.string().email().optional(),
+  phone:           Joi.string().allow('', null).optional(),
+  address:         Joi.string().allow('', null).optional(),
+  oldPassword:     Joi.string().optional(),
+  password:        Joi.string().min(6).optional(),
+  confirmPassword: Joi.string().optional(),
 });
 
 export const completeProfileSchema = Joi.object({
