@@ -9,8 +9,11 @@ import { ShieldCheck, Loader2, CreditCard, AlertCircle } from "lucide-react";
  *  - amount      {number}   amount in NGN (converted to kobo internally)
  *  - name        {string}   customer name
  *  - reference   {string}   unique transaction ref
- *  - onSuccess   {fn}       called with Paystack response on success
+ *  - onSuccess   {fn}       called with full Paystack response on success (includes reference)
  *  - onCancel    {fn}       called when user closes the popup
+ *  - onPreCheck  {async fn} optional — called BEFORE opening popup.
+ *                           Return true to proceed, false to block.
+ *                           Use this to verify stock so we never charge for unavailable items.
  *  - disabled    {boolean}  externally disable (e.g. empty cart)
  *  - className   {string}   extra tailwind classes
  */
@@ -21,11 +24,13 @@ const PaystackButton = ({
   reference,
   onSuccess,
   onCancel,
+  onPreCheck,
   disabled = false,
   className = "",
 }) => {
-  const [scriptStatus, setScriptStatus] = useState("idle"); // idle | loading | ready | error
-  const [paying, setPaying] = useState(false);
+  const [scriptStatus, setScriptStatus] = useState("idle");
+  const [paying, setPaying]             = useState(false);
+  const [checking, setChecking]         = useState(false);
 
   // ── Load Paystack inline script once ──────────────────────────────────────
   useEffect(() => {
@@ -42,20 +47,20 @@ const PaystackButton = ({
     script.id = SCRIPT_ID;
     script.src = "https://js.paystack.co/v1/inline.js";
     script.async = true;
-    script.onload = () => setScriptStatus("ready");
+    script.onload  = () => setScriptStatus("ready");
     script.onerror = () => setScriptStatus("error");
     document.body.appendChild(script);
   }, []);
 
-  // ── Guard: ensure all required fields before opening popup ───────────────
   const canPay =
     scriptStatus === "ready" &&
     !paying &&
+    !checking &&
     !disabled &&
     !!email &&
     amount > 0;
 
-  const handlePay = () => {
+  const handlePay = async () => {
     if (!canPay) return;
 
     const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
@@ -64,12 +69,25 @@ const PaystackButton = ({
       return;
     }
 
+    // ✅ Run stock pre-check BEFORE opening Paystack popup
+    // This ensures we never charge a customer for items that are out of stock.
+    // If onPreCheck returns false, it has already shown the toast — we just abort.
+    if (onPreCheck) {
+      setChecking(true);
+      try {
+        const canProceed = await onPreCheck();
+        if (!canProceed) return;
+      } finally {
+        setChecking(false);
+      }
+    }
+
     setPaying(true);
 
     const handler = window.PaystackPop.setup({
       key: publicKey,
       email,
-      amount: Math.round(amount * 100), // kobo
+      amount: Math.round(amount * 100),
       ref: reference || `ps_${Date.now()}`,
       currency: "NGN",
       metadata: {
@@ -83,6 +101,7 @@ const PaystackButton = ({
       },
       callback: (response) => {
         setPaying(false);
+        // ✅ Pass full Paystack response — contains reference for auto-refund if needed
         if (onSuccess) onSuccess(response);
       },
       onClose: () => {
@@ -94,7 +113,6 @@ const PaystackButton = ({
     handler.openIframe();
   };
 
-  // ── Derived UI state ──────────────────────────────────────────────────────
   const stateMap = {
     idle: {
       label: "Initialising...",
@@ -105,14 +123,14 @@ const PaystackButton = ({
       icon: <Loader2 size={16} className="animate-spin" />,
     },
     ready: {
-      label: paying
+      label: checking
+        ? "Checking stock..."
+        : paying
         ? "Processing..."
         : `Pay ₦${Number(amount).toLocaleString()}`,
-      icon: paying ? (
-        <Loader2 size={16} className="animate-spin" />
-      ) : (
-        <CreditCard size={16} />
-      ),
+      icon: checking || paying
+        ? <Loader2 size={16} className="animate-spin" />
+        : <CreditCard size={16} />,
     },
     error: {
       label: "Payment unavailable",
@@ -120,7 +138,7 @@ const PaystackButton = ({
     },
   };
 
-  const currentState = stateMap[scriptStatus] ?? stateMap.idle;
+  const currentState  = stateMap[scriptStatus] ?? stateMap.idle;
   const isInteractive = canPay;
 
   return (
@@ -143,7 +161,6 @@ const PaystackButton = ({
         `}
         aria-label="Pay with Paystack"
       >
-        {/* Shimmer on hover (only when active) */}
         {isInteractive && (
           <motion.span
             className="absolute inset-0 bg-white opacity-0 hover:opacity-5 rounded-xl"
@@ -153,7 +170,7 @@ const PaystackButton = ({
 
         <AnimatePresence mode="wait">
           <motion.span
-            key={scriptStatus + String(paying)}
+            key={scriptStatus + String(paying) + String(checking)}
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
@@ -166,9 +183,8 @@ const PaystackButton = ({
         </AnimatePresence>
       </motion.button>
 
-      {/* Trust badge */}
       <AnimatePresence>
-        {scriptStatus === "ready" && !paying && (
+        {scriptStatus === "ready" && !paying && !checking && (
           <motion.span
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
@@ -181,7 +197,6 @@ const PaystackButton = ({
         )}
       </AnimatePresence>
 
-      {/* Error fallback message */}
       {scriptStatus === "error" && (
         <p className="text-xs text-red-500 mt-1">
           Could not load Paystack. Please refresh and try again.

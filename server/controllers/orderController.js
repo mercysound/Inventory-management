@@ -32,14 +32,12 @@ const addOrder = async (req, res) => {
       return sendError(res, 400, "Not enough stock");
     }
 
-    // ✅ CHECK IF ORDER ALREADY EXISTS
     const existing = await OrderModel.findOne({
       userOrdering: userId,
       product: productId,
     });
 
     if (existing) {
-      // ✅ UPDATE INSTEAD OF DUPLICATE
       const newQty = existing.quantity + quantity;
 
       if (newQty > product.stock) {
@@ -55,13 +53,15 @@ const addOrder = async (req, res) => {
       return sendResponse(res, 200, existing, "Order updated instead of duplicate");
     }
 
-    // ✅ CREATE NEW ORDER (ONLY IF NONE EXISTS)
+    // ✅ FIX: always calculate totalPrice server-side
+    // If total is undefined, mongoose throws a required validation error
+    const unitPrice = price || product.price;
     const orderObj = new OrderModel({
       userOrdering: userId,
       product: productId,
       quantity,
-      totalPrice: total,
-      price,
+      price: unitPrice,
+      totalPrice: total || (quantity * unitPrice),
     });
 
     await orderObj.save();
@@ -94,7 +94,7 @@ const getOrderByProduct = async (req, res) => {
 };
 
 /**
- * updateOrder - update quantity/total of an existing order (makes sure stock is available)
+ * updateOrder - update quantity/total of an existing order
  */
 const updateOrder = async (req, res) => {
   try {
@@ -135,6 +135,7 @@ const updateOrder = async (req, res) => {
     return sendError(res, 500, "Failed to update order");
   }
 };
+
 /**
  * getOrders - return orders for current user (staff) or all for admin
  */
@@ -178,24 +179,64 @@ const getOrders = async (req, res) => {
   }
 };
 
+/**
+ * verifyStock - pre-payment stock check so we don't charge customer for unavailable items.
+ * Call this BEFORE opening Paystack popup. Returns 409 if any item is under-stocked.
+ */
+const verifyStock = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const orders = await OrderModel.find({ userOrdering: userId }).populate("product");
+
+    if (!orders.length) {
+      return sendError(res, 400, "Your cart is empty");
+    }
+
+    const conflicts = [];
+
+    for (const o of orders) {
+      const product = await ProductModel.findById(o.product._id).select("stock name");
+      if (!product || product.stock < o.quantity) {
+        conflicts.push({
+          productName: product?.name || "Unknown item",
+          requested: o.quantity,
+          available: product?.stock ?? 0,
+        });
+      }
+    }
+
+    if (conflicts.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: "STOCK_CONFLICT",
+        conflicts, // array of { productName, requested, available }
+      });
+    }
+
+    return sendResponse(res, 200, null, "Stock verified — safe to proceed with payment");
+  } catch (error) {
+    console.error("verifyStock error:", error);
+    return sendError(res, 500, "Failed to verify stock");
+  }
+};
 
 /**
- * completeOrder - saves payment and summary, marks paymentStatus as Paid
+ * completeOrder - saves payment and summary, marks paymentStatus as Paid.
+ * For Paystack payments, accepts paystackReference so we can refund automatically
+ * if stock fails AFTER payment has been charged.
  */
 const completeOrder = async (req, res) => {
-  const { paymentMethod, buyerName } = req.body;
+  const { paymentMethod, buyerName, paystackReference } = req.body;
   const userId = req.user._id;
 
-  //used chargtp to change it
   if (!paymentMethod) {
-  return sendError(res, 400, "Payment method is required");
-}
+    return sendError(res, 400, "Payment method is required");
+  }
 
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-
     const orders = await OrderModel.find({ userOrdering: userId })
       .populate("product")
       .session(session);
@@ -205,7 +246,6 @@ const completeOrder = async (req, res) => {
     }
 
     for (const o of orders) {
-
       const updated = await ProductModel.findOneAndUpdate(
         {
           _id: o.product._id,
@@ -216,17 +256,36 @@ const completeOrder = async (req, res) => {
       );
 
       if (!updated) {
-        throw new Error(`Insufficient stock for ${o.product.name}`);
+        const currentStock = await ProductModel.findById(o.product._id).select("stock").session(session);
+        const remaining = currentStock?.stock ?? 0;
+
+        // If Paystack already charged the customer, refund them automatically
+        if (paystackReference && paymentMethod === "Paystack") {
+          try {
+            await fetch("https://api.paystack.co/refund", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                transaction: paystackReference,
+                merchant_note: `Auto-refund: insufficient stock for ${o.product.name}`,
+              }),
+            });
+            console.log(`✅ Paystack refund initiated for ref: ${paystackReference}`);
+          } catch (refundErr) {
+            // Log but don't block — we still return the stock error to the client
+            console.error("❌ Paystack refund failed:", refundErr.message);
+          }
+        }
+
+        throw new Error(`STOCK_ERROR:${o.product.name}:${o.quantity}:${remaining}`);
       }
     }
 
-    const totalPrice = orders.reduce(
-      (sum, o) => sum + o.quantity * o.price, 0
-    );
-
-    const allQuantity = orders.reduce(
-      (sum, o) => sum + o.quantity, 0
-    );
+    const totalPrice = orders.reduce((sum, o) => sum + o.quantity * o.price, 0);
+    const allQuantity = orders.reduce((sum, o) => sum + o.quantity, 0);
 
     const productList = orders.map(o => ({
       productId: o.product._id,
@@ -261,11 +320,7 @@ const completeOrder = async (req, res) => {
       }], { session });
     }
 
-    await OrderModel.deleteMany(
-      { userOrdering: userId },
-      { session }
-    );
-
+    await OrderModel.deleteMany({ userOrdering: userId }, { session });
     await session.commitTransaction();
 
     return sendResponse(res, 200, { orderId: placed[0]._id }, "Order completed successfully");
@@ -277,7 +332,6 @@ const completeOrder = async (req, res) => {
     session.endSession();
   }
 };
-
 
 
 /* generateInvoice - produce a PDF invoice for current user's active orders. */
@@ -305,6 +359,8 @@ const generateInvoice = async (req, res) => {
         userOrdering: req.user._id,
       }).populate({
         path: "product",
+        // ✅ include description so we can show it on the receipt
+        select: "name description categoryId",
         populate: { path: "categoryId", select: "name" },
       });
 
@@ -315,6 +371,7 @@ const generateInvoice = async (req, res) => {
       orders = activeOrders.map((o) => ({
         product: {
           name: o.product?.name,
+          desc: o.product?.description || "",
           categoryName: o.product?.categoryId?.name,
         },
         quantity: o.quantity,
@@ -346,12 +403,15 @@ const generateInvoice = async (req, res) => {
       if (historyReceipt) {
         order = await HistoryModel.findOne(query).populate({
           path: "productList.productId",
+          // ✅ include description here too
+          select: "name description categoryId",
           populate: { path: "categoryId", select: "name" },
         });
       } else {
         order = await HistoryModel.findOne(query)
           .populate({
             path: "productList.productId",
+            select: "name description categoryId",
             populate: { path: "categoryId", select: "name" },
           })
           .sort({ createdAt: -1 });
@@ -361,12 +421,12 @@ const generateInvoice = async (req, res) => {
         return res.status(404).json({ message: "Order not found" });
       }
 
-      // ✅ capture the real order ID for the receipt
       receiptOrderId = order._id;
 
       orders = order.productList.map((i) => ({
         product: {
           name: i.productId?.name,
+          desc: i.productId?.description || "",
           categoryName: i.productId?.categoryId?.name,
         },
         quantity: i.quantity,
@@ -393,7 +453,7 @@ const generateInvoice = async (req, res) => {
 
     const doc = new PDFDocument({
       margin,
-      size: [receiptWidth, 800], // narrow receipt width, tall enough
+      size: [receiptWidth, 800],
     });
 
     res.setHeader("Content-Type", "application/pdf");
@@ -431,7 +491,6 @@ const generateInvoice = async (req, res) => {
 
     // ── ORDER INFO ──
     doc.moveDown(0.8);
-    const infoY = doc.y;
     doc.fontSize(7.5).font("Helvetica").fillColor("#000");
 
     const infoLines = [
@@ -453,11 +512,14 @@ const generateInvoice = async (req, res) => {
 
     // ── ITEMS HEADER ──
     doc.moveDown(0.5);
+
+    // ✅ Updated columns — added # column for item number, shifted others
     const col = {
-      name: margin,
+      num: margin,           // item number column
+      name: margin + 14,     // item name (shifted right to make room for number)
       qty: margin + 100,
-      price: margin + 130,
-      total: margin + 185,
+      price: margin + 128,
+      total: margin + 183,
     };
 
     doc
@@ -470,21 +532,33 @@ const generateInvoice = async (req, res) => {
 
     const headerY = doc.y - 14;
     doc.fillColor("#fff");
-    doc.text("Item", col.name, headerY + 3, { width: 95 });
-    doc.text("Qty", col.qty, headerY + 3, { width: 30 });
-    doc.text("Price", col.price, headerY + 3, { width: 55 });
-    doc.text("Total", col.total, headerY + 3, { width: 55 });
+    doc.text("#", col.num, headerY + 3, { width: 12 });
+    doc.text("Item", col.name, headerY + 3, { width: 82 });
+    doc.text("Qty", col.qty, headerY + 3, { width: 28 });
+    doc.text("Price", col.price, headerY + 3, { width: 52 });
+    doc.text("Total", col.total, headerY + 3, { width: 52 });
 
     // ── ITEMS ROWS ──
     doc.fillColor("#000").font("Helvetica").fontSize(7.5);
     let y = doc.y + 4;
 
     orders.forEach((o, index) => {
+      const itemNumber = index + 1; // ✅ 1-based item number
+
       const name = o.product.name || "—";
-      const category = o.product.categoryName ? `(${o.product.categoryName})` : "";
-      const nameText = `${name} ${category}`;
-      const nameHeight = doc.heightOfString(nameText, { width: 95 });
-      const rowHeight = Math.max(16, nameHeight + 6);
+      const category = o.product.categoryName ? `[${o.product.categoryName}]` : "";
+
+      // ✅ Truncate desc to 40 chars so it fits neatly on the receipt
+      const rawDesc = o.product.desc || "";
+      const shortDesc = rawDesc.length > 40 ? rawDesc.slice(0, 40) + "…" : rawDesc;
+
+      // Line 1: name + category, Line 2: short description (if any)
+      const nameText = `${name} ${category}`.trim();
+      const descText = shortDesc;
+
+      const nameHeight = doc.heightOfString(nameText, { width: 82 });
+      const descHeight = descText ? doc.heightOfString(descText, { width: 82 }) : 0;
+      const rowHeight = Math.max(20, nameHeight + descHeight + 8);
 
       // alternating row background
       doc
@@ -493,10 +567,34 @@ const generateInvoice = async (req, res) => {
         .stroke();
 
       doc.fillColor("#000");
-      doc.text(nameText, col.name, y + 3, { width: 95 });
-      doc.text(String(o.quantity), col.qty, y + 3, { width: 30 });
-      doc.text(`₦${o.price.toLocaleString()}`, col.price, y + 3, { width: 55 });
-      doc.text(`₦${o.totalPrice.toLocaleString()}`, col.total, y + 3, { width: 55 });
+
+      // ✅ Item number
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(7)
+        .text(String(itemNumber), col.num, y + 3, { width: 12 });
+
+      // Product name + category
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(7.5)
+        .text(nameText, col.name, y + 3, { width: 82 });
+
+      // ✅ Short description below name, in lighter color
+      if (descText) {
+        doc
+          .font("Helvetica")
+          .fontSize(6.5)
+          .fillColor("#555")
+          .text(descText, col.name, y + 3 + nameHeight, { width: 82 });
+      }
+
+      // Qty, Price, Total — vertically centered in the row
+      const midY = y + rowHeight / 2 - 4;
+      doc.fillColor("#000").font("Helvetica").fontSize(7.5);
+      doc.text(String(o.quantity), col.qty, midY, { width: 28 });
+      doc.text(`₦${o.price.toLocaleString()}`, col.price, midY, { width: 52 });
+      doc.text(`₦${o.totalPrice.toLocaleString()}`, col.total, midY, { width: 52 });
 
       y += rowHeight;
     });
@@ -514,8 +612,8 @@ const generateInvoice = async (req, res) => {
       .fontSize(9)
       .font("Helvetica-Bold")
       .fillColor("#000")
-      .text("TOTAL:", col.name, y)
-      .text(`₦${totalAmount.toLocaleString()}`, col.total, y, { width: 55 });
+      .text(`TOTAL (${orders.length} item${orders.length > 1 ? "s" : ""}):`, col.num, y, { width: 155 })
+      .text(`₦${totalAmount.toLocaleString()}`, col.total, y, { width: 52 });
 
     y += 20;
 
@@ -619,6 +717,7 @@ const increaseOrderQuantity = async (req, res) => {
     return sendError(res, 500, "Failed to increase order quantity");
   }
 };
+
 /**
  * deleteOrderItem - delete single item
  */
@@ -649,6 +748,7 @@ const clearUserOrders = async (req, res) => {
 
 export {
   addOrder,
+  verifyStock,
   getOrders,
   completeOrder,
   reduceOrder,

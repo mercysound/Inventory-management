@@ -360,55 +360,26 @@ const LandingPage = () => {
             <div className="h-[1px] flex-1 bg-gray-300"></div>
           </div>
 
-          <GoogleLogin
-            clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}
-            onSuccess={handleGoogleSuccess}
-            onError={() => {
-              console.error("Google OAuth error");
-              toast.error("Google sign-in failed. Please try again.");
-            }}
-            useOneTap={false}
-            theme="outline"
-            size="large"
-            text={isLogin ? "signin_with" : "signup_with"}
-            shape="rectangular"
-            render={(renderProps) => (
-              <motion.button
-                variants={googleButtonVariants}
-                initial="initial"
-                whileHover="hover"
-                whileTap="tap"
-                onClick={() => {
-                  console.log("Google button clicked");
-                  renderProps.onClick();
-                }}
-                disabled={renderProps.disabled || googleLoading}
-                className={`w-full flex items-center justify-center gap-3
-        bg-white border border-gray-300 shadow-sm
-        hover:shadow-md py-2.5 rounded-xl transition-all
-        ${renderProps.disabled || googleLoading
-                    ? "opacity-60 cursor-not-allowed"
-                    : ""
-                  }
-      `}
-              >
-                {googleLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin text-gray-600" />
-                ) : (
-                  <>
-                    <img
-                      src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                      alt="Google"
-                      className="w-5 h-5"
-                    />
-                    <span className="text-gray-700 font-medium">
-                      {isLogin ? "Sign in with Google" : "Sign up with Google"}
-                    </span>
-                  </>
-                )}
-              </motion.button>
-            )}
-          />
+          {/* /* Wrap in motion.div since render prop is gone in v0.12+ */ }
+          <motion.div
+            variants={googleButtonVariants}
+            initial="initial"
+            whileHover="hover"
+            whileTap="tap"
+          >
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => {
+                toast.error("Google sign-in failed. Please try again.");
+              }}
+              useOneTap={false}
+              theme="outline"
+              size="large"
+              text={isLogin ? "signin_with" : "signup_with"}
+              shape="rectangular"
+              width="368"
+            />
+          </motion.div>
 
         </div>
       </motion.div>

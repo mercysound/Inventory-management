@@ -16,10 +16,8 @@ if (missingVars.length) {
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import mongoSanitize from "express-mongo-sanitize";
-// import path from "path";
-// import { fileURLToPath } from "url";
 import connectDB from "./db/connection.js";
 import { requestLogger } from "./middleware/logger.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -35,70 +33,25 @@ import allOrdersPlacedRoutes from "./routes/allOrdersPlacedRoutes.js";
 import completedOrderHistoryRoutes from "./routes/completedOrderHistoryRoutes.js";
 import cloudinary from "./config/cloudinary.js";
 
-
-// const __filename = fileURLToPath(import.meta.url);
-// const __dirname = path.dirname(__filename);
-
 const app = express();
 const port = process.env.PORT || 5002;
+const isDev = process.env.NODE_ENV === "development";
 
-// Security middleware
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: {
-    success: false,
-    statusCode: 429,
-    message: "Too many requests from this IP, please try again later.",
-    timestamp: new Date().toISOString(),
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5, // stricter limit for auth endpoints
-  message: {
-    success: false,
-    statusCode: 429,
-    message: "Too many login attempts, please try again later.",
-    timestamp: new Date().toISOString(),
-  },
-});
-
-// Request logging
-app.use(requestLogger);
-
-// Apply rate limiting
-app.use("/api/", limiter);
-app.use("/api/auth/login", authLimiter);
-app.use("/api/auth/google-login", authLimiter);
-
-// Sanitize data against NoSQL injection
-app.use(mongoSanitize());
-
-
-// ✅ Dynamic origin detection (auto works in dev + production)
+// ── CORS (MUST BE FIRST — before rate limiters and helmet)
+// If CORS comes after rate limiters, 429 responses won't have CORS headers
+// and the browser will show a CORS error instead of the actual rate limit error.
 const allowedOrigins = [
-  "http://localhost:5173", // your local frontend (Vite)
-  "http://localhost:5174", // alternative Vite port
+  "http://localhost:5173",
+  "http://localhost:5174",
   "http://localhost:3000",
-  "http://192.168.227.101:5173",      // ✅ your phone accessing via Wi-Fi
-  "https://yourfrontend.onrender.com" // your deployed frontend
+  "http://192.168.227.101:5173",
+  "https://yourfrontend.onrender.com"
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl)
       if (!origin) return callback(null, true);
-
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -107,18 +60,74 @@ app.use(
       }
     },
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    maxAge: 86400
+    allowedHeaders: ["Content-Type", "Authorization"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    maxAge: 86400,
   })
 );
 
+// ── SECURITY MIDDLEWARE ──
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
-// Middleware
-// app.use(cors());
-app.use(express.json());
+// ── RATE LIMITING ──
+//
+// Why these numbers?
+// A normal user navigating the app fires 3-5 API calls per page load.
+// With 10 pages visited and auto-refreshes, that's easily 100+ calls per session.
+// 100/15min is way too low — it punishes normal usage, especially on shared IPs.
+//
+// General API limiter — keyed by user ID when authenticated, IP otherwise.
+// This prevents one user from burning another user's quota on shared IPs (office/university NAT).
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isDev ? 2000 : 500,   // 500/15min = ~33 req/min — comfortable for real app usage
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?._id?.toString() || ipKeyGenerator(req),
+  handler: (req, res) => {
+    res.status(429).json({
+      success: false,
+      message: "Too many requests, please try again later.",
+    });
+  },
+});
 
-// API routes
+// Auth limiter — only login/register/google-login routes
+// Tight here is correct — legitimate users rarely login more than a few times
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isDev ? 100 : 20,   // 20 login attempts per 15 min in production is generous
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(req),  // always IP-based for auth routes
+  handler: (req, res) => {
+    res.status(429).json({
+      success: false,
+      statusCode: 429,
+      message: "Too many login attempts, please try again later.",
+      timestamp: new Date().toISOString(),
+    });
+  },
+});
+
+// ── REQUEST LOGGING ──
+app.use(requestLogger);
+
+// ── APPLY RATE LIMITING ──
+app.use("/api/", limiter);
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/google-login", authLimiter);
+
+// ── SANITIZE AGAINST NoSQL INJECTION ──
+app.use(mongoSanitize());
+
+// ── BODY SIZE LIMITS ──
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+// ── API ROUTES ──
 app.use("/api/auth", authRoutes);
 app.use("/api/category", categoryRoutes);
 app.use("/api/supplier", supplierRoutes);
@@ -129,28 +138,15 @@ app.use("/api/dashboard", dashboardRouter);
 app.use("/api/placed-orders", allOrdersPlacedRoutes);
 app.use("/api/completed-history", completedOrderHistoryRoutes);
 
-// Global error handler (must be last)
+// ── GLOBAL ERROR HANDLER (must be last) ──
 app.use(errorHandler);
 
-// // Serve frontend
-// app.use(express.static(path.join(__dirname, "../frontend/dist")));
-
-// // Catch-all for React Router
-// app.get("*", (req, res) => {
-//   res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
-// });
-
-// Start server
-// app.listen(port, () => {
-//   connectDB();
-//   console.log(`Server running on http://localhost:${port}`);
-// });
+// ── START SERVER ──
 const IP = process.env.LOCAL_IP || "localhost";
 
 app.listen(port, "0.0.0.0", async () => {
   try {
     await connectDB();
-
     console.log(`✅ Server running on http://${IP}:${port}`);
   } catch (error) {
     console.error("❌ Server startup failed:", error);
@@ -158,7 +154,7 @@ app.listen(port, "0.0.0.0", async () => {
   }
 });
 
-// Handle port conflict
+// ── HANDLE PORT CONFLICT ──
 app.on("error", (err) => {
   if (err.code === "EADDRINUSE") {
     console.error(`❌ Port ${port} is already in use. Free it or change PORT in .env`);

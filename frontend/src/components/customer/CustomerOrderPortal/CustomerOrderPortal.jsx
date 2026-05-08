@@ -47,6 +47,49 @@ const EmptyCart = () => (
   </motion.div>
 );
 
+// ─── Stock error parser ─────────────────────────────────────────────────────
+// Backend sends: STOCK_ERROR:ProductName:requestedQty:remainingStock
+// We parse this into a friendly, informative message for the customer.
+const parseOrderError = (err) => {
+  const raw = err?.response?.data?.message || err?.message || "";
+
+  if (raw.startsWith("STOCK_ERROR:")) {
+    const parts = raw.replace("STOCK_ERROR:", "").split(":");
+    const productName  = parts[0] || "This item";
+    const requested    = Number(parts[1]) || 0;
+    const remaining    = Number(parts[2]) ?? 0;
+
+    let stockLine = "";
+    if (remaining === 0) {
+      stockLine = "It is now completely out of stock.";
+    } else {
+      stockLine = `Only ${remaining} unit${remaining !== 1 ? "s" : ""} left in stock, but your cart has ${requested}.`;
+    }
+
+    return {
+      title: "Item No Longer Available",
+      message: `"${productName}" could not be reserved — someone else completed their purchase first. ${stockLine} Please update your cart quantity or remove it and try again.`,
+      type: "stock",
+      productName,
+      remaining,
+    };
+  }
+
+  if (raw.toLowerCase().includes("no active orders")) {
+    return {
+      title: "Cart is Empty",
+      message: "Your cart appears to be empty. Please add items before checking out.",
+      type: "empty",
+    };
+  }
+
+  return {
+    title: "Checkout Failed",
+    message: raw || "Something went wrong. Please try again.",
+    type: "generic",
+  };
+};
+
 // ─── main component ─────────────────────────────────────────────────────────
 const CustomerOrderPortal = () => {
   const { user } = useAuth();
@@ -112,39 +155,78 @@ const CustomerOrderPortal = () => {
   }, [receiptPreviewUrl, previewUrl]);
 
   // ── Cart actions ────────────────────────────────────────────────────────
+  // ── Optimistic cart helpers ─────────────────────────────────────────────
+  // Update local state INSTANTLY, then sync with server in background.
+  // If server fails, roll back to previous state and show error.
+  // This eliminates the delay between button click and UI update.
+
   const handleIncreaseQty = async (orderId) => {
+    // 1. Snapshot for rollback
+    const prev = orders;
+    // 2. Optimistic update — increment immediately
+    setOrders((os) =>
+      os.map((o) =>
+        o._id === orderId
+          ? { ...o, quantity: o.quantity + 1, total: (o.quantity + 1) * o.price }
+          : o
+      )
+    );
     try {
       const res = await axiosInstance.post(`/orders/increase/${orderId}`);
-      if (res.data.success) fetchOrders(true);
-      else toast.error(res.data.message);
-    } catch {
-      toast.error("Failed to increase quantity");
+      if (!res.data.success) {
+        setOrders(prev); // rollback
+        toast.error(res.data.message || "Failed to increase quantity");
+      }
+    } catch (err) {
+      setOrders(prev); // rollback
+      const msg = err?.response?.data?.message || "Failed to increase quantity";
+      toast.error(msg);
     }
   };
 
   const handleReduceQty = async (orderId) => {
     const order = orders.find((o) => o._id === orderId);
     if (!order) return;
+    // If qty is 1, removing it — optimistically remove from list
     if (order.quantity <= 1) {
       handleDeleteOrder(orderId);
       return;
     }
+    const prev = orders;
+    // Optimistic update — decrement immediately
+    setOrders((os) =>
+      os.map((o) =>
+        o._id === orderId
+          ? { ...o, quantity: o.quantity - 1, total: (o.quantity - 1) * o.price }
+          : o
+      )
+    );
     try {
       const res = await axiosInstance.post(`/orders/reduce/${orderId}`);
-      if (res.data.success) fetchOrders(true);
+      if (!res.data.success) {
+        setOrders(prev); // rollback
+        toast.error("Failed to reduce quantity");
+      }
     } catch {
+      setOrders(prev); // rollback
       toast.error("Failed to reduce quantity");
     }
   };
 
   const handleDeleteOrder = async (orderId) => {
+    const prev = orders;
+    // Optimistic update — remove immediately
+    setOrders((os) => os.filter((o) => o._id !== orderId));
     try {
       const res = await axiosInstance.delete(`/orders/remove/${orderId}`);
-      if (res.data.success) {
-        setOrders((prev) => prev.filter((o) => o._id !== orderId));
+      if (!res.data.success) {
+        setOrders(prev); // rollback
+        toast.error("Failed to remove item");
+      } else {
         toast.success("Item removed");
       }
     } catch {
+      setOrders(prev); // rollback
       toast.error("Failed to remove item");
     }
   };
@@ -193,11 +275,15 @@ const CustomerOrderPortal = () => {
   };
 
   // ── Paystack success ────────────────────────────────────────────────────
-  const handlePaymentSuccess = async () => {
+  // ✅ Receives full Paystack response so we can pass the reference for auto-refund
+  const handlePaymentSuccess = async (paystackResponse) => {
+    const paystackReference = paystackResponse?.reference || paystackResponse?.trxref || null;
+
     try {
       const completeRes = await axiosInstance.post("/orders/complete", {
         paymentMethod: "Paystack",
         buyerName: user?.name || "Customer",
+        paystackReference, // ✅ sent to backend so it can auto-refund if stock fails
       });
 
       if (!completeRes.data.success) {
@@ -225,12 +311,61 @@ const CustomerOrderPortal = () => {
       fetchOrders(true);
     } catch (err) {
       console.error("Order completion failed:", err);
-      const msg =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        err.message ||
-        "Order completion failed";
-      toast.error(msg);
+
+      const { title, message, type } = parseOrderError(err);
+
+      if (type === "stock") {
+        toast.error(
+          <div>
+            <p className="font-semibold text-sm">{title}</p>
+            <p className="text-xs mt-1 leading-relaxed">{message}</p>
+            {paystackReference && (
+              <p className="text-xs mt-2 text-amber-200 font-semibold">
+                A refund has been initiated automatically to your card.
+              </p>
+            )}
+          </div>,
+          { autoClose: 10000 }
+        );
+        fetchOrders(true);
+      } else {
+        toast.error(`${title}: ${message}`);
+      }
+    }
+  };
+
+  // ✅ Pre-payment stock check — called when customer clicks Pay button
+  // Verifies stock BEFORE Paystack opens so we avoid charging for unavailable items
+  const handlePrePayCheck = async () => {
+    try {
+      const res = await axiosInstance.post("/orders/verify-stock");
+      return res.data.success; // true = safe to proceed
+    } catch (err) {
+      const data = err?.response?.data;
+
+      if (data?.message === "STOCK_CONFLICT" && data?.conflicts?.length) {
+        // Build a readable list of conflicts
+        const lines = data.conflicts.map((c) =>
+          c.available === 0
+            ? `• "${c.productName}" is out of stock`
+            : `• "${c.productName}": you need ${c.requested}, only ${c.available} available`
+        );
+
+        toast.error(
+          <div>
+            <p className="font-semibold text-sm">Stock issue — cannot proceed</p>
+            <div className="text-xs mt-1 leading-relaxed space-y-1">
+              {lines.map((l, i) => <p key={i}>{l}</p>)}
+            </div>
+            <p className="text-xs mt-2 text-gray-200">Please update your cart quantities and try again.</p>
+          </div>,
+          { autoClose: 9000 }
+        );
+        fetchOrders(true); // refresh cart to show current stock
+      } else {
+        toast.error("Could not verify stock. Please try again.");
+      }
+      return false; // block Paystack from opening
     }
   };
 
@@ -259,10 +394,7 @@ const CustomerOrderPortal = () => {
     return (
       <div className="p-4 md:p-6 space-y-4">
         {[...Array(3)].map((_, i) => (
-          <div
-            key={i}
-            className="h-24 bg-gray-100 rounded-xl animate-pulse"
-          />
+          <div key={i} className="h-24 bg-gray-100 rounded-xl animate-pulse" />
         ))}
       </div>
     );
@@ -292,10 +424,7 @@ const CustomerOrderPortal = () => {
             whileTap={{ scale: 0.94 }}
             className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition disabled:opacity-40"
           >
-            <RefreshCw
-              size={14}
-              className={refreshing ? "animate-spin" : ""}
-            />
+            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
             Refresh
           </motion.button>
 
@@ -319,24 +448,9 @@ const CustomerOrderPortal = () => {
       {/* ── Stats row ────────────────────────────────────────────────── */}
       {orders.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <StatCard
-            icon={ShoppingCart}
-            label="Items in Cart"
-            value={orders.length}
-            color="bg-indigo-500"
-          />
-          <StatCard
-            icon={PackageOpen}
-            label="Total Units"
-            value={totalItems}
-            color="bg-blue-500"
-          />
-          <StatCard
-            icon={Clock}
-            label="Pending Orders"
-            value={pendingOrders.length}
-            color="bg-amber-500"
-          />
+          <StatCard icon={ShoppingCart} label="Items in Cart" value={orders.length} color="bg-indigo-500" />
+          <StatCard icon={PackageOpen} label="Total Units" value={totalItems} color="bg-blue-500" />
+          <StatCard icon={Clock} label="Pending Orders" value={pendingOrders.length} color="bg-amber-500" />
         </div>
       )}
 
@@ -393,11 +507,13 @@ const CustomerOrderPortal = () => {
                   </motion.button>
 
                   {/* Paystack */}
+                  {/* onPreCheck runs BEFORE the popup opens — blocks payment if stock is short */}
                   <PaystackButton
                     email={user?.email}
                     amount={grandTotal}
                     name={user?.name}
                     reference={`order_${Date.now()}`}
+                    onPreCheck={handlePrePayCheck}
                     onSuccess={handlePaymentSuccess}
                     onCancel={() => toast.info("Payment cancelled")}
                     disabled={!orders.length}
@@ -454,9 +570,7 @@ const CustomerOrderPortal = () => {
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <div className="flex items-center gap-2">
                   <FileText size={18} className="text-indigo-600" />
-                  <h3 className="font-semibold text-gray-800">
-                    Invoice Preview
-                  </h3>
+                  <h3 className="font-semibold text-gray-800">Invoice Preview</h3>
                 </div>
                 <button
                   onClick={handleClosePreview}

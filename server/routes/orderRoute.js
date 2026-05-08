@@ -3,6 +3,7 @@ import { authMiddleware, optionalAuthMiddleware } from "../middleware/authMiddle
 import { validate } from '../middleware/validate.js';
 import {
   addOrder,
+  verifyStock,
   getOrders,
   completeOrder,
   generateInvoice,
@@ -19,6 +20,10 @@ const router = express.Router();
 
 router.get("/", authMiddleware, getOrders);
 router.post("/add", authMiddleware, validate(createOrderSchema), addOrder);
+
+// ✅ Pre-payment stock verification — call BEFORE opening Paystack popup
+// Returns 409 with conflict details if any cart item has insufficient stock
+router.post("/verify-stock", authMiddleware, verifyStock);
 
 router.post("/complete", authMiddleware, validate(completeOrderSchema), completeOrder);
 router.post("/payment", authMiddleware, validate(completeOrderSchema), completeOrder);

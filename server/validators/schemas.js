@@ -67,9 +67,9 @@ export const authSchema = Joi.object({
 
 export const createOrderSchema = Joi.object({
   productId: Joi.string().required().hex().length(24),
-  quantity: Joi.number().required().integer().min(1),
-  total: Joi.number().required().positive(),
-  price: Joi.number().required().positive(),
+  quantity:  Joi.number().required().integer().min(1),
+  price:     Joi.number().required().positive(),
+  total:     Joi.number().positive().optional(), // ✅ was required, now optional
 });
 
 export const completeOrderSchema = Joi.object({

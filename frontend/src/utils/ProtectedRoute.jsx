@@ -10,8 +10,14 @@ const ProtectedRoute = ({ children, requireRole }) => {
     return <Navigate to="/" replace />;
   }
 
-  // Logged in but profile incomplete → force redirect
-  if (!user.profileCompleted) {
+  // ✅ FIXED: Only redirect to complete-profile if the role actually needs it.
+  // Staff accounts created by admin may have profileCompleted: false legitimately
+  // and shouldn't be stuck in a redirect loop.
+  const rolesRequiringProfileCompletion = ["customer"]; // add "staff" here if staff also self-register
+  if (
+    !user.profileCompleted &&
+    rolesRequiringProfileCompletion.includes(user.role)
+  ) {
     return <Navigate to="/complete-profile" replace />;
   }
 
