@@ -161,9 +161,7 @@ const CustomerOrderPortal = () => {
   // This eliminates the delay between button click and UI update.
 
   const handleIncreaseQty = async (orderId) => {
-    // 1. Snapshot for rollback
     const prev = orders;
-    // 2. Optimistic update — increment immediately
     setOrders((os) =>
       os.map((o) =>
         o._id === orderId
@@ -174,26 +172,25 @@ const CustomerOrderPortal = () => {
     try {
       const res = await axiosInstance.post(`/orders/increase/${orderId}`);
       if (!res.data.success) {
-        setOrders(prev); // rollback
+        setOrders(prev);
         toast.error(res.data.message || "Failed to increase quantity");
       }
     } catch (err) {
-      setOrders(prev); // rollback
+      setOrders(prev);
       const msg = err?.response?.data?.message || "Failed to increase quantity";
       toast.error(msg);
+    } finally {
     }
   };
 
   const handleReduceQty = async (orderId) => {
     const order = orders.find((o) => o._id === orderId);
     if (!order) return;
-    // If qty is 1, removing it — optimistically remove from list
     if (order.quantity <= 1) {
       handleDeleteOrder(orderId);
       return;
     }
     const prev = orders;
-    // Optimistic update — decrement immediately
     setOrders((os) =>
       os.map((o) =>
         o._id === orderId
@@ -204,12 +201,13 @@ const CustomerOrderPortal = () => {
     try {
       const res = await axiosInstance.post(`/orders/reduce/${orderId}`);
       if (!res.data.success) {
-        setOrders(prev); // rollback
+        setOrders(prev);
         toast.error("Failed to reduce quantity");
       }
     } catch {
-      setOrders(prev); // rollback
+      setOrders(prev);
       toast.error("Failed to reduce quantity");
+    } finally {
     }
   };
 

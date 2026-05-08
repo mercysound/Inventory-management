@@ -101,37 +101,34 @@ const StaffOrders = () => {
     setOrders((os) =>
       os.map((o) =>
         o._id === orderId
-          ? {
-              ...o,
-              quantity: o.quantity + 1,
-              totalPrice: (o.quantity + 1) * o.price,
-            }
+          ? { ...o, quantity: o.quantity + 1, totalPrice: (o.quantity + 1) * o.price }
           : o
       )
     );
     try {
       await axiosInstance.post(`/orders/increase/${orderId}`);
     } catch (err) {
-      setOrders(prev); // rollback
+      setOrders(prev);
       const msg = err?.response?.data?.message || "Failed to increase quantity";
       toast.error(msg);
+    } finally {
     }
   };
 
   const handleReduceQty = async (orderId) => {
     const order = orders.find((o) => o._id === orderId);
     if (!order) return;
-
     const prev = orders;
 
     if (order.quantity <= 1) {
-      // Optimistically remove the item entirely
       setOrders((os) => os.filter((o) => o._id !== orderId));
       try {
         await axiosInstance.post(`/orders/reduce/${orderId}`);
       } catch {
-        setOrders(prev); // rollback
+        setOrders(prev);
         toast.error("Failed to reduce quantity");
+      } finally {
+        setLoadingOrderId(null);
       }
       return;
     }
@@ -139,19 +136,16 @@ const StaffOrders = () => {
     setOrders((os) =>
       os.map((o) =>
         o._id === orderId
-          ? {
-              ...o,
-              quantity: o.quantity - 1,
-              totalPrice: (o.quantity - 1) * o.price,
-            }
+          ? { ...o, quantity: o.quantity - 1, totalPrice: (o.quantity - 1) * o.price }
           : o
       )
     );
     try {
       await axiosInstance.post(`/orders/reduce/${orderId}`);
     } catch {
-      setOrders(prev); // rollback
+      setOrders(prev);
       toast.error("Failed to reduce quantity");
+    } finally {
     }
   };
 
