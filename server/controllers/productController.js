@@ -5,8 +5,6 @@ import cloudinary from '../config/cloudinary.js';
 import { sendResponse, sendError } from '../utils/apiResponse.js';
 import { getPaginationParams, getPaginationMeta } from '../utils/pagination.js';
 
-
-
 const getProducts = async (req, res) => {
   try {
     const { skip, limit, page, sort } = getPaginationParams(req);
@@ -16,7 +14,7 @@ const getProducts = async (req, res) => {
     const products = await ProductModel
       .find({ isDeleted: false })
       .populate("categoryId")
-      .populate("supplierId")
+      .populate("supplierId") // ✅ safe — returns null when supplierId is null
       .sort(sort)
       .skip(skip)
       .limit(limit);
@@ -29,14 +27,13 @@ const getProducts = async (req, res) => {
     return sendResponse(res, 200, {
       products,
       suppliers,
-      categories
+      categories,
     }, "Products retrieved successfully", meta);
   } catch (error) {
     console.error('Error fetching products:', error);
     return sendError(res, 500, "Failed to fetch products");
   }
 };
-
 
 const addProduct = async (req, res) => {
   try {
@@ -56,7 +53,8 @@ const addProduct = async (req, res) => {
       price,
       stock,
       categoryId,
-      supplierId: supplierId || null, // ✅ gracefully handle empty string
+      // ✅ empty string, "null", undefined → all become null in DB
+      supplierId: supplierId && supplierId.trim() !== "" ? supplierId : null,
       image: imageUrl,
     });
 
@@ -76,6 +74,17 @@ const updateProduct = async (req, res) => {
 
     const updateData = { ...req.body };
 
+    // ✅ Always handle supplierId cleanly:
+    // empty string or missing = null (remove supplier)
+    // valid 24-char hex = keep it
+    if ("supplierId" in updateData) {
+      const sid = updateData.supplierId;
+      updateData.supplierId =
+        sid && typeof sid === "string" && sid.trim().length === 24
+          ? sid.trim()
+          : null;
+    }
+
     // Handle image removal
     if (updateData.removeImage === "true" || updateData.removeImage === true) {
       if (product.image) {
@@ -92,7 +101,6 @@ const updateProduct = async (req, res) => {
 
     // Handle new image upload
     if (req.file) {
-      // Delete old image from Cloudinary first if one exists
       if (product.image) {
         const urlParts = product.image.split("/");
         const uploadIndex = urlParts.indexOf("upload");
@@ -122,23 +130,19 @@ const updateProduct = async (req, res) => {
     return sendError(res, 500, "Failed to update product");
   }
 };
+
 const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
 
     const existingProduct = await ProductModel.findById(id);
+    if (!existingProduct) return sendError(res, 404, "Product not found");
+    if (existingProduct.isDeleted) return sendError(res, 400, "Product already deleted");
 
-    if (!existingProduct) {
-      return sendError(res, 404, "Product not found");
-    }
-
-    if (existingProduct.isDeleted) {
-      return sendError(res, 400, "Product already deleted");
-    }
-
-    const product = await ProductModel.findByIdAndUpdate(id, { isDeleted: true }, { new: true });
+    const product = await ProductModel.findByIdAndUpdate(
+      id, { isDeleted: true }, { new: true }
+    );
     return sendResponse(res, 200, product, "Product deleted successfully");
-
   } catch (error) {
     console.error('Error deleting product:', error);
     return sendError(res, 500, "Failed to delete product");
@@ -169,20 +173,12 @@ const getDeletedProducts = async (req, res) => {
 const restoreProduct = async (req, res) => {
   try {
     const { id } = req.params;
-
     const product = await ProductModel.findById(id);
-
-    if (!product) {
-      return sendError(res, 404, "Product not found");
-    }
-
-    if (!product.isDeleted) {
-      return sendError(res, 400, "Product is not deleted");
-    }
+    if (!product) return sendError(res, 404, "Product not found");
+    if (!product.isDeleted) return sendError(res, 400, "Product is not deleted");
 
     product.isDeleted = false;
     await product.save();
-
     return sendResponse(res, 200, product, "Product restored successfully");
   } catch (error) {
     console.error('Error restoring product:', error);
@@ -214,7 +210,12 @@ const deleteProductPermanent = async (req, res) => {
   }
 };
 
-
-
-export { getProducts, addProduct, updateProduct, deleteProduct, getDeletedProducts, restoreProduct, deleteProductPermanent }
-
+export {
+  getProducts,
+  addProduct,
+  updateProduct,
+  deleteProduct,
+  getDeletedProducts,
+  restoreProduct,
+  deleteProductPermanent,
+};

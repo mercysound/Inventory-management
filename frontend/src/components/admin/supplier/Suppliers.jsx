@@ -14,6 +14,7 @@ const Suppliers = () => {
   const [editSupplier, setEditSupplier] = useState(null);
   const [openModal, setOpenModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [updatingSupplierId, setUpdatingSupplierId] = useState(null); // ✅ tracks which row
 
   const emptyForm = {
     name: "",
@@ -72,19 +73,51 @@ const Suppliers = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const isEditing = Boolean(editSupplier);
+    const targetId = editSupplier;
+
+    // ✅ Close modal immediately
+    closeModal();
+
+    if (isEditing) {
+      // ✅ Show skeleton on only that one row
+      setUpdatingSupplierId(targetId);
+    }
+
     try {
       let response;
-      if (editSupplier) {
-        response = await axiosInstance.put(`/supplier/${editSupplier}`, formData);
+      if (isEditing) {
+        response = await axiosInstance.put(`/supplier/${targetId}`, formData);
       } else {
         response = await axiosInstance.post("/supplier/add", formData);
       }
+
       if (response.data.success) {
-        toast.success(editSupplier ? "Supplier updated!" : "Supplier added!");
-        fetchSuppliers();
-        closeModal();
+        toast.success(isEditing ? "Supplier updated!" : "Supplier added!");
+
+        if (isEditing) {
+          // ✅ Swap only the updated supplier row — no full reload flicker
+          const refreshed = await axiosInstance.get("/supplier");
+          if (refreshed.data.success) {
+            const updatedSupplier = refreshed.data.suppliers.find(
+              (s) => s._id === targetId
+            );
+            if (updatedSupplier) {
+              setSuppliers((prev) =>
+                prev.map((s) => (s._id === targetId ? updatedSupplier : s))
+              );
+              setFilterSupplier((prev) =>
+                prev.map((s) => (s._id === targetId ? updatedSupplier : s))
+              );
+            }
+          }
+        } else {
+          // New supplier — full fetch
+          fetchSuppliers();
+        }
       } else {
         toast.error("Something went wrong. Try again.");
+        if (isEditing) fetchSuppliers();
       }
     } catch (error) {
       const errorMessage =
@@ -92,20 +125,37 @@ const Suppliers = () => {
         error.response?.data?.errors?.[0]?.message ||
         "Something went wrong";
       toast.error(errorMessage);
+      if (isEditing) fetchSuppliers();
+    } finally {
+      // ✅ Always clear the skeleton
+      setUpdatingSupplierId(null);
     }
   };
 
+  // ✅ Optimistic delete — row disappears instantly
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this supplier?")) return;
+
+    const previousSuppliers = suppliers;
+    const previousFiltered = filterSupplier;
+
+    setSuppliers((prev) => prev.filter((s) => s._id !== id));
+    setFilterSupplier((prev) => prev.filter((s) => s._id !== id));
+
     try {
       const response = await axiosInstance.delete(`/supplier/${id}`);
       if (response.data.success) {
         toast.success("Supplier deleted!");
-        fetchSuppliers();
       } else {
+        // rollback
+        setSuppliers(previousSuppliers);
+        setFilterSupplier(previousFiltered);
         toast.error("Failed to delete supplier");
       }
     } catch (error) {
+      // rollback
+      setSuppliers(previousSuppliers);
+      setFilterSupplier(previousFiltered);
       const msg = error.response?.data?.message || "Error deleting supplier";
       toast.error(msg);
     }
@@ -174,16 +224,18 @@ const Suppliers = () => {
                   </span>
                 )}
                 {s.phone && (
-                  <a
-                    href={`tel:${s.phone}`}
+                  
+                  <a  href={`tel:${s.phone}`}
                     className="inline-flex items-center gap-1 text-blue-500 hover:underline"
                   >
                     <Phone size={10} /> Call
                   </a>
                 )}
                 {s.email && (
-                  <a
-                    href={`mailto:${s.email}`}
+                  
+                   <a href={`https://mail.google.com/mail/?view=cm&to=${s.email}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-blue-500 hover:underline"
                   >
                     <Mail size={10} /> Email
@@ -208,6 +260,7 @@ const Suppliers = () => {
             suppliers={filterSupplier}
             handleEdit={handleEdit}
             handleDelete={handleDelete}
+            updatingSupplierId={updatingSupplierId} // ✅ passed down
           />
         </motion.div>
       )}

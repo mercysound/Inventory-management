@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import ProductTable from "./ProductTable";
 import ProductForm from "./ProductForm";
@@ -16,10 +16,11 @@ const Product = () => {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [loading, setLoading] = useState(false);
   const [image, setImage] = useState(null);
-  // for the delete datat popupp
   const [showDeletedPopup, setShowDeletedPopup] = useState(false);
   const [deletedProducts, setDeletedProducts] = useState([]);
   const [loadingDeleted, setLoadingDeleted] = useState(false);
+  const [updatingProductId, setUpdatingProductId] = useState(null); // ✅ tracks which row is updating
+  const scrollRef = useRef(null); // ✅ ADD THIS
 
   const [formData, setFormData] = useState({
     name: "",
@@ -28,6 +29,8 @@ const Product = () => {
     stock: "",
     categoryId: "",
     supplierId: "",
+    image: "",
+    removeImage: false,
   });
 
   const fetchProducts = async () => {
@@ -83,96 +86,135 @@ const Product = () => {
       description: product.description,
       price: product.price,
       stock: product.stock,
-      categoryId: product.categoryId._id,
-      supplierId: product.supplierId._id,
-      image: product.image,
+      categoryId: product.categoryId?._id || "",
+      supplierId: product.supplierId?._id || "",
+      image: product.image || "",
+      removeImage: false,
     });
     setOpenModal(true);
   };
 
+  // ✅ Optimistic delete — row disappears instantly
   const handleDelete = async (id) => {
     const confirmDelete = confirm("Are you sure you want to delete this product?");
     if (!confirmDelete) return;
+
+    const previousProducts = products;
+    const previousFiltered = filteredProducts;
+
+    setProducts((prev) => prev.filter((p) => p._id !== id));
+    setFilteredProducts((prev) => prev.filter((p) => p._id !== id));
 
     try {
       const response = await axiosInstance.delete(`/products/${id}`);
       if (response.data.success) {
         toast.success("Product deleted successfully!");
-        fetchProducts();
       } else {
+        // rollback
+        setProducts(previousProducts);
+        setFilteredProducts(previousFiltered);
         toast.error("Error deleting product.");
       }
     } catch (error) {
+      // rollback
+      setProducts(previousProducts);
+      setFilteredProducts(previousFiltered);
       toast.error("Error deleting product. Please try again");
     }
   };
 
   const handleSubmit = async () => {
-    try {
-      const data = new FormData();
+  const isEditing = Boolean(editProduct);
+  const targetId = editProduct;
 
-      Object.keys(formData).forEach((key) => {
-        if (key !== "image" && key !== "removeImage") {
-          data.append(key, formData[key]);
-        }
-      });
+  // ✅ Save scroll position before anything changes
+  const savedScrollTop = scrollRef.current?.scrollTop || 0;
 
-      if (image) {
-        data.append("image", image);
-      }
+  try {
+    const data = new FormData();
 
-      // ✅ ADD THIS HERE
-      if (formData.removeImage) {
-        data.append("removeImage", "true");
-      }
+    Object.keys(formData).forEach((key) => {
+      if (key === "image" || key === "removeImage") return;
+      data.append(key, formData[key]);
+    });
 
-      const url = editProduct
-        ? `/products/${editProduct}`
-        : "/products/add";
+    if (image) data.append("image", image);
+    if (formData.removeImage) data.append("removeImage", "true");
 
-      const response = await axiosInstance({
-        method: editProduct ? "put" : "post",
-        url,
-        data,
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+    const url = isEditing ? `/products/${targetId}` : "/products/add";
 
-      if (response.data.success) {
-        toast.success(
-          editProduct
-            ? "Product updated successfully!"
-            : "Product added successfully!"
-        );
-        closeModal();
-        fetchProducts();
-      } else {
-        toast.error("Something went wrong.");
-      }
-    } catch (error) {
-      console.error("Error saving product:", error);
-      toast.error("Error saving product.");
+    closeModal();
+
+    if (isEditing) {
+      setUpdatingProductId(targetId);
     }
-  };
 
+    const response = await axiosInstance({
+      method: isEditing ? "put" : "post",
+      url,
+      data,
+      headers: { "Content-Type": "multipart/form-data" },
+    });
 
-  const closeModal = () => {
-  setOpenModal(false);
-  setEditProduct(null);
-  setImage(null);
+    if (response.data.success) {
+      toast.success(
+        isEditing ? "Product updated successfully!" : "Product added successfully!"
+      );
 
-  setFormData({
-    name: "",
-    description: "",
-    price: "",
-    stock: "",
-    categoryId: "",
-    supplierId: "",
-    image: "",
-    removeImage: false, // ✅ ADD THIS
-  });
+      if (isEditing) {
+        const refreshed = await axiosInstance.get("/products");
+        if (refreshed.data.success) {
+          const updatedProduct = refreshed.data.products.find(
+            (p) => p._id === targetId
+          );
+          if (updatedProduct) {
+            setProducts((prev) =>
+              prev.map((p) => (p._id === targetId ? updatedProduct : p))
+            );
+            setFilteredProducts((prev) =>
+              prev.map((p) => (p._id === targetId ? updatedProduct : p))
+            );
+          }
+        }
+      } else {
+        fetchProducts();
+      }
+    } else {
+      toast.error("Something went wrong.");
+      if (isEditing) fetchProducts();
+    }
+  } catch (error) {
+    console.error("Error saving product:", error);
+    toast.error(error.response?.data?.message || "Error saving product.");
+    if (isEditing) fetchProducts();
+  } finally {
+    setUpdatingProductId(null);
+
+    // ✅ Restore scroll position after the row updates
+    if (isEditing && scrollRef.current) {
+      requestAnimationFrame(() => {
+        scrollRef.current.scrollTop = savedScrollTop;
+      });
+    }
+  }
 };
 
-  // Fetch deleted products
+  const closeModal = () => {
+    setOpenModal(false);
+    setEditProduct(null);
+    setImage(null);
+    setFormData({
+      name: "",
+      description: "",
+      price: "",
+      stock: "",
+      categoryId: "",
+      supplierId: "",
+      image: "",
+      removeImage: false,
+    });
+  };
+
   const fetchDeletedProducts = async () => {
     setLoadingDeleted(true);
     try {
@@ -186,14 +228,11 @@ const Product = () => {
     }
   };
 
-
-  // Open popup
   const handleViewDeleted = () => {
     fetchDeletedProducts();
     setShowDeletedPopup(true);
   };
 
-  // Restore
   const handleRestore = async (id) => {
     try {
       const response = await axiosInstance.put(`/products/restore/${id}`);
@@ -208,11 +247,9 @@ const Product = () => {
     }
   };
 
-  // Permanent delete
   const handlePermanentDelete = async (id) => {
     const confirmDelete = confirm("Are you sure? This cannot be undone.");
     if (!confirmDelete) return;
-
     try {
       const response = await axiosInstance.delete(`/products/permanent/${id}`);
       if (response.data.success) {
@@ -229,7 +266,6 @@ const Product = () => {
     <div className="w-full h-full flex flex-col gap-4 p-4">
       <h1 className="text-2xl font-bold mb-2">Product Management</h1>
 
-      {/* Search & Category Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <input
           type="text"
@@ -237,7 +273,6 @@ const Product = () => {
           onChange={handleSearch}
           className="border border-gray-300 rounded-md px-3 py-2 w-full sm:w-1/2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-
         <select
           value={selectedCategory}
           onChange={handleCategoryChange}
@@ -252,22 +287,22 @@ const Product = () => {
         </select>
       </div>
 
-      {/* Product Table or Skeleton */}
       <div className="mt-3">
         {loading ? (
           <ProductSkeleton />
         ) : (
           <ProductTable
-            products={filteredProducts}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onAddClick={() => setOpenModal(true)}
-            onViewDeleted={handleViewDeleted} // for delete poppup
-          />
+  products={filteredProducts}
+  onEdit={handleEdit}
+  onDelete={handleDelete}
+  onAddClick={() => setOpenModal(true)}
+  onViewDeleted={handleViewDeleted}
+  updatingProductId={updatingProductId}
+  scrollRef={scrollRef} // ✅ ADD THIS
+/>
         )}
       </div>
 
-      {/* Product Modal Form */}
       {openModal && (
         <ProductForm
           open={openModal}

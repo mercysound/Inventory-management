@@ -23,6 +23,7 @@ export const categorySchema = Joi.object({
 });
 
 // Product — supplierId optional
+// Product validation schemas
 export const productSchema = Joi.object({
   name: Joi.string().required().trim().min(2).max(100),
   description: Joi.string().required().trim().max(1000),
@@ -110,8 +111,15 @@ export const validateResetTokenSchema = Joi.object({
 });
 
 export const productUpdateSchema = productSchema.fork([
-  "name", "description", "price", "stock",
-  "categoryId", "supplierId", "images", "image", "removeImage",
+  "name",
+  "description",
+  "price",
+  "stock",
+  "categoryId",
+  "supplierId",
+  "images",
+  "image",
+  "removeImage",
 ], (field) => field.optional());
 
 export const supplierUpdateSchema = supplierSchema.fork(

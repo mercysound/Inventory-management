@@ -204,19 +204,19 @@ const ProductForm = ({
               <label className="block text-[11px] font-medium text-gray-500 uppercase tracking-wide mb-1">
                 Supplier
               </label>
-              <select
-                name="supplierId"
-                value={formData.supplierId}
-                onChange={handleChange}
-                className="border border-gray-200 p-2.5 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
-              >
-                <option value="">Select supplier</option>
-                {suppliers?.map((sup) => (
-                  <option key={sup._id} value={sup._id}>
-                    {sup.name}
-                  </option>
-                ))}
-              </select>
+             <select
+  name="supplierId"
+  value={formData.supplierId || ""}
+  onChange={handleChange}
+  className="border border-gray-200 p-2.5 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+>
+  <option value="">No supplier</option>
+  {suppliers?.map((sup) => (
+    <option key={sup._id} value={sup._id}>
+      {sup.name}
+    </option>
+  ))}
+</select>
             </div>
           </div>
 
