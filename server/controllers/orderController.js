@@ -37,6 +37,8 @@ const addOrder = async (req, res) => {
       product: productId,
     });
 
+    const ONE_HOUR = new Date(Date.now() + 60 * 60 * 1000);
+
     if (existing) {
       const newQty = existing.quantity + quantity;
 
@@ -47,14 +49,13 @@ const addOrder = async (req, res) => {
       existing.quantity = newQty;
       existing.totalPrice = newQty * (price || existing.price);
       existing.price = price || existing.price;
+      existing.cartExpiresAt = ONE_HOUR; // ✅ reset 1hr window on update
 
       await existing.save();
-
       return sendResponse(res, 200, existing, "Order updated instead of duplicate");
     }
 
-    // ✅ FIX: always calculate totalPrice server-side
-    // If total is undefined, mongoose throws a required validation error
+    // ✅ always calculate totalPrice server-side
     const unitPrice = price || product.price;
     const orderObj = new OrderModel({
       userOrdering: userId,
@@ -62,16 +63,18 @@ const addOrder = async (req, res) => {
       quantity,
       price: unitPrice,
       totalPrice: total || (quantity * unitPrice),
+      cartExpiresAt: ONE_HOUR, // ✅ set 1hr window on new order
     });
 
     await orderObj.save();
-
     return sendResponse(res, 200, orderObj, "Order added successfully");
+
   } catch (error) {
     console.error("addOrder error:", error);
     return sendError(res, 500, "Failed to add order");
   }
 };
+
 
 /**
  * getOrderByProduct - returns the current user's order for the given product (if any)
@@ -127,6 +130,7 @@ const updateOrder = async (req, res) => {
     order.quantity = qty;
     order.totalPrice = total || (price || order.price) * qty;
     order.price = price || order.price;
+    order.cartExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // ✅ reset 1hr window on update
     await order.save();
 
     return sendResponse(res, 200, order, "Order updated successfully");
@@ -680,9 +684,11 @@ const reduceOrder = async (req, res) => {
     } else {
       order.quantity -= 1;
       order.totalPrice = order.price * order.quantity;
+      order.cartExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // ✅ reset on activity
       await order.save();
     }
     return sendResponse(res, 200, order, "Order reduced successfully");
+
   } catch (error) {
     console.error("reduceOrder error:", error);
     return sendError(res, 500, "Error reducing order");
@@ -694,14 +700,10 @@ const increaseOrderQuantity = async (req, res) => {
     const { orderId } = req.params;
 
     const order = await OrderModel.findById(orderId).populate("product");
-    if (!order) {
-      return sendError(res, 404, "Order not found");
-    }
+    if (!order) return sendError(res, 404, "Order not found");
 
     const product = await ProductModel.findById(order.product._id);
-    if (!product) {
-      return sendError(res, 404, "Product not found");
-    }
+    if (!product) return sendError(res, 404, "Product not found");
 
     if (order.quantity >= product.stock) {
       return sendError(res, 400, "Cannot increase quantity beyond available stock.");
@@ -709,9 +711,11 @@ const increaseOrderQuantity = async (req, res) => {
 
     order.quantity += 1;
     order.totalPrice = order.price * order.quantity;
-    await order.save();
+    order.cartExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // ✅ reset on activity
 
+    await order.save();
     return sendResponse(res, 200, order, "Quantity increased successfully");
+
   } catch (error) {
     console.error("Error increasing order quantity:", error);
     return sendError(res, 500, "Failed to increase order quantity");

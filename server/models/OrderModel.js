@@ -13,6 +13,15 @@ const orderSchema = new mongoose.Schema({
   paymentStatus: { type: String, enum: ["Unpaid", "Paid"], default: "Unpaid" },
   paid: { type: Boolean, default: false },
   buyerName: { type: String },
+
+  // ✅ TTL field — MongoDB auto-deletes the document 1 hour after this date
+  // Every time a user adds/updates items, reset this field to extend the window
+  cartExpiresAt: {
+    type: Date,
+    default: () => new Date(Date.now() + 60 * 60 * 1000), // 1 hour from now
+    index: { expireAfterSeconds: 0 }, // TTL index — expires AT the date value
+  },
+
 }, { timestamps: true });
 
 const OrderModel = mongoose.model("Order", orderSchema);
