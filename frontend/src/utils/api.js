@@ -12,7 +12,11 @@ const axiosInstance = axios.create({
 // Routes that should NEVER trigger the token refresh logic
 const AUTH_ROUTES = ["/auth/login", "/auth/refresh", "/users/register", "/auth/google-login"];
 
+// Routes that get a longer timeout (heavy queries / cold starts)
+const SLOW_ROUTES = ["/dashboard", "/supplier"];
+
 const isAuthRoute = (url = "") => AUTH_ROUTES.some((route) => url.includes(route));
+const isSlowRoute = (url = "") => SLOW_ROUTES.some((route) => url.includes(route));
 
 // ─── Request Interceptor ───────────────────────────────────────────────────────
 axiosInstance.interceptors.request.use(
@@ -21,12 +25,17 @@ axiosInstance.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Give heavy routes more time before timing out
+    if (isSlowRoute(config.url)) {
+      config.timeout = 30000;
+    }
+
     config.metadata = { startTime: Date.now() };
     return config;
   },
   (error) => Promise.reject(error)
 );
-
 // ─── Response Interceptor ──────────────────────────────────────────────────────
 axiosInstance.interceptors.response.use(
   (response) => {

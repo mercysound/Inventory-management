@@ -7,6 +7,8 @@ import SupplierSkeleton from "./SupplierSkeleton";
 import { FaUserPlus, FaSearch } from "react-icons/fa";
 import { AlertTriangle, Phone, Mail } from "lucide-react";
 import axiosInstance from "../../../utils/axiosInstance";
+import { parseApiError } from "../../../../../server/utils/parseApiError";
+
 
 const Suppliers = () => {
   const [suppliers, setSuppliers] = useState([]);
@@ -27,19 +29,25 @@ const Suppliers = () => {
 
   const [formData, setFormData] = useState(emptyForm);
 
-  const fetchSuppliers = async () => {
-    try {
-      setLoading(true);
-      const response = await axiosInstance.get("/supplier");
-      setSuppliers(response.data.suppliers);
-      setFilterSupplier(response.data.suppliers);
-    } catch (error) {
-      console.error("Error fetching suppliers", error);
-      toast.error("Failed to load suppliers");
-    } finally {
-      setLoading(false);
+  // Suppliers.jsx
+const fetchSuppliers = async (attempt = 1) => {
+  try {
+    if (attempt === 1) setLoading(true);
+    const response = await axiosInstance.get("/supplier");
+    setSuppliers(response.data.suppliers);
+    setFilterSupplier(response.data.suppliers);
+    setLoading(false);
+  } catch (err) {
+    const isTimeout = err.code === "ECONNABORTED" || err.message?.includes("timeout");
+    if (isTimeout && attempt === 1) {
+      console.warn("Suppliers timeout — retrying in 3s...");
+      setTimeout(() => fetchSuppliers(2), 3000);
+      return;
     }
-  };
+    toast.error("Failed to load suppliers");
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchSuppliers();
@@ -71,66 +79,57 @@ const Suppliers = () => {
     setFormData(emptyForm);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const isEditing = Boolean(editSupplier);
-    const targetId = editSupplier;
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  const isEditing = Boolean(editSupplier);
+  const targetId = editSupplier;
 
-    // ✅ Close modal immediately
-    closeModal();
+  // ❌ Remove closeModal() from here — don't close before we know it succeeded
 
+  if (isEditing) {
+    setUpdatingSupplierId(targetId);
+  }
+
+  try {
+    let response;
     if (isEditing) {
-      // ✅ Show skeleton on only that one row
-      setUpdatingSupplierId(targetId);
+      response = await axiosInstance.put(`/supplier/${targetId}`, formData);
+    } else {
+      response = await axiosInstance.post("/supplier/add", formData);
     }
 
-    try {
-      let response;
+    if (response.data.success) {
+      closeModal(); // ✅ Only close on success
+      toast.success(isEditing ? "Supplier updated!" : "Supplier added!");
+
       if (isEditing) {
-        response = await axiosInstance.put(`/supplier/${targetId}`, formData);
-      } else {
-        response = await axiosInstance.post("/supplier/add", formData);
-      }
-
-      if (response.data.success) {
-        toast.success(isEditing ? "Supplier updated!" : "Supplier added!");
-
-        if (isEditing) {
-          // ✅ Swap only the updated supplier row — no full reload flicker
-          const refreshed = await axiosInstance.get("/supplier");
-          if (refreshed.data.success) {
-            const updatedSupplier = refreshed.data.suppliers.find(
-              (s) => s._id === targetId
+        const refreshed = await axiosInstance.get("/supplier");
+        if (refreshed.data.success) {
+          const updatedSupplier = refreshed.data.suppliers.find(
+            (s) => s._id === targetId
+          );
+          if (updatedSupplier) {
+            setSuppliers((prev) =>
+              prev.map((s) => (s._id === targetId ? updatedSupplier : s))
             );
-            if (updatedSupplier) {
-              setSuppliers((prev) =>
-                prev.map((s) => (s._id === targetId ? updatedSupplier : s))
-              );
-              setFilterSupplier((prev) =>
-                prev.map((s) => (s._id === targetId ? updatedSupplier : s))
-              );
-            }
+            setFilterSupplier((prev) =>
+              prev.map((s) => (s._id === targetId ? updatedSupplier : s))
+            );
           }
-        } else {
-          // New supplier — full fetch
-          fetchSuppliers();
         }
       } else {
-        toast.error("Something went wrong. Try again.");
-        if (isEditing) fetchSuppliers();
+        fetchSuppliers();
       }
-    } catch (error) {
-      const errorMessage =
-        error.response?.data?.message ||
-        error.response?.data?.errors?.[0]?.message ||
-        "Something went wrong";
-      toast.error(errorMessage);
+    } else {
+      toast.error("Something went wrong. Try again.");
       if (isEditing) fetchSuppliers();
-    } finally {
-      // ✅ Always clear the skeleton
-      setUpdatingSupplierId(null);
     }
-  };
+} catch (error) {
+  toast.error(parseApiError(error));
+} finally {
+    setUpdatingSupplierId(null);
+  }
+};
 
   // ✅ Optimistic delete — row disappears instantly
   const handleDelete = async (id) => {

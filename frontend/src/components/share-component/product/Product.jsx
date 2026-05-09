@@ -5,6 +5,7 @@ import ProductForm from "./ProductForm";
 import ProductSkeleton from "./ProductSkeleton";
 import axiosInstance from "../../../utils/axiosInstance";
 import DeletedProductsPopup from "./DeletedProductsPopup";
+import { parseApiError } from "../../../../../server/utils/parseApiError";
 
 const Product = () => {
   const [openModal, setOpenModal] = useState(false);
@@ -123,44 +124,42 @@ const Product = () => {
     }
   };
 
-  const handleSubmit = async () => {
+const handleSubmit = async () => {
   const isEditing = Boolean(editProduct);
   const targetId = editProduct;
-
-  // ✅ Save scroll position before anything changes
   const savedScrollTop = scrollRef.current?.scrollTop || 0;
-
+ 
   try {
     const data = new FormData();
-
+ 
     Object.keys(formData).forEach((key) => {
       if (key === "image" || key === "removeImage") return;
       data.append(key, formData[key]);
     });
-
+ 
     if (image) data.append("image", image);
     if (formData.removeImage) data.append("removeImage", "true");
-
+ 
     const url = isEditing ? `/products/${targetId}` : "/products/add";
-
-    closeModal();
-
+ 
+    // ✅ Don't close modal yet — wait for success
     if (isEditing) {
       setUpdatingProductId(targetId);
     }
-
+ 
     const response = await axiosInstance({
       method: isEditing ? "put" : "post",
       url,
       data,
       headers: { "Content-Type": "multipart/form-data" },
     });
-
+ 
     if (response.data.success) {
+      closeModal(); // ✅ Only close on success
       toast.success(
         isEditing ? "Product updated successfully!" : "Product added successfully!"
       );
-
+ 
       if (isEditing) {
         const refreshed = await axiosInstance.get("/products");
         if (refreshed.data.success) {
@@ -180,17 +179,16 @@ const Product = () => {
         fetchProducts();
       }
     } else {
-      toast.error("Something went wrong.");
+      // ✅ Form stays open — show error
+      toast.error("Something went wrong. Try again.");
       if (isEditing) fetchProducts();
     }
   } catch (error) {
-    console.error("Error saving product:", error);
-    toast.error(error.response?.data?.message || "Error saving product.");
+    // ✅ Form stays open so user can fix the issue
+    toast.error(parseApiError(error));
     if (isEditing) fetchProducts();
   } finally {
     setUpdatingProductId(null);
-
-    // ✅ Restore scroll position after the row updates
     if (isEditing && scrollRef.current) {
       requestAnimationFrame(() => {
         scrollRef.current.scrollTop = savedScrollTop;

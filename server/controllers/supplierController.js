@@ -3,6 +3,7 @@ import Supplier from '../models/SupplierModel.js';
 import { sendResponse, sendError } from '../utils/apiResponse.js';
 
 const addSupplier = async (req, res) => {
+  // console.log("📦 Supplier body received:", req.body); // ← add this
   try {
     const { name, email, phone, address, contactPerson, notes } = req.body;
 

@@ -86,13 +86,19 @@ const SupplierForm = ({
                 <span className="text-gray-300 font-normal normal-case ml-1">(optional)</span>
               </label>
               <input
-                type="tel"
-                name="phone"
-                value={formData.phone || ""}
-                onChange={handleChange}
-                placeholder="e.g. 08012345678"
-                className="border border-gray-200 p-2.5 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 bg-white"
-              />
+  type="text"
+  inputMode="tel"
+  name="phone"
+  value={formData.phone || ""}
+  onChange={(e) => {
+    // Only allow digits and leading +
+    const cleaned = e.target.value.replace(/[^\d+]/g, "");
+    setFormData((prev) => ({ ...prev, phone: cleaned }));
+  }}
+  maxLength={14}
+  placeholder="e.g. 08012345678"
+  className="border border-gray-200 p-2.5 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 bg-white"
+/>
             </div>
 
             <div>

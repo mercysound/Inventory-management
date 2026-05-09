@@ -25,14 +25,24 @@ export const categorySchema = Joi.object({
 // Product — supplierId optional
 // Product validation schemas
 export const productSchema = Joi.object({
-  name: Joi.string().required().trim().min(2).max(100),
+  name:        Joi.string().required().trim().min(2).max(100),
   description: Joi.string().required().trim().max(1000),
-  price: Joi.number().required().positive().precision(2),
-  stock: Joi.number().required().integer().min(0),
-  categoryId: Joi.string().required().hex().length(24),
-  supplierId: Joi.string().hex().length(24).allow("", null).optional(), // ✅ optional
-  images: Joi.array().items(Joi.string().uri()).max(10).optional(),
-  image: Joi.string().allow(null, "").optional(),
+ 
+  // FormData sends numbers as strings — coerce them
+  price: Joi.alternatives().try(
+    Joi.number().positive().precision(2),
+    Joi.string().pattern(/^\d+(\.\d{1,2})?$/)
+  ).required(),
+ 
+  stock: Joi.alternatives().try(
+    Joi.number().integer().min(0),
+    Joi.string().pattern(/^\d+$/)
+  ).required(),
+ 
+  categoryId:  Joi.string().required().hex().length(24),
+  supplierId:  Joi.string().hex().length(24).allow("", null).optional(),
+  images:      Joi.array().items(Joi.string().uri()).max(10).optional(),
+  image:       Joi.string().allow(null, "").optional(),
   removeImage: Joi.string().allow("true", "false").optional(),
 });
 
@@ -40,12 +50,12 @@ export const productSchema = Joi.object({
 // Supplier validation schemas
 // Supplier — only name required
 export const supplierSchema = Joi.object({
-  name: Joi.string().required().trim().min(1).max(100),
-  email: Joi.string().email().allow("", null).optional(),
-  phone: Joi.string().allow("", null).optional(),
-  address: Joi.string().allow("", null).optional(),
+  name:          Joi.string().required().trim().min(1).max(100),
+  email:         Joi.string().allow("", null).optional(),
+  phone:         Joi.string().allow("", null).optional(),
+  address:       Joi.string().allow("", null).optional(),
   contactPerson: Joi.string().allow("", null).optional(),
-  notes: Joi.string().allow("", null).optional(),
+  notes:         Joi.string().allow("", null).optional(),
 });
 
 // Order validation schemas

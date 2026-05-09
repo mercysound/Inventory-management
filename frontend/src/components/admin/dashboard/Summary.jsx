@@ -227,17 +227,24 @@ const Summary = () => {
     return () => clearInterval(tick);
   }, []);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const res = await axiosInstance.get("/dashboard");
-      setData(res.data.dashboardData);
-    } catch (err) {
-      toast.error("Failed to load dashboard");
-    } finally {
-      setLoading(false);
+
+const fetchData = async (attempt = 1) => {
+  try {
+    if (attempt === 1) setLoading(true);
+    const res = await axiosInstance.get("/dashboard");
+    setData(res.data.dashboardData);
+    setLoading(false);
+  } catch (err) {
+    const isTimeout = err.code === "ECONNABORTED" || err.message?.includes("timeout");
+    if (isTimeout && attempt === 1) {
+      console.warn("Dashboard timeout — retrying in 3s...");
+      setTimeout(() => fetchData(2), 3000);
+      return;
     }
-  };
+    toast.error("Failed to load dashboard. Please refresh.");
+    setLoading(false);
+  }
+};
 
   useEffect(() => { fetchData(); }, []);
 
