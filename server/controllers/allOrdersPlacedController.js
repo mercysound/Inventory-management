@@ -6,7 +6,7 @@ import { sendResponse, sendError } from '../utils/apiResponse.js';
 
 
 // emailHandlers object
-const emailHandlers = {
+const emailHandlers = { 
   processing: sendCustomerProcessingEmail,
   delivered: sendCustomerDeliveredEmail,
 };

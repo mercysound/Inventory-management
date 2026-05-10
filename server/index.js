@@ -1,6 +1,6 @@
-import { setServers, setDefaultResultOrder } from "node:dns";
-setServers(["8.8.8.8", "1.1.1.1"]);
-setDefaultResultOrder("ipv4first");
+// import { setServers, setDefaultResultOrder } from "node:dns";
+// setServers(["8.8.8.8", "1.1.1.1"]);
+// setDefaultResultOrder("ipv4first");
 import dotenv from "dotenv";
 
 dotenv.config();
