@@ -7,7 +7,12 @@
     "server"
   ],
   "scripts": {
-    "build": "cd frontend && npm install && npm run build",
-    "start": "npm run start --workspace=server"
+    "build": "npm ci && npm run build --workspace frontend",
+    "start": "npm run start --workspace server",
+    "postinstall": "npm run postinstall --workspace frontend || true"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   }
 }
