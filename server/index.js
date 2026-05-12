@@ -32,6 +32,12 @@ import dashboardRouter from "./routes/dashboardRoute.js";
 import allOrdersPlacedRoutes from "./routes/allOrdersPlacedRoutes.js";
 import completedOrderHistoryRoutes from "./routes/completedOrderHistoryRoutes.js";
 import cloudinary from "./config/cloudinary.js";
+//meant for production only, to serve frontend from same server whe
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const port = process.env.PORT || 5002;
@@ -41,11 +47,14 @@ const isDev = process.env.NODE_ENV === "development";
 // If CORS comes after rate limiters, 429 responses won't have CORS headers
 // and the browser will show a CORS error instead of the actual rate limit error.
 const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:5174",
-  "http://localhost:3000",
-  "http://192.168.227.101:5173",
-  "https://yourfrontend.onrender.com"
+  // Development origins - uncomment while testing locally
+  // "http://localhost:5173",
+  // "http://localhost:5174",
+  // "http://localhost:3000",
+  // "http://192.168.227.101:5173",
+
+  // Production origin for Render fullstack deployment
+  "https://your-frontend-app-name.onrender.com"
 ];
 
 app.use(
@@ -137,6 +146,19 @@ app.use("/api/orders", orderRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/placed-orders", allOrdersPlacedRoutes);
 app.use("/api/completed-history", completedOrderHistoryRoutes);
+
+// ── SERVE FRONTEND IN PRODUCTION WHEN DEPLOYING FULLSTACK TOGETHER ──
+if (!isDev) {
+  const frontendDistPath = path.join(__dirname, "../frontend/dist");
+  app.use(express.static(frontendDistPath));
+
+  app.get("/*", (req, res) => {
+    if (req.path.startsWith("/api")) {
+      return res.status(404).json({ success: false, message: "API route not found" });
+    }
+    res.sendFile(path.join(frontendDistPath, "index.html"));
+  });
+}
 
 // ── GLOBAL ERROR HANDLER (must be last) ──
 app.use(errorHandler);
