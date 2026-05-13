@@ -47,15 +47,16 @@ const isDev = process.env.NODE_ENV === "development";
 // If CORS comes after rate limiters, 429 responses won't have CORS headers
 // and the browser will show a CORS error instead of the actual rate limit error.
 const allowedOrigins = [
-  // Development origins - uncomment while testing locally
+  // DEV MODE TESTING: uncomment these when running frontend locally.
+  // Do not leave local origins enabled in production.
   // "http://localhost:5173",
-  // "http://localhost:5174",
+  // "http://127.0.0.1:5173",
   // "http://localhost:3000",
-  // "http://192.168.227.101:5173",
 
-  // Production origin for Render fullstack deployment
-  "https://your-frontend-app-name.onrender.com"
-];
+  // Production origin for Render fullstack deployment.
+  // If you deploy to a different domain, set FRONTEND_URL in Render env vars.
+  process.env.FRONTEND_URL || "https://inventory-management-zs8z.onrender.com",
+].filter(Boolean);
 
 app.use(
   cors({
@@ -76,9 +77,21 @@ app.use(
 );
 
 // ── SECURITY MIDDLEWARE ──
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "https://js.paystack.co"],
+        scriptSrcElem: ["'self'", "https://js.paystack.co"],
+        connectSrc: ["'self'", "https://api.paystack.co"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:"],
+      },
+    },
+  })
+);
 
 // ── RATE LIMITING ──
 //
