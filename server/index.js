@@ -83,11 +83,39 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "https://js.paystack.co"],
-        scriptSrcElem: ["'self'", "https://js.paystack.co"],
-        connectSrc: ["'self'", "https://api.paystack.co"],
+        scriptSrc: [
+          "'self'",
+          "https://js.paystack.co",
+          "https://accounts.google.com",
+          "https://www.gstatic.com",
+        ],
+        scriptSrcElem: [
+          "'self'",
+          "https://js.paystack.co",
+          "https://accounts.google.com",
+          "https://www.gstatic.com",
+        ],
+        connectSrc: [
+          "'self'",
+          "https://api.paystack.co",
+          "https://accounts.google.com",
+          "https://www.googleapis.com",
+          "https://oauth2.googleapis.com",
+        ],
+        frameSrc: [
+          "'self'",
+          "https://js.paystack.co",
+          "https://checkout.paystack.com",
+          "https://accounts.google.com",
+        ],
         styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:"],
+        imgSrc: [
+          "'self'",
+          "data:",
+          "blob:",
+          "https://accounts.google.com",
+          "https://www.gstatic.com",
+        ],
       },
     },
   })
