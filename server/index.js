@@ -115,6 +115,9 @@ app.use(
           "blob:",
           "https://accounts.google.com",
           "https://www.gstatic.com",
+          // Allow Google profile / avatar images used by the OAuth flow
+          "https://lh3.googleusercontent.com",
+          "https://*.googleusercontent.com",
         ],
       },
     },
