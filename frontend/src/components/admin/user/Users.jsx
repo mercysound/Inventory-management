@@ -5,7 +5,7 @@ import axiosInstance from "../../../utils/axiosInstance";
 import UsersTable from "./UsersTable";
 import AddUserPanel from "./AddUserPanel";
 import EmailBroadcastPanel from "./EmailBroadcastPanel";
-import EditUserModal from "./Editusermodal";
+import EditUserModal from "./EditUserModal";
 
 const TABS = [
   { id: "list",  label: "Users",  icon: "👥" },
