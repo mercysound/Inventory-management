@@ -1,8 +1,10 @@
 import axios from "axios";
 import { toast } from "react-toastify";
 
+const BASE_URL = import.meta.env.VITE_API_URL || "/api";
+
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: BASE_URL,
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
@@ -63,7 +65,7 @@ axiosInstance.interceptors.response.use(
         }
 
         const response = await axios.post(
-          `${import.meta.env.VITE_API_URL}/auth/refresh`,
+          `${BASE_URL}/auth/refresh`,
           { token: refreshToken }, // ✅ send token in body, matches your refreshToken controller
           { withCredentials: true }
         );
