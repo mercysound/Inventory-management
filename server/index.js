@@ -108,7 +108,17 @@ app.use(
           "https://checkout.paystack.com",
           "https://accounts.google.com",
         ],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://accounts.google.com",
+          "https://www.gstatic.com",
+        ],
+        styleSrcElem: [
+          "'self'",
+          "https://accounts.google.com",
+          "https://www.gstatic.com",
+        ],
         imgSrc: [
           "'self'",
           "data:",
@@ -118,6 +128,8 @@ app.use(
           // Allow Google profile / avatar images used by the OAuth flow
           "https://lh3.googleusercontent.com",
           "https://*.googleusercontent.com",
+          // Cloudinary images used for product photos
+          "https://res.cloudinary.com",
         ],
       },
     },
