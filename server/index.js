@@ -116,6 +116,7 @@ app.use(
         ],
         styleSrcElem: [
           "'self'",
+          "'unsafe-inline'",
           "https://accounts.google.com",
           "https://www.gstatic.com",
         ],

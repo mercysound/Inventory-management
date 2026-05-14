@@ -73,10 +73,10 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
               <li key={item.name}>
                 {item.name === "Logout" ? (
                   <button
-                    onClick={() => {
-                      logout();       // clear user data
-                      toggleSidebar(); // close sidebar if mobile
-                      navigate("/");  // redirect to landing page
+                    onClick={async () => {
+                      await logout();
+                      toggleSidebar();
+                      navigate("/", { replace: true });
                     }}
                     className="flex items-center w-full p-3 rounded-lg hover:bg-gray-700 transition-all duration-200 text-left"
                   >

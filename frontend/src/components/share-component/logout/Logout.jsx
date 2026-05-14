@@ -7,8 +7,12 @@ const Logout = () => {
   const { logout } = useAuth();
 
   useEffect(() => {
-    logout();           
-    navigate("/login"); // or "/"
+    const doLogout = async () => {
+      await logout();
+      navigate("/", { replace: true });
+    };
+
+    doLogout();
   }, [logout, navigate]);
 
   return null;
