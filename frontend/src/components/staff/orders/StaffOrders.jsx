@@ -268,31 +268,23 @@ const StaffOrders = () => {
   // ── Download receipt ────────────────────────────────────────────────────
   const handleDownloadReceipt = () => {
     if (!receiptBlob) return;
+    const url = URL.createObjectURL(receiptBlob);
     const link = document.createElement("a");
-    link.href = URL.createObjectURL(receiptBlob);
+    link.href = url;
     link.download =
       receiptMode === "preview"
         ? `Invoice_UNPAID_${customerName || "Walk-in"}.pdf`
         : `Receipt_PAID_${customerName || "Walk-in"}.pdf`;
     link.click();
+    URL.revokeObjectURL(url);
     handleCloseReceiptModal();
   };
 
   // ── Close modal ─────────────────────────────────────────────────────────
   const handleCloseReceiptModal = () => {
     setShowReceiptModal(false);
-    if (receiptBlob) {
-      URL.revokeObjectURL(URL.createObjectURL(receiptBlob));
-      setReceiptBlob(null);
-    }
+    setReceiptBlob(null);
   };
-
-  // ── Cleanup on unmount ──────────────────────────────────────────────────
-  useEffect(() => {
-    return () => {
-      if (receiptBlob) URL.revokeObjectURL(URL.createObjectURL(receiptBlob));
-    };
-  }, [receiptBlob]);
 
   return (
     <>

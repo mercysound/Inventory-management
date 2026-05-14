@@ -104,10 +104,12 @@ app.use(
         ],
         frameSrc: [
           "'self'",
+          "blob:",
           "https://js.paystack.co",
           "https://checkout.paystack.com",
           "https://accounts.google.com",
         ],
+        objectSrc: ["'self'", "blob:"],
         styleSrc: [
           "'self'",
           "'unsafe-inline'",

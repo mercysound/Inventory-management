@@ -15,7 +15,7 @@ const axiosInstance = axios.create({
 const AUTH_ROUTES = ["/auth/login", "/auth/refresh", "/users/register", "/auth/google-login"];
 
 // Routes that get a longer timeout (heavy queries / cold starts)
-const SLOW_ROUTES = ["/dashboard", "/supplier"];
+const SLOW_ROUTES = ["/dashboard", "/supplier", "/auth/forgot-password", "/auth/reset-password"];
 
 const isAuthRoute = (url = "") => AUTH_ROUTES.some((route) => url.includes(route));
 const isSlowRoute = (url = "") => SLOW_ROUTES.some((route) => url.includes(route));
