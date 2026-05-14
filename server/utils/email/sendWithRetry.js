@@ -14,12 +14,13 @@ export const sendWithRetry = async (mailOptions, maxRetries = 3, delay = 1000) =
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`📧 Sending email (attempt ${attempt}/${maxRetries})...`);
-      const info = await Promise.race([
-        transporter.sendMail(mailOptions),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Email send timeout')), 15000)
-        )
-      ]);
+      // const info = await Promise.race([
+      //   transporter.sendMail(mailOptions),
+      //   new Promise((_, reject) => 
+      //     setTimeout(() => reject(new Error('Email send timeout')), 15000)
+      //   )
+      // ]); temporary timeout wrapper to prevent hanging 
+      const info = await transporter.sendMail(mailOptions);
       console.log(`✅ Email sent successfully:`, info.messageId);
       return info;
     } catch (error) {

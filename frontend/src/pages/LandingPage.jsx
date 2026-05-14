@@ -378,7 +378,7 @@ const LandingPage = () => {
               size="large"
               text={isLogin ? "signin_with" : "signup_with"}
               shape="rectangular"
-              width="100%"
+              width={320}
             />
           </motion.div>
 
