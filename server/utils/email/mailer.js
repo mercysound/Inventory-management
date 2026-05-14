@@ -16,25 +16,25 @@ import nodemailer from "nodemailer";
 // ✅ PRODUCTION CONFIGURATION (Currently Active)
 // Use this for Render deployment with real Gmail
 // ───────────────────────────────────────────────────────────────────────────────
-export const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.MAIL_USER,        // Your Gmail address
-    pass: process.env.MAIL_PASS,        // Gmail App Password (16 chars, NOT regular password)
-  },
-  // ✅ Production-grade timeout & connection settings
-  connectionTimeout: 10000,  // 10 seconds to establish connection
-  socketTimeout: 10000,      // 10 seconds for socket operations
-  pool: {
-    maxConnections: 3,       // Limit concurrent SMTP connections (prevents rate limits)
-    maxMessages: 100,        // Messages per connection before recycling
-    rateDelta: 1000,         // milliseconds between messages
-    rateLimit: 10,           // Messages per rateDelta (respects Gmail rate limits)
-  },
-  // ✅ TLS settings for Render compatibility
-  secure: true,              // Use TLS encryption
-  requireTLS: true,          // Require TLS negotiation
-});
+// export const transporter = nodemailer.createTransport({
+//   service: "gmail",
+//   auth: {
+//     user: process.env.MAIL_USER,        // Your Gmail address
+//     pass: process.env.MAIL_PASS,        // Gmail App Password (16 chars, NOT regular password)
+//   },
+//   // ✅ Production-grade timeout & connection settings
+//   connectionTimeout: 10000,  // 10 seconds to establish connection
+//   socketTimeout: 10000,      // 10 seconds for socket operations
+//   pool: {
+//     maxConnections: 3,       // Limit concurrent SMTP connections (prevents rate limits)
+//     maxMessages: 100,        // Messages per connection before recycling
+//     rateDelta: 1000,         // milliseconds between messages
+//     rateLimit: 10,           // Messages per rateDelta (respects Gmail rate limits)
+//   },
+//   // ✅ TLS settings for Render compatibility
+//   secure: true,              // Use TLS encryption
+//   requireTLS: true,          // Require TLS negotiation
+// });
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🧪 DEVELOPMENT CONFIGURATIONS (Below - Uncomment one for local testing)
@@ -152,12 +152,45 @@ transporter.verify((err) => {
 // 🚀 VERIFY SMTP CONNECTION ON STARTUP
 // This runs when the server starts to confirm email service is working
 // ═══════════════════════════════════════════════════════════════════════════════
-transporter.verify((err, success) => {
+// transporter.verify((err, success) => {
+//   if (err) {
+//     console.error("❌ SMTP error:", err.message);
+//     console.error("⚠️  Email service unavailable. Password resets may not work.");
+//     console.error("📋 Check your MAIL_USER and MAIL_PASS environment variables.");
+//   } else {
+//     console.log("✅ SMTP is ready - Email service verified and working"); 
+//   }
+// });
+
+
+
+export const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
+
+  auth: {
+    user: process.env.MAIL_USER,
+    pass: process.env.MAIL_PASS,
+  },
+
+  connectionTimeout: 30000,
+  greetingTimeout: 30000,
+  socketTimeout: 30000,
+
+  pool: true,
+  maxConnections: 3,
+  maxMessages: 100,
+
+  tls: {
+    rejectUnauthorized: false,
+  },
+});
+
+transporter.verify((err) => {
   if (err) {
-    console.error("❌ SMTP error:", err.message);
-    console.error("⚠️  Email service unavailable. Password resets may not work.");
-    console.error("📋 Check your MAIL_USER and MAIL_PASS environment variables.");
+    console.error("❌ SMTP verify failed:", err);
   } else {
-    console.log("✅ SMTP is ready - Email service verified and working"); 
+    console.log("✅ SMTP server ready");
   }
 });
