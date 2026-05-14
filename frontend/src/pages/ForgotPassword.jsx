@@ -37,7 +37,24 @@ const ForgotPassword = () => {
       }
     } catch (error) {
       console.error("Forgot password error:", error);
-      toast.error(error.response?.data?.message || "Failed to send reset email. Please try again.");
+      
+      // Better error messages for different failure types
+      let errorMessage = "Failed to send reset email. Please try again.";
+      
+      // Timeout errors (SMTP or network)
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        errorMessage = "Request timed out. Email service may be slow. Please wait a moment and try again.";
+      }
+      // Server error (500)
+      else if (error.response?.status === 500) {
+        errorMessage = error.response?.data?.message || "Email service is temporarily unavailable. Please try again later.";
+      }
+      // Other server errors with message
+      else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -366,6 +366,7 @@ const LandingPage = () => {
             initial="initial"
             whileHover="hover"
             whileTap="tap"
+            className="w-full max-w-[368px] mx-auto"
           >
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
@@ -377,7 +378,7 @@ const LandingPage = () => {
               size="large"
               text={isLogin ? "signin_with" : "signup_with"}
               shape="rectangular"
-              width="368"
+              width="100%"
             />
           </motion.div>
 

@@ -1,4 +1,4 @@
-import { transporter } from "./mailer.js";
+import { sendWithRetry } from "./sendWithRetry.js";
 
 export const sendPasswordResetEmail = async (email, resetToken) => {
   try {
@@ -121,11 +121,14 @@ export const sendPasswordResetEmail = async (email, resetToken) => {
       `,
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Password reset email sent:", info.messageId);
+    const info = await sendWithRetry(mailOptions);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error("Error sending password reset email:", error);
+    console.error("❌ Failed to send password reset email after retries:", {
+      code: error.code,
+      message: error.message,
+      errno: error.errno
+    });
     throw error;
   }
 };

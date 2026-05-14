@@ -15,10 +15,13 @@ const axiosInstance = axios.create({
 const AUTH_ROUTES = ["/auth/login", "/auth/refresh", "/users/register", "/auth/google-login"];
 
 // Routes that get a longer timeout (heavy queries / cold starts)
-const SLOW_ROUTES = ["/dashboard", "/supplier", "/auth/forgot-password", "/auth/reset-password"];
+const SLOW_ROUTES = ["/dashboard", "/supplier", "/auth/reset-password"];
+// Email operations need even longer timeout (includes SMTP connection + retries)
+const EMAIL_ROUTES = ["/auth/forgot-password"];
 
 const isAuthRoute = (url = "") => AUTH_ROUTES.some((route) => url.includes(route));
 const isSlowRoute = (url = "") => SLOW_ROUTES.some((route) => url.includes(route));
+const isEmailRoute = (url = "") => EMAIL_ROUTES.some((route) => url.includes(route));
 
 // ─── Request Interceptor ───────────────────────────────────────────────────────
 axiosInstance.interceptors.request.use(
@@ -28,9 +31,12 @@ axiosInstance.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // Give heavy routes more time before timing out
-    if (isSlowRoute(config.url)) {
-      config.timeout = 30000;
+    // Email operations need more time for SMTP connection + retries (max 3 retries)
+    if (isEmailRoute(config.url)) {
+      config.timeout = 60000; // 60 seconds for email with retries
+    } else if (isSlowRoute(config.url)) {
+      // Give heavy routes more time before timing out
+      config.timeout = 30000; // 30 seconds
     }
 
     config.metadata = { startTime: Date.now() };
