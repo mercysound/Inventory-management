@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { sendResponse, sendError } from '../utils/apiResponse.js';
 import { getPaginationParams, getPaginationMeta } from '../utils/pagination.js';
-import { transporter } from '../utils/email/mailer.js';   // your existing mailer
+// import { transporter } from '../utils/email/mailer.js';   // your existing mailer
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EXISTING: addUser
