@@ -1,4 +1,5 @@
-import nodemailer from "nodemailer";
+// import nodemailer from "nodemailer";
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ⚙️  NODEMAILER CONFIGURATION - DEV vs PRODUCTION
@@ -163,26 +164,8 @@ transporter.verify((err) => {
 // });
 
 
+import { Resend } from "resend";
 
-export const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-  auth: {
-    user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS,
-  },
-
-  tls: {
-    rejectUnauthorized: false,
-  },
-});
-
-transporter.verify((err) => {
-  if (err) {
-    console.error("❌ SMTP verify failed:", err);
-  } else {
-    console.log("✅ SMTP server ready");
-  }
-});
+export { resend };
