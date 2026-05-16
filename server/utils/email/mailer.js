@@ -90,23 +90,33 @@ transporter.verify((err) => {
 
 
 // for brevo used for sending mail on render
-import nodemailer from "nodemailer";
+// import nodemailer from "nodemailer";
 
-export const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.BREVO_USER,
-    pass: process.env.BREVO_PASS,
-  },
-});
+// export const transporter = nodemailer.createTransport({
+//   host: "smtp-relay.brevo.com",
+//   port: 587,
+//   secure: false,
+//   auth: {
+//     user: process.env.BREVO_USER,
+//     pass: process.env.BREVO_PASS,
+//   },
+// });
 
-transporter.verify((err) => {
-  if (err) {
-    console.error("❌ Brevo SMTP error:", err.message);
-    console.error("⚠️  Check BREVO_USER and BREVO_PASS env variables.");
-  } else {
-    console.log("✅ Brevo SMTP ready");
-  }
-});
+// transporter.verify((err) => {
+//   if (err) {
+//     console.error("❌ Brevo SMTP error:", err.message);
+//     console.error("⚠️  Check BREVO_USER and BREVO_PASS env variables.");
+//   } else {
+//     console.log("✅ Brevo SMTP ready");
+//   }
+// });
+
+
+// Brevo also has an HTTP API (like Resend) that works over port 443 which Render doesn't block. Let's use that instead of their SMTP.
+// Brevo HTTP API - works on Render free tier
+import SibApiV3Sdk from "@getbrevo/brevo";
+
+const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+apiInstance.authentications["api-key"].apiKey = process.env.BREVO_API_KEY;
+
+export { apiInstance };

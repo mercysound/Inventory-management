@@ -292,6 +292,16 @@ const emailBroadcast = async (req, res) => {
       for (let i = 0; i < recipients.length; i += BATCH) {
         const batch = recipients.slice(i, i + BATCH);
         const results = await Promise.allSettled(
+  batch.map(user =>
+    sendWithRetry({
+      to:      user.email,
+      subject,
+      html:    htmlShell(body),
+    }).then(() => ({ ok: true, email: user.email }))
+      .catch(err => ({ ok: false, email: user.email, reason: _classifyError(err) }))
+  )
+);
+        // const results = await Promise.allSettled(
           // for real transporter:
           // batch.map(user => 
           //   transporter.sendMail({
@@ -314,18 +324,18 @@ const emailBroadcast = async (req, res) => {
 //   }).then(() => ({ ok: true, email: user.email }))
 //     .catch(err => ({ ok: false, email: user.email, reason: _classifyError(err) }))
 // )
-// for brevo mailer
-          batch.map(user =>
-  sendWithRetry({
-    from:        `"Inventory System" <${process.env.MAIL_USER}>`,
-    to:          user.email,
-    subject,
-    html:        htmlShell(body),
-    attachments: mailAttachments,
-  }).then(() => ({ ok: true, email: user.email }))
-    .catch(err => ({ ok: false, email: user.email, reason: _classifyError(err) }))
-)
-        );
+// // for brevo mailer
+//           batch.map(user =>
+//   sendWithRetry({
+//     from:        `"Inventory System" <${process.env.MAIL_USER}>`,
+//     to:          user.email,
+//     subject,
+//     html:        htmlShell(body),
+//     attachments: mailAttachments,
+//   }).then(() => ({ ok: true, email: user.email }))
+//     .catch(err => ({ ok: false, email: user.email, reason: _classifyError(err) }))
+// )
+        // );
 
         for (const r of results) {
           const val = r.value || { ok: false, email: '?', reason: 'Unknown error' };
