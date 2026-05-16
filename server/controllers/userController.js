@@ -304,9 +304,20 @@ const emailBroadcast = async (req, res) => {
           //     .catch(err => ({ ok: false, email: user.email, reason: _classifyError(err) }))
           // )
           // for resend mailer:
+          // batch.map(user =>
+//   sendWithRetry({
+//     from:        "Inventory System <onboarding@resend.dev>",
+//     to:          user.email,
+//     subject,
+//     html:        htmlShell(body),
+//     attachments: mailAttachments,
+//   }).then(() => ({ ok: true, email: user.email }))
+//     .catch(err => ({ ok: false, email: user.email, reason: _classifyError(err) }))
+// )
+// for brevo mailer
           batch.map(user =>
   sendWithRetry({
-    from:        "Inventory System <onboarding@resend.dev>",
+    from:        `"Inventory System" <${process.env.MAIL_USER}>`,
     to:          user.email,
     subject,
     html:        htmlShell(body),
