@@ -2,10 +2,10 @@
 // With  nodemailer.
 // import { transporter } from "./mailer.js";
 
-/**
- * Send email with automatic retry logic and exponential backoff
- * Helps handle transient SMTP connection failures in production environments like Render
- * 
+// /**
+//  * Send email with automatic retry logic and exponential backoff
+//  * Helps handle transient SMTP connection failures in production environments like Render
+//  * 
 //  * @param {Object} mailOptions - Nodemailer mail options (from, to, subject, html, etc.)
 //  * @param {number} maxRetries - Maximum number of retry attempts (default: 3)
 //  * @param {number} delay - Initial delay in ms before first retry (default: 1000)
@@ -42,6 +42,7 @@
 // };
 // -----------------------------------------
 
+// with resend for production mailing to drop using render's deployment email service and avoid SMTP issues. Can switch back to nodemailer by changing transporter and sendWithRetry implementation.
 import { resend } from "./mailer.js";
 
 export const sendWithRetry = async (mailOptions, maxRetries = 3, delay = 1000) => {

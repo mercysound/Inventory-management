@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { sendResponse, sendError } from '../utils/apiResponse.js';
 import { getPaginationParams, getPaginationMeta } from '../utils/pagination.js';
 // import { transporter } from '../utils/email/mailer.js';   // your existing mailer
+import { sendWithRetry } from '../utils/email/sendWithRetry.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EXISTING: addUser
@@ -291,16 +292,28 @@ const emailBroadcast = async (req, res) => {
       for (let i = 0; i < recipients.length; i += BATCH) {
         const batch = recipients.slice(i, i + BATCH);
         const results = await Promise.allSettled(
+          // for real transporter:
+          // batch.map(user => 
+          //   transporter.sendMail({
+          //     from:        `"Inventory System" <${process.env.MAIL_USER}>`,
+          //     to:          user.email,
+          //     subject,
+          //     html:        htmlShell(body),
+          //     attachments: mailAttachments,
+          //   }).then(() => ({ ok: true, email: user.email }))
+          //     .catch(err => ({ ok: false, email: user.email, reason: _classifyError(err) }))
+          // )
+          // for resend mailer:
           batch.map(user =>
-            transporter.sendMail({
-              from:        `"Inventory System" <${process.env.MAIL_USER}>`,
-              to:          user.email,
-              subject,
-              html:        htmlShell(body),
-              attachments: mailAttachments,
-            }).then(() => ({ ok: true, email: user.email }))
-              .catch(err => ({ ok: false, email: user.email, reason: _classifyError(err) }))
-          )
+  sendWithRetry({
+    from:        "Inventory System <onboarding@resend.dev>",
+    to:          user.email,
+    subject,
+    html:        htmlShell(body),
+    attachments: mailAttachments,
+  }).then(() => ({ ok: true, email: user.email }))
+    .catch(err => ({ ok: false, email: user.email, reason: _classifyError(err) }))
+)
         );
 
         for (const r of results) {
