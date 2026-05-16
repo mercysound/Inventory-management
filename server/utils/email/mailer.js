@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+// import nodemailer from "nodemailer";
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -17,7 +17,6 @@ import nodemailer from "nodemailer";
 // ✅ PRODUCTION CONFIGURATION (Currently Active)
 // Use this for Render deployment with real Gmail
 // ───────────────────────────────────────────────────────────────────────────────
-import nodemailer from "nodemailer";
 
 // // ✅ PRODUCTION - Active for Render deployment
 // export const transporter = nodemailer.createTransport({
