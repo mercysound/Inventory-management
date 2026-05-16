@@ -114,7 +114,7 @@ transporter.verify((err) => {
 
 // Brevo also has an HTTP API (like Resend) that works over port 443 which Render doesn't block. Let's use that instead of their SMTP.
 // Brevo HTTP API - works on Render free tier
-import SibApiV3Sdk from "@getbrevo/brevo";
+import * as SibApiV3Sdk from "@getbrevo/brevo";
 
 const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
 apiInstance.authentications["api-key"].apiKey = process.env.BREVO_API_KEY;

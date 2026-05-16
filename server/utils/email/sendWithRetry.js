@@ -77,7 +77,7 @@
 // Brevo also has an HTTP API (like Resend) that works over port 443 which Render doesn't block. Let's use that instead of their SMTP.
 // Brevo HTTP API - works on Render free tier
 import { apiInstance } from "./mailer.js";
-import SibApiV3Sdk from "@getbrevo/brevo";
+import * as SibApiV3Sdk from "@getbrevo/brevo";
 
 export const sendWithRetry = async (mailOptions, maxRetries = 3, delay = 1000) => {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
