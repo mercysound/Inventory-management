@@ -81,9 +81,32 @@ transporter.verify((err) => {
 
 
 // for resend mailer integration (currently not used, but can be switched to by changing transporter and sendWithRetry)
-import { Resend } from "resend";
+// import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// const resend = new Resend(process.env.RESEND_API_KEY);
 
 
-export { resend };
+// export { resend };
+
+
+// for brevo used for sending mail on render
+import nodemailer from "nodemailer";
+
+export const transporter = nodemailer.createTransport({
+  host: "smtp-relay.brevo.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.BREVO_USER,
+    pass: process.env.BREVO_PASS,
+  },
+});
+
+transporter.verify((err) => {
+  if (err) {
+    console.error("❌ Brevo SMTP error:", err.message);
+    console.error("⚠️  Check BREVO_USER and BREVO_PASS env variables.");
+  } else {
+    console.log("✅ Brevo SMTP ready");
+  }
+});
