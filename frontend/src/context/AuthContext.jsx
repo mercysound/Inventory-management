@@ -76,7 +76,9 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await api.post("/auth/logout");
+      // No need to call the API — server logout does nothing
+    // If you add token blacklisting later, re-enable this
+    // await api.post("/auth/logout");
     } catch (error) {
       console.error("Logout API error:", error);
     } finally {
