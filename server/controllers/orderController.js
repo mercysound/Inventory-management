@@ -363,7 +363,6 @@ const generateInvoice = async (req, res) => {
         userOrdering: req.user._id,
       }).populate({
         path: "product",
-        // ✅ include description so we can show it on the receipt
         select: "name description categoryId",
         populate: { path: "categoryId", select: "name" },
       });
@@ -407,7 +406,6 @@ const generateInvoice = async (req, res) => {
       if (historyReceipt) {
         order = await HistoryModel.findOne(query).populate({
           path: "productList.productId",
-          // ✅ include description here too
           select: "name description categoryId",
           populate: { path: "categoryId", select: "name" },
         });
@@ -455,221 +453,383 @@ const generateInvoice = async (req, res) => {
     const margin = 20;
     const contentWidth = receiptWidth - margin * 2;
 
+    // ── Collect PDF into a Buffer (not piped directly to res) ──
     const doc = new PDFDocument({
       margin,
       size: [receiptWidth, 800],
     });
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", "inline; filename=receipt.pdf");
-    doc.pipe(res);
+    const chunks = [];
+    doc.on("data", (chunk) => chunks.push(chunk));
 
-    // ── STORE NAME ──
-    doc
-      .fontSize(14)
-      .font("Helvetica-Bold")
-      .fillColor("#1E3A8A")
-      .text("MELECH STORE", margin, 20, { align: "center", width: contentWidth });
+    await new Promise((resolve, reject) => {
+      doc.on("end", resolve);
+      doc.on("error", reject);
 
-    doc
-      .fontSize(8)
-      .font("Helvetica")
-      .fillColor("#555")
-      .text("Official Sales Receipt", margin, doc.y + 2, {
-        align: "center",
-        width: contentWidth,
-      });
-
-    // ── DIVIDER ──
-    const divider = () => {
+      // ── STORE NAME ──
       doc
-        .moveTo(margin, doc.y + 5)
-        .lineTo(receiptWidth - margin, doc.y + 5)
-        .dash(2, { space: 2 })
-        .strokeColor("#aaa")
-        .stroke()
-        .undash();
-    };
-
-    divider();
-
-    // ── ORDER INFO ──
-    doc.moveDown(0.8);
-    doc.fontSize(7.5).font("Helvetica").fillColor("#000");
-
-    const infoLines = [
-      ["Order ID:", receiptOrderId ? String(receiptOrderId).slice(-10).toUpperCase() : "N/A"],
-      ["Date:", new Date().toLocaleString()],
-      ["Customer:", customerName],
-      ["Payment:", paymentMethod],
-      ["Status:", paymentStatus],
-    ];
-
-    infoLines.forEach(([label, value]) => {
-      const lineY = doc.y;
-      doc.font("Helvetica-Bold").text(label, margin, lineY, { continued: false, width: 70 });
-      doc.font("Helvetica").text(value, margin + 72, lineY, { width: contentWidth - 72 });
-      doc.moveDown(0.3);
-    });
-
-    divider();
-
-    // ── ITEMS HEADER ──
-    doc.moveDown(0.5);
-
-    // ✅ Updated columns — added # column for item number, shifted others
-    const col = {
-      num: margin,           // item number column
-      name: margin + 14,     // item name (shifted right to make room for number)
-      qty: margin + 100,
-      price: margin + 128,
-      total: margin + 183,
-    };
-
-    doc
-      .fontSize(7.5)
-      .font("Helvetica-Bold")
-      .fillColor("#fff")
-      .rect(margin, doc.y, contentWidth, 14)
-      .fill("#1E3A8A")
-      .stroke();
-
-    const headerY = doc.y - 14;
-    doc.fillColor("#fff");
-    doc.text("#", col.num, headerY + 3, { width: 12 });
-    doc.text("Item", col.name, headerY + 3, { width: 82 });
-    doc.text("Qty", col.qty, headerY + 3, { width: 28 });
-    doc.text("Price", col.price, headerY + 3, { width: 52 });
-    doc.text("Total", col.total, headerY + 3, { width: 52 });
-
-    // ── ITEMS ROWS ──
-    doc.fillColor("#000").font("Helvetica").fontSize(7.5);
-    let y = doc.y + 4;
-
-    orders.forEach((o, index) => {
-      const itemNumber = index + 1; // ✅ 1-based item number
-
-      const name = o.product.name || "—";
-      const category = o.product.categoryName ? `[${o.product.categoryName}]` : "";
-
-      // ✅ Truncate desc to 40 chars so it fits neatly on the receipt
-      const rawDesc = o.product.desc || "";
-      const shortDesc = rawDesc.length > 40 ? rawDesc.slice(0, 40) + "…" : rawDesc;
-
-      // Line 1: name + category, Line 2: short description (if any)
-      const nameText = `${name} ${category}`.trim();
-      const descText = shortDesc;
-
-      const nameHeight = doc.heightOfString(nameText, { width: 82 });
-      const descHeight = descText ? doc.heightOfString(descText, { width: 82 }) : 0;
-      const rowHeight = Math.max(20, nameHeight + descHeight + 8);
-
-      // alternating row background
-      doc
-        .rect(margin, y, contentWidth, rowHeight)
-        .fill(index % 2 === 0 ? "#F3F4F6" : "#FFFFFF")
-        .stroke();
-
-      doc.fillColor("#000");
-
-      // ✅ Item number
-      doc
+        .fontSize(14)
         .font("Helvetica-Bold")
-        .fontSize(7)
-        .text(String(itemNumber), col.num, y + 3, { width: 12 });
+        .fillColor("#1E3A8A")
+        .text("MELECH STORE", margin, 20, { align: "center", width: contentWidth });
 
-      // Product name + category
       doc
-        .font("Helvetica-Bold")
-        .fontSize(7.5)
-        .text(nameText, col.name, y + 3, { width: 82 });
-
-      // ✅ Short description below name, in lighter color
-      if (descText) {
-        doc
-          .font("Helvetica")
-          .fontSize(6.5)
-          .fillColor("#555")
-          .text(descText, col.name, y + 3 + nameHeight, { width: 82 });
-      }
-
-      // Qty, Price, Total — vertically centered in the row
-      const midY = y + rowHeight / 2 - 4;
-      doc.fillColor("#000").font("Helvetica").fontSize(7.5);
-      doc.text(String(o.quantity), col.qty, midY, { width: 28 });
-      doc.text(`₦${o.price.toLocaleString()}`, col.price, midY, { width: 52 });
-      doc.text(`₦${o.totalPrice.toLocaleString()}`, col.total, midY, { width: 52 });
-
-      y += rowHeight;
-    });
-
-    // ── TOTAL ──
-    y += 6;
-    doc
-      .moveTo(margin, y)
-      .lineTo(receiptWidth - margin, y)
-      .strokeColor("#000")
-      .stroke();
-
-    y += 6;
-    doc
-      .fontSize(9)
-      .font("Helvetica-Bold")
-      .fillColor("#000")
-      .text(`TOTAL (${orders.length} item${orders.length > 1 ? "s" : ""}):`, col.num, y, { width: 155 })
-      .text(`₦${totalAmount.toLocaleString()}`, col.total, y, { width: 52 });
-
-    y += 20;
-
-    // ── PAYMENT INSTRUCTIONS (if unpaid) ──
-    if (paymentStatus === "Unpaid") {
-      divider();
-      doc.moveDown(0.5);
-      doc
-        .fontSize(7.5)
-        .font("Helvetica-Bold")
-        .fillColor("#b91c1c")
-        .text("PAYMENT INSTRUCTIONS", margin, doc.y, {
+        .fontSize(8)
+        .font("Helvetica")
+        .fillColor("#555")
+        .text("Official Sales Receipt", margin, doc.y + 2, {
           align: "center",
           width: contentWidth,
         });
 
-      doc.font("Helvetica").fillColor("#000").moveDown(0.3);
-      [
-        ["Bank:", STORE_ACCOUNT.bankName],
-        ["Account Name:", STORE_ACCOUNT.accountName],
-        ["Account No:", STORE_ACCOUNT.accountNumber],
-      ].forEach(([label, value]) => {
+      // ── DIVIDER ──
+      const divider = () => {
+        doc
+          .moveTo(margin, doc.y + 5)
+          .lineTo(receiptWidth - margin, doc.y + 5)
+          .dash(2, { space: 2 })
+          .strokeColor("#aaa")
+          .stroke()
+          .undash();
+      };
+
+      divider();
+
+      // ── ORDER INFO ──
+      doc.moveDown(0.8);
+      doc.fontSize(7.5).font("Helvetica").fillColor("#000");
+
+      const infoLines = [
+        ["Order ID:", receiptOrderId ? String(receiptOrderId).slice(-10).toUpperCase() : "N/A"],
+        ["Date:", new Date().toLocaleString()],
+        ["Customer:", customerName],
+        ["Payment:", paymentMethod],
+        ["Status:", paymentStatus],
+      ];
+
+      infoLines.forEach(([label, value]) => {
         const lineY = doc.y;
-        doc.font("Helvetica-Bold").text(label, margin, lineY, { width: 75 });
-        doc.font("Helvetica").text(value, margin + 77, lineY, { width: contentWidth - 77 });
+        doc.font("Helvetica-Bold").text(label, margin, lineY, { continued: false, width: 70 });
+        doc.font("Helvetica").text(value, margin + 72, lineY, { width: contentWidth - 72 });
         doc.moveDown(0.3);
       });
-    }
 
-    // ── FOOTER ──
-    divider();
-    doc.moveDown(0.5);
-    doc
-      .fontSize(7)
-      .font("Helvetica")
-      .fillColor("gray")
-      .text("Thank you for shopping with MELECH STORE!", margin, doc.y, {
+      divider();
+
+      // ── ITEMS HEADER ──
+      doc.moveDown(0.5);
+
+      // Columns: # | Item / Desc / Category | Qty | Unit Price | Subtotal
+      const col = {
+        num:      margin,        // "#"  — 14px wide
+        name:     margin + 14,   // "Item / Desc / Category" — 82px wide
+        qty:      margin + 100,  // "Qty" — 22px wide
+        price:    margin + 126,  // "Unit Price" — 52px wide
+        total:    margin + 182,  // "Subtotal" — 52px wide
+      };
+
+      doc
+        .fontSize(7.5)
+        .font("Helvetica-Bold")
+        .fillColor("#fff")
+        .rect(margin, doc.y, contentWidth, 22)
+        .fill("#1E3A8A")
+        .stroke();
+
+      const headerY = doc.y - 22;
+      doc.fillColor("#fff").fontSize(7);
+
+      // Row 1 of header: main labels
+      doc.font("Helvetica-Bold").text("#",          col.num,   headerY + 3,  { width: 12 });
+      doc.font("Helvetica-Bold").text("Item",       col.name,  headerY + 3,  { width: 82 });
+      doc.font("Helvetica-Bold").text("Qty",        col.qty,   headerY + 3,  { width: 26 });
+      doc.font("Helvetica-Bold").text("Unit",       col.price, headerY + 3,  { width: 52 });
+      doc.font("Helvetica-Bold").text("Subtotal",   col.total, headerY + 3,  { width: 52 });
+
+      // Row 2 of header: sub-labels (smaller, lighter)
+      doc.font("Helvetica").fontSize(6).fillColor("#cce0ff");
+      doc.text("Name / Desc / Cat.", col.name,  headerY + 13, { width: 82 });
+      doc.text("",                   col.qty,   headerY + 13, { width: 26 });
+      doc.text("Price",              col.price, headerY + 13, { width: 52 });
+      doc.text("(Qty × Price)",      col.total, headerY + 13, { width: 52 });
+
+      // ── ITEMS ROWS ──
+      doc.fillColor("#000").font("Helvetica").fontSize(7.5);
+      let y = doc.y + 4;
+
+      orders.forEach((o, index) => {
+        const itemNumber = index + 1;
+
+        const name     = o.product.name || "—";
+        const category = o.product.categoryName ? `[${o.product.categoryName}]` : "";
+
+        const rawDesc  = o.product.desc || "";
+        const shortDesc = rawDesc.length > 40 ? rawDesc.slice(0, 40) + "…" : rawDesc;
+
+        const nameText = name.trim();
+        const catText  = category.trim();
+        const descText = shortDesc;
+
+        const nameHeight = doc.heightOfString(nameText, { width: 82, fontSize: 7.5 });
+        const catHeight  = catText  ? doc.heightOfString(catText,  { width: 82, fontSize: 6.5 }) : 0;
+        const descHeight = descText ? doc.heightOfString(descText, { width: 82, fontSize: 6.5 }) : 0;
+        const rowHeight  = Math.max(24, nameHeight + catHeight + descHeight + 10);
+
+        // alternating row background
+        doc
+          .rect(margin, y, contentWidth, rowHeight)
+          .fill(index % 2 === 0 ? "#F3F4F6" : "#FFFFFF")
+          .stroke();
+
+        doc.fillColor("#000");
+
+        // ── Item number ──
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(7)
+          .text(String(itemNumber), col.num, y + 4, { width: 12 });
+
+        // ── Product name ──
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(7.5)
+          .fillColor("#000")
+          .text(nameText, col.name, y + 4, { width: 82 });
+
+        let textOffsetY = y + 4 + nameHeight;
+
+        // ── Category tag ──
+        if (catText) {
+          doc
+            .font("Helvetica")
+            .fontSize(6.5)
+            .fillColor("#1E3A8A")
+            .text(catText, col.name, textOffsetY, { width: 82 });
+          textOffsetY += catHeight;
+        }
+
+        // ── Short description ──
+        if (descText) {
+          doc
+            .font("Helvetica")
+            .fontSize(6.5)
+            .fillColor("#555")
+            .text(descText, col.name, textOffsetY, { width: 82 });
+        }
+
+        // ── Qty / Unit Price / Subtotal — vertically centred ──
+        const midY = y + rowHeight / 2 - 4;
+        doc.fillColor("#000").font("Helvetica").fontSize(7.5);
+        doc.text(String(o.quantity),             col.qty,   midY, { width: 26 });
+        doc.text(`₦${o.price.toLocaleString()}`, col.price, midY, { width: 52 });
+        doc.text(`₦${o.totalPrice.toLocaleString()}`, col.total, midY, { width: 52 });
+
+        y += rowHeight;
+      });
+
+      // ── TOTAL ──
+      y += 6;
+      doc
+        .moveTo(margin, y)
+        .lineTo(receiptWidth - margin, y)
+        .strokeColor("#000")
+        .stroke();
+
+      y += 6;
+      doc
+        .fontSize(9)
+        .font("Helvetica-Bold")
+        .fillColor("#000")
+        .text(`TOTAL (${orders.length} item${orders.length > 1 ? "s" : ""}):`, col.num, y, { width: 155 })
+        .text(`₦${totalAmount.toLocaleString()}`, col.total, y, { width: 52 });
+
+      y += 20;
+
+      // ── PAYMENT INSTRUCTIONS (if unpaid) ──
+      if (paymentStatus === "Unpaid") {
+        divider();
+        doc.moveDown(0.5);
+        doc
+          .fontSize(7.5)
+          .font("Helvetica-Bold")
+          .fillColor("#b91c1c")
+          .text("PAYMENT INSTRUCTIONS", margin, doc.y, {
+            align: "center",
+            width: contentWidth,
+          });
+
+        doc.font("Helvetica").fillColor("#000").moveDown(0.3);
+        [
+          ["Bank:", STORE_ACCOUNT.bankName],
+          ["Account Name:", STORE_ACCOUNT.accountName],
+          ["Account No:", STORE_ACCOUNT.accountNumber],
+        ].forEach(([label, value]) => {
+          const lineY = doc.y;
+          doc.font("Helvetica-Bold").text(label, margin, lineY, { width: 75 });
+          doc.font("Helvetica").text(value, margin + 77, lineY, { width: contentWidth - 77 });
+          doc.moveDown(0.3);
+        });
+      }
+
+      // ── FOOTER ──
+      divider();
+      doc.moveDown(0.5);
+      doc
+        .fontSize(7)
+        .font("Helvetica")
+        .fillColor("gray")
+        .text("Thank you for shopping with MELECH STORE!", margin, doc.y, {
+          align: "center",
+          width: contentWidth,
+        });
+      doc.text("No signature required — auto-generated receipt", margin, doc.y + 4, {
         align: "center",
         width: contentWidth,
       });
-    doc.text("No signature required — auto-generated receipt", margin, doc.y + 4, {
-      align: "center",
-      width: contentWidth,
+
+      doc.end();
     });
 
-    doc.end();
+    /* ======================================================
+       5️⃣ SERVE — HTML wrapper so mobile browsers can render
+          the PDF without needing a native PDF plugin
+    ====================================================== */
+    const pdfBuffer = Buffer.concat(chunks);
+    const base64PDF = pdfBuffer.toString("base64");
+    const dataURI   = `data:application/pdf;base64,${base64PDF}`;
+
+    // If the client explicitly wants raw PDF (e.g. for download), honour that
+    const wantRaw = req.query.download === "true";
+    if (wantRaw) {
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=receipt-${receiptOrderId || "order"}.pdf`
+      );
+      return res.send(pdfBuffer);
+    }
+
+    // Otherwise send an HTML shell that works on ALL devices
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Receipt – MELECH STORE</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: sans-serif;
+      background: #f1f5f9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 12px;
+    }
+    h2 {
+      color: #1E3A8A;
+      margin-bottom: 10px;
+      font-size: 1rem;
+      letter-spacing: .05em;
+    }
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .btn {
+      padding: 9px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: .85rem;
+      cursor: pointer;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-primary   { background: #1E3A8A; color: #fff; }
+    .btn-secondary { background: #e2e8f0; color: #1e293b; }
+    .pdf-wrap {
+      width: 100%;
+      max-width: 500px;
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,.12);
+    }
+    embed, iframe {
+      width: 100%;
+      height: 80vh;
+      border: none;
+      display: block;
+    }
+    /* Fallback message shown only when embed fails */
+    .fallback {
+      display: none;
+      padding: 24px;
+      text-align: center;
+      color: #64748b;
+      font-size: .85rem;
+      line-height: 1.6;
+    }
+    .fallback a { color: #1E3A8A; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h2>🧾 MELECH STORE — Receipt</h2>
+
+  <div class="toolbar">
+    <a class="btn btn-primary" href="?${new URLSearchParams({ ...req.query, download: "true" }).toString()}" download="receipt.pdf">
+      ⬇ Download PDF
+    </a>
+    <button class="btn btn-secondary" onclick="window.print()">🖨 Print</button>
+  </div>
+
+  <div class="pdf-wrap">
+    <!--
+      <embed> works on desktop and most modern Android browsers.
+      The <iframe> inside <object> is a secondary fallback.
+      The .fallback div appears only if JS detects neither rendered.
+    -->
+    <object data="${dataURI}" type="application/pdf" width="100%" height="100%"
+            style="height:80vh;" id="pdfObj">
+      <iframe src="${dataURI}" id="pdfFrame">
+        <div class="fallback" id="fallbackMsg">
+          <p>Your browser can't display PDFs inline.</p>
+          <p style="margin-top:8px">
+            <a href="?${new URLSearchParams({ ...req.query, download: "true" }).toString()}" download="receipt.pdf">
+              Tap here to download the receipt
+            </a>
+          </p>
+        </div>
+      </iframe>
+    </object>
+  </div>
+
+  <script>
+    // If object/iframe didn't render the PDF, show the fallback text
+    window.addEventListener("load", function () {
+      var obj = document.getElementById("pdfObj");
+      // A rendered <object> has a non-zero scrollHeight; if it's tiny it failed
+      if (obj && obj.scrollHeight < 50) {
+        document.getElementById("fallbackMsg").style.display = "block";
+      }
+    });
+  </script>
+</body>
+</html>`;
+
+    res.setHeader("Content-Type", "text/html");
+    return res.send(html);
+
   } catch (error) {
     console.error("generateInvoice error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 /**
  * reduceOrder - decrease quantity
  */
