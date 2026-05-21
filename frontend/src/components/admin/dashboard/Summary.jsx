@@ -88,7 +88,14 @@ const Pill = ({ children, variant = "neutral" }) => {
       border: `1px solid ${s.border}`,
       fontSize: 11, fontWeight: 600, letterSpacing: "0.03em",
       padding: "2px 8px", borderRadius: 20,
-      textTransform: "uppercase", whiteSpace: "nowrap",
+      textTransform: "uppercase",
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      maxWidth: "100%",
+      whiteSpace: "normal",
+      overflowWrap: "anywhere",
+      wordBreak: "break-word",
     }}>
       {children}
     </span>
@@ -392,11 +399,13 @@ const fetchData = async (attempt = 1) => {
               <div style={{ marginTop: 16 }}>
                 <div style={styles.trophyRow}>
                   <div style={styles.trophyBadge}>🏆</div>
-                  <div>
-                    <p style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.02em" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.02em", margin: 0, overflowWrap: "break-word" }}>
                       {highestSaleProduct.name}
                     </p>
-                    <Pill variant="info">{highestSaleProduct.category || "—"}</Pill>
+                    <div style={{ marginTop: 8, minWidth: 0 }}>
+                      <Pill variant="info">{highestSaleProduct.category || "—"}</Pill>
+                    </div>
                   </div>
                 </div>
                 <div style={styles.saleStats}>
@@ -647,6 +656,7 @@ const styles = {
     alignItems: "flex-start",
     gap: 12,
     marginBottom: 16,
+    minWidth: 0,
   },
   trophyBadge: {
     width: 44,
