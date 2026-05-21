@@ -4,6 +4,7 @@ import ProductModel from '../models/ProductModel.js';
 import cloudinary from '../config/cloudinary.js';
 import { sendResponse, sendError } from '../utils/apiResponse.js';
 import { getPaginationParams, getPaginationMeta } from '../utils/pagination.js';
+import ProductDraftModel from '../models/ProductDraftModel.js';
 
 const getProducts = async (req, res) => {
   try {
@@ -218,4 +219,48 @@ export {
   getDeletedProducts,
   restoreProduct,
   deleteProductPermanent,
+};
+
+// GET /products/draft — load the saved draft for the logged-in admin
+export const getProductDraft = async (req, res) => {
+  try {
+    const draft = await ProductDraftModel.findOne({ adminId: req.user._id });
+    return res.json({ success: true, draft: draft?.draft || null });
+  } catch (error) {
+    console.error("getProductDraft error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// PUT /products/draft — save/overwrite the draft
+export const saveProductDraft = async (req, res) => {
+  try {
+    const { name, description, price, stock, categoryId, supplierId } = req.body;
+
+    await ProductDraftModel.findOneAndUpdate(
+      { adminId: req.user._id },
+      {
+        adminId: req.user._id,
+        draft: { name, description, price, stock, categoryId, supplierId },
+        updatedAt: Date.now(),
+      },
+      { upsert: true, new: true } // create if not exists, update if exists
+    );
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error("saveProductDraft error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// DELETE /products/draft — wipe draft after successful product add
+export const clearProductDraft = async (req, res) => {
+  try {
+    await ProductDraftModel.findOneAndDelete({ adminId: req.user._id });
+    return res.json({ success: true });
+  } catch (error) {
+    console.error("clearProductDraft error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
 };

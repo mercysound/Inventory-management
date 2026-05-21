@@ -9,12 +9,23 @@ import {
   getDeletedProducts,
   restoreProduct,
   deleteProductPermanent,
+  getProductDraft, // these three are for draft management
+  saveProductDraft,
+  clearProductDraft
 } from "../controllers/productController.js";
 import { upload } from "../config/multer.js";
 import { productSchema, productUpdateSchema } from "../validators/schemas.js";
 
 const router = express.Router();
+// ── Routes — add these alongside your existing product routes ──
+// Make sure your auth middleware (e.g. protect/isAdmin) is applied
 
+router.get("/products/draft",    authMiddleware, getProductDraft);
+router.put("/products/draft",    authMiddleware, saveProductDraft);
+router.delete("/products/draft", authMiddleware, clearProductDraft);
+
+// ⚠️ These three must be registered ABOVE any route that has
+// "/products/:id" — otherwise Express will match "draft" as an :id
 router.get("/", authMiddleware, getProducts);
 router.get("/deleted", authMiddleware, getDeletedProducts);
 router.post("/add", authMiddleware, upload.single("image"), validate(productSchema), addProduct);

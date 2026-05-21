@@ -7,32 +7,32 @@ import axiosInstance from "../../../utils/axiosInstance";
 import DeletedProductsPopup from "./DeletedProductsPopup";
 import { parseApiError } from "../../../../../server/utils/parseApiError";
 
+const emptyForm = {
+  name: "", description: "", price: "", stock: "",
+  categoryId: "", supplierId: "", image: "", removeImage: false,
+};
+
 const Product = () => {
-  const [openModal, setOpenModal] = useState(false);
-  const [editProduct, setEditProduct] = useState(null);
-  const [categories, setCategories] = useState([]);
-  const [suppliers, setSuppliers] = useState([]);
-  const [products, setProducts] = useState([]);
+  const [openModal, setOpenModal]           = useState(false);
+  const [editProduct, setEditProduct]       = useState(null);
+  const [categories, setCategories]         = useState([]);
+  const [suppliers, setSuppliers]           = useState([]);
+  const [products, setProducts]             = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [image, setImage] = useState(null);
+  const [loading, setLoading]               = useState(false);
+  const [image, setImage]                   = useState(null);
   const [showDeletedPopup, setShowDeletedPopup] = useState(false);
-  const [deletedProducts, setDeletedProducts] = useState([]);
+  const [deletedProducts, setDeletedProducts]   = useState([]);
   const [loadingDeleted, setLoadingDeleted] = useState(false);
-  const [updatingProductId, setUpdatingProductId] = useState(null); // ✅ tracks which row is updating
-  const scrollRef = useRef(null); // ✅ ADD THIS
+  const [updatingProductId, setUpdatingProductId] = useState(null);
+  const [formData, setFormData]             = useState(emptyForm);
 
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    price: "",
-    stock: "",
-    categoryId: "",
-    supplierId: "",
-    image: "",
-    removeImage: false,
-  });
+  // ── draftRestored: true means we loaded a real draft from the server
+  //    and pre-filled the form — show the "Draft restored" banner ──
+  const [draftRestored, setDraftRestored]   = useState(false);
+
+  const scrollRef = useRef(null);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -54,13 +54,63 @@ const Product = () => {
     }
   };
 
+  useEffect(() => { fetchProducts(); }, []);
+
+  // ─────────────────────────────────────────────────────────────────
+  // LOAD DRAFT FROM SERVER when the add-product modal opens.
+  // We only do this in add mode (editProduct is null).
+  // If a draft exists, pre-fill the form and show the restored banner.
+  // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    if (!openModal || editProduct) return; // only for add mode
+
+    const loadDraft = async () => {
+      try {
+        const res = await axiosInstance.get("/products/draft");
+        if (res.data.success && res.data.draft) {
+          const d = res.data.draft;
+          // Only restore if at least one field has content
+          const hasSomething =
+            d.name || d.description || d.price !== "" || d.stock !== "";
+
+          if (hasSomething) {
+            setFormData((prev) => ({
+              ...prev,
+              name:        d.name        || "",
+              description: d.description || "",
+              price:       d.price       ?? "",
+              stock:       d.stock       ?? "",
+              categoryId:  d.categoryId  || "",
+              supplierId:  d.supplierId  || "",
+            }));
+            setDraftRestored(true); // show the amber "Draft restored" banner
+          }
+        }
+      } catch {
+        // Draft load failure is non-critical — just open a blank form
+      }
+    };
+
+    loadDraft();
+  }, [openModal, editProduct]);
+
+  // ─────────────────────────────────────────────────────────────────
+  // CLEAR DRAFT — called when the admin clicks "Clear draft" in the
+  // banner. Wipes server-side draft and resets the form to empty.
+  // ─────────────────────────────────────────────────────────────────
+  const handleClearDraft = async () => {
+    try {
+      await axiosInstance.delete("/products/draft");
+    } catch {
+      // Non-critical — continue regardless
+    }
+    setDraftRestored(false);
+    setFormData(emptyForm);
+    setImage(null);
+  };
 
   const handleSearch = (e) => {
-    const value = e.target.value.toLowerCase();
-    filterProducts(value, selectedCategory);
+    filterProducts(e.target.value.toLowerCase(), selectedCategory);
   };
 
   const handleCategoryChange = (e) => {
@@ -70,32 +120,30 @@ const Product = () => {
   };
 
   const filterProducts = (searchValue, categoryValue) => {
-    const filtered = products.filter((p) => {
-      const matchesSearch = p.name.toLowerCase().includes(searchValue);
-      const matchesCategory = categoryValue
-        ? p.categoryId._id === categoryValue
-        : true;
-      return matchesSearch && matchesCategory;
-    });
-    setFilteredProducts(filtered);
+    setFilteredProducts(
+      products.filter((p) => {
+        const matchesSearch   = p.name.toLowerCase().includes(searchValue);
+        const matchesCategory = categoryValue ? p.categoryId._id === categoryValue : true;
+        return matchesSearch && matchesCategory;
+      })
+    );
   };
 
   const handleEdit = (product) => {
     setEditProduct(product._id);
     setFormData({
-      name: product.name,
+      name:        product.name,
       description: product.description,
-      price: product.price,
-      stock: product.stock,
-      categoryId: product.categoryId?._id || "",
-      supplierId: product.supplierId?._id || "",
-      image: product.image || "",
+      price:       product.price,
+      stock:       product.stock,
+      categoryId:  product.categoryId?._id || "",
+      supplierId:  product.supplierId?._id  || "",
+      image:       product.image || "",
       removeImage: false,
     });
     setOpenModal(true);
   };
 
-  // ✅ Optimistic delete — row disappears instantly
   const handleDelete = async (id) => {
     const confirmDelete = confirm("Are you sure you want to delete this product?");
     if (!confirmDelete) return;
@@ -111,106 +159,90 @@ const Product = () => {
       if (response.data.success) {
         toast.success("Product deleted successfully!");
       } else {
-        // rollback
         setProducts(previousProducts);
         setFilteredProducts(previousFiltered);
         toast.error("Error deleting product.");
       }
-    } catch (error) {
-      // rollback
+    } catch {
       setProducts(previousProducts);
       setFilteredProducts(previousFiltered);
       toast.error("Error deleting product. Please try again");
     }
   };
 
-const handleSubmit = async () => {
-  const isEditing = Boolean(editProduct);
-  const targetId = editProduct;
-  const savedScrollTop = scrollRef.current?.scrollTop || 0;
- 
-  try {
-    const data = new FormData();
- 
-    Object.keys(formData).forEach((key) => {
-      if (key === "image" || key === "removeImage") return;
-      data.append(key, formData[key]);
-    });
- 
-    if (image) data.append("image", image);
-    if (formData.removeImage) data.append("removeImage", "true");
- 
-    const url = isEditing ? `/products/${targetId}` : "/products/add";
- 
-    // ✅ Don't close modal yet — wait for success
-    if (isEditing) {
-      setUpdatingProductId(targetId);
-    }
- 
-    const response = await axiosInstance({
-      method: isEditing ? "put" : "post",
-      url,
-      data,
-      headers: { "Content-Type": "multipart/form-data" },
-    });
- 
-    if (response.data.success) {
-      closeModal(); // ✅ Only close on success
-      toast.success(
-        isEditing ? "Product updated successfully!" : "Product added successfully!"
-      );
- 
-      if (isEditing) {
-        const refreshed = await axiosInstance.get("/products");
-        if (refreshed.data.success) {
-          const updatedProduct = refreshed.data.products.find(
-            (p) => p._id === targetId
-          );
-          if (updatedProduct) {
-            setProducts((prev) =>
-              prev.map((p) => (p._id === targetId ? updatedProduct : p))
-            );
-            setFilteredProducts((prev) =>
-              prev.map((p) => (p._id === targetId ? updatedProduct : p))
-            );
+  const handleSubmit = async () => {
+    const isEditing  = Boolean(editProduct);
+    const targetId   = editProduct;
+    const savedScrollTop = scrollRef.current?.scrollTop || 0;
+
+    try {
+      const data = new FormData();
+      Object.keys(formData).forEach((key) => {
+        if (key === "image" || key === "removeImage") return;
+        data.append(key, formData[key]);
+      });
+      if (image) data.append("image", image);
+      if (formData.removeImage) data.append("removeImage", "true");
+
+      const url = isEditing ? `/products/${targetId}` : "/products/add";
+      if (isEditing) setUpdatingProductId(targetId);
+
+      const response = await axiosInstance({
+        method: isEditing ? "put" : "post",
+        url,
+        data,
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (response.data.success) {
+        // ── SUCCESS: if this was a new product, delete the server-side draft ──
+        if (!isEditing) {
+          try {
+            await axiosInstance.delete("/products/draft");
+          } catch {
+            // Non-critical
           }
         }
-      } else {
-        fetchProducts();
-      }
-    } else {
-      // ✅ Form stays open — show error
-      toast.error("Something went wrong. Try again.");
-      if (isEditing) fetchProducts();
-    }
-  } catch (error) {
-    // ✅ Form stays open so user can fix the issue
-    toast.error(parseApiError(error));
-    if (isEditing) fetchProducts();
-  } finally {
-    setUpdatingProductId(null);
-    if (isEditing && scrollRef.current) {
-      requestAnimationFrame(() => {
-        scrollRef.current.scrollTop = savedScrollTop;
-      });
-    }
-  }
-};
 
+        closeModal();
+        toast.success(isEditing ? "Product updated successfully!" : "Product added successfully!");
+
+        if (isEditing) {
+          const refreshed = await axiosInstance.get("/products");
+          if (refreshed.data.success) {
+            const updated = refreshed.data.products.find((p) => p._id === targetId);
+            if (updated) {
+              setProducts((prev) => prev.map((p) => (p._id === targetId ? updated : p)));
+              setFilteredProducts((prev) => prev.map((p) => (p._id === targetId ? updated : p)));
+            }
+          }
+        } else {
+          fetchProducts();
+        }
+      } else {
+        toast.error("Something went wrong. Try again.");
+        if (isEditing) fetchProducts();
+      }
+    } catch (error) {
+      toast.error(parseApiError(error));
+      if (isEditing) fetchProducts();
+    } finally {
+      setUpdatingProductId(null);
+      if (isEditing && scrollRef.current) {
+        requestAnimationFrame(() => { scrollRef.current.scrollTop = savedScrollTop; });
+      }
+    }
+  };
+
+  // ── closeModal does NOT delete the draft — closing ✕ or Cancel
+  //    intentionally keeps the draft alive on the server so the admin
+  //    can return to it from any device ──
   const closeModal = () => {
     setOpenModal(false);
     setEditProduct(null);
     setImage(null);
-    setFormData({
-      name: "",
-      description: "",
-      price: "",
-      stock: "",
-      categoryId: "",
-      supplierId: "",
-      image: "",
-      removeImage: false,
-    });
+    setDraftRestored(false);
+    setFormData(emptyForm);
   };
 
   const fetchDeletedProducts = async () => {
@@ -278,9 +310,7 @@ const handleSubmit = async () => {
         >
           <option value="">All Categories</option>
           {categories.map((cat) => (
-            <option key={cat._id} value={cat._id}>
-              {cat.name}
-            </option>
+            <option key={cat._id} value={cat._id}>{cat.name}</option>
           ))}
         </select>
       </div>
@@ -290,14 +320,14 @@ const handleSubmit = async () => {
           <ProductSkeleton />
         ) : (
           <ProductTable
-  products={filteredProducts}
-  onEdit={handleEdit}
-  onDelete={handleDelete}
-  onAddClick={() => setOpenModal(true)}
-  onViewDeleted={handleViewDeleted}
-  updatingProductId={updatingProductId}
-  scrollRef={scrollRef} // ✅ ADD THIS
-/>
+            products={filteredProducts}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onAddClick={() => setOpenModal(true)}
+            onViewDeleted={handleViewDeleted}
+            updatingProductId={updatingProductId}
+            scrollRef={scrollRef}
+          />
         )}
       </div>
 
@@ -312,6 +342,8 @@ const handleSubmit = async () => {
           onSubmit={handleSubmit}
           onClose={closeModal}
           setImage={setImage}
+          draftRestored={draftRestored}      // ← tells form to show amber banner
+          onClearDraft={handleClearDraft}    // ← wipes draft + resets form
         />
       )}
 
