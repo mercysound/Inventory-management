@@ -5,7 +5,6 @@ import ProductForm from "./ProductForm";
 import ProductSkeleton from "./ProductSkeleton";
 import axiosInstance from "../../../utils/axiosInstance";
 import DeletedProductsPopup from "./DeletedProductsPopup";
-import { parseApiError } from "../../../../../server/utils/parseApiError";
 
 const emptyForm = {
   name: "", description: "", price: "", stock: "",
@@ -13,24 +12,22 @@ const emptyForm = {
 };
 
 const Product = () => {
-  const [openModal, setOpenModal]           = useState(false);
-  const [editProduct, setEditProduct]       = useState(null);
-  const [categories, setCategories]         = useState([]);
-  const [suppliers, setSuppliers]           = useState([]);
-  const [products, setProducts]             = useState([]);
+  const [openModal, setOpenModal]               = useState(false);
+  const [editProduct, setEditProduct]           = useState(null);
+  const [categories, setCategories]             = useState([]);
+  const [suppliers, setSuppliers]               = useState([]);
+  const [products, setProducts]                 = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [loading, setLoading]               = useState(false);
-  const [image, setImage]                   = useState(null);
+  const [searchValue, setSearchValue]           = useState(""); // ✅ track search
+  const [loading, setLoading]                   = useState(false);
+  const [image, setImage]                       = useState(null);
   const [showDeletedPopup, setShowDeletedPopup] = useState(false);
   const [deletedProducts, setDeletedProducts]   = useState([]);
-  const [loadingDeleted, setLoadingDeleted] = useState(false);
+  const [loadingDeleted, setLoadingDeleted]     = useState(false);
   const [updatingProductId, setUpdatingProductId] = useState(null);
-  const [formData, setFormData]             = useState(emptyForm);
-
-  // ── draftRestored: true means we loaded a real draft from the server
-  //    and pre-filled the form — show the "Draft restored" banner ──
-  const [draftRestored, setDraftRestored]   = useState(false);
+  const [formData, setFormData]                 = useState(emptyForm);
+  const [draftRestored, setDraftRestored]       = useState(false);
 
   const scrollRef = useRef(null);
 
@@ -56,20 +53,15 @@ const Product = () => {
 
   useEffect(() => { fetchProducts(); }, []);
 
-  // ─────────────────────────────────────────────────────────────────
-  // LOAD DRAFT FROM SERVER when the add-product modal opens.
-  // We only do this in add mode (editProduct is null).
-  // If a draft exists, pre-fill the form and show the restored banner.
-  // ─────────────────────────────────────────────────────────────────
+  // ── Load draft when add modal opens ──
   useEffect(() => {
-    if (!openModal || editProduct) return; // only for add mode
+    if (!openModal || editProduct) return;
 
     const loadDraft = async () => {
       try {
         const res = await axiosInstance.get("/products/draft");
         if (res.data.success && res.data.draft) {
           const d = res.data.draft;
-          // Only restore if at least one field has content
           const hasSomething =
             d.name || d.description || d.price !== "" || d.stock !== "";
 
@@ -83,50 +75,53 @@ const Product = () => {
               categoryId:  d.categoryId  || "",
               supplierId:  d.supplierId  || "",
             }));
-            setDraftRestored(true); // show the amber "Draft restored" banner
+            setDraftRestored(true);
           }
         }
       } catch {
-        // Draft load failure is non-critical — just open a blank form
+        // non-critical
       }
     };
 
     loadDraft();
   }, [openModal, editProduct]);
 
-  // ─────────────────────────────────────────────────────────────────
-  // CLEAR DRAFT — called when the admin clicks "Clear draft" in the
-  // banner. Wipes server-side draft and resets the form to empty.
-  // ─────────────────────────────────────────────────────────────────
   const handleClearDraft = async () => {
     try {
       await axiosInstance.delete("/products/draft");
     } catch {
-      // Non-critical — continue regardless
+      // non-critical
     }
     setDraftRestored(false);
     setFormData(emptyForm);
     setImage(null);
   };
 
-  const handleSearch = (e) => {
-    filterProducts(e.target.value.toLowerCase(), selectedCategory);
-  };
-
-  const handleCategoryChange = (e) => {
-    const category = e.target.value;
-    setSelectedCategory(category);
-    filterProducts("", category);
-  };
-
-  const filterProducts = (searchValue, categoryValue) => {
+  // ✅ FIXED: both filters always pass each other's current value
+  const filterProducts = (search, category) => {
     setFilteredProducts(
       products.filter((p) => {
-        const matchesSearch   = p.name.toLowerCase().includes(searchValue);
-        const matchesCategory = categoryValue ? p.categoryId._id === categoryValue : true;
+        const matchesSearch   = p.name.toLowerCase().includes(search);
+        const matchesCategory = category
+          ? p.categoryId._id === category
+          : true; // empty string = All Categories = show everything
         return matchesSearch && matchesCategory;
       })
     );
+  };
+
+  // ✅ FIXED: passes current selectedCategory alongside new search value
+  const handleSearch = (e) => {
+    const value = e.target.value.toLowerCase();
+    setSearchValue(value);
+    filterProducts(value, selectedCategory);
+  };
+
+  // ✅ FIXED: passes current searchValue alongside new category value
+  const handleCategoryChange = (e) => {
+    const category = e.target.value;
+    setSelectedCategory(category);
+    filterProducts(searchValue, category);
   };
 
   const handleEdit = (product) => {
@@ -171,8 +166,8 @@ const Product = () => {
   };
 
   const handleSubmit = async () => {
-    const isEditing  = Boolean(editProduct);
-    const targetId   = editProduct;
+    const isEditing      = Boolean(editProduct);
+    const targetId       = editProduct;
     const savedScrollTop = scrollRef.current?.scrollTop || 0;
 
     try {
@@ -187,6 +182,9 @@ const Product = () => {
       const url = isEditing ? `/products/${targetId}` : "/products/add";
       if (isEditing) setUpdatingProductId(targetId);
 
+      // ✅ Close modal immediately so user sees table with skeleton
+      closeModal();
+
       const response = await axiosInstance({
         method: isEditing ? "put" : "post",
         url,
@@ -195,16 +193,10 @@ const Product = () => {
       });
 
       if (response.data.success) {
-        // ── SUCCESS: if this was a new product, delete the server-side draft ──
         if (!isEditing) {
-          try {
-            await axiosInstance.delete("/products/draft");
-          } catch {
-            // Non-critical
-          }
+          try { await axiosInstance.delete("/products/draft"); } catch { }
         }
 
-        closeModal();
         toast.success(isEditing ? "Product updated successfully!" : "Product added successfully!");
 
         if (isEditing) {
@@ -212,8 +204,12 @@ const Product = () => {
           if (refreshed.data.success) {
             const updated = refreshed.data.products.find((p) => p._id === targetId);
             if (updated) {
-              setProducts((prev) => prev.map((p) => (p._id === targetId ? updated : p)));
-              setFilteredProducts((prev) => prev.map((p) => (p._id === targetId ? updated : p)));
+              setProducts((prev) =>
+                prev.map((p) => (p._id === targetId ? updated : p))
+              );
+              setFilteredProducts((prev) =>
+                prev.map((p) => (p._id === targetId ? updated : p))
+              );
             }
           }
         } else {
@@ -224,19 +220,19 @@ const Product = () => {
         if (isEditing) fetchProducts();
       }
     } catch (error) {
-      toast.error(parseApiError(error));
+      console.error("Error saving product:", error);
+      toast.error(error.response?.data?.message || "Error saving product.");
       if (isEditing) fetchProducts();
     } finally {
       setUpdatingProductId(null);
       if (isEditing && scrollRef.current) {
-        requestAnimationFrame(() => { scrollRef.current.scrollTop = savedScrollTop; });
+        requestAnimationFrame(() => {
+          scrollRef.current.scrollTop = savedScrollTop;
+        });
       }
     }
   };
 
-  // ── closeModal does NOT delete the draft — closing ✕ or Cancel
-  //    intentionally keeps the draft alive on the server so the admin
-  //    can return to it from any device ──
   const closeModal = () => {
     setOpenModal(false);
     setEditProduct(null);
@@ -342,8 +338,8 @@ const Product = () => {
           onSubmit={handleSubmit}
           onClose={closeModal}
           setImage={setImage}
-          draftRestored={draftRestored}      // ← tells form to show amber banner
-          onClearDraft={handleClearDraft}    // ← wipes draft + resets form
+          draftRestored={draftRestored}
+          onClearDraft={handleClearDraft}
         />
       )}
 
