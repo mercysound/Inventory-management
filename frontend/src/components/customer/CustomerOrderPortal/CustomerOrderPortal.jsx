@@ -16,7 +16,7 @@ import PendingOrdersModal from "./PendingOrdersModal";
 import ReceiptModal from "../../share-component/receipt/ReceiptModal";
 import CartSkeleton from "./CartSkeleton";
 
-// ─── tiny stat card ────────────────────────────────────────────────────────
+// ─── tiny stat card ─────────────────────────────────────────────────────────
 const StatCard = ({ icon: Icon, label, value, color }) => (
   <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
     <div className={`p-2 rounded-lg ${color}`}>
@@ -29,7 +29,7 @@ const StatCard = ({ icon: Icon, label, value, color }) => (
   </div>
 );
 
-// ─── empty state ────────────────────────────────────────────────────────────
+// ─── empty state ─────────────────────────────────────────────────────────────
 const EmptyCart = () => (
   <motion.div
     initial={{ opacity: 0, y: 16 }}
@@ -48,24 +48,20 @@ const EmptyCart = () => (
   </motion.div>
 );
 
-// ─── Stock error parser ─────────────────────────────────────────────────────
-// Backend sends: STOCK_ERROR:ProductName:requestedQty:remainingStock
-// We parse this into a friendly, informative message for the customer.
+// ─── Stock error parser ──────────────────────────────────────────────────────
 const parseOrderError = (err) => {
   const raw = err?.response?.data?.message || err?.message || "";
 
   if (raw.startsWith("STOCK_ERROR:")) {
-    const parts = raw.replace("STOCK_ERROR:", "").split(":");
-    const productName  = parts[0] || "This item";
-    const requested    = Number(parts[1]) || 0;
-    const remaining    = Number(parts[2]) ?? 0;
+    const parts     = raw.replace("STOCK_ERROR:", "").split(":");
+    const productName = parts[0] || "This item";
+    const requested   = Number(parts[1]) || 0;
+    const remaining   = Number(parts[2]) ?? 0;
 
-    let stockLine = "";
-    if (remaining === 0) {
-      stockLine = "It is now completely out of stock.";
-    } else {
-      stockLine = `Only ${remaining} unit${remaining !== 1 ? "s" : ""} left in stock, but your cart has ${requested}.`;
-    }
+    const stockLine =
+      remaining === 0
+        ? "It is now completely out of stock."
+        : `Only ${remaining} unit${remaining !== 1 ? "s" : ""} left in stock, but your cart has ${requested}.`;
 
     return {
       title: "Item No Longer Available",
@@ -91,25 +87,41 @@ const parseOrderError = (err) => {
   };
 };
 
-// ─── main component ─────────────────────────────────────────────────────────
+// ─── helpers ─────────────────────────────────────────────────────────────────
+
+// Build the full invoice URL for a given mode.
+// The invoice endpoint now returns an HTML page (not a PDF blob),
+// so we pass the URL directly to the iframe src — no blob needed.
+const buildInvoiceUrl = (user, mode, baseUrl) => {
+  const params = new URLSearchParams({
+    customerName:  user?.name || "Customer",
+    paymentMethod: "Paystack",
+    mode,           // "preview" | "final"
+  });
+  // baseUrl comes from axiosInstance baseURL (e.g. "/api")
+  return `${baseUrl}/orders/invoice?${params.toString()}`;
+};
+
+// ─── main component ──────────────────────────────────────────────────────────
 const CustomerOrderPortal = () => {
   const { user } = useAuth();
 
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders]               = useState([]);
   const [pendingOrders, setPendingOrders] = useState([]);
   const [showPendingModal, setShowPendingModal] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading]             = useState(true);
+  const [refreshing, setRefreshing]       = useState(false);
 
-  // ── Receipt states ──────────────────────────────────────────────────────
-  const [showReceiptPrompt, setShowReceiptPrompt] = useState(false);
-  const [receiptBlob, setReceiptBlob] = useState(null);
-  const [receiptPreviewUrl, setReceiptPreviewUrl] = useState("");
+  // ── Receipt modal state ─────────────────────────────────────────────────
+  // receiptUrl: the direct HTML invoice URL loaded in the ReceiptModal iframe.
+  // No blob involved — the HTML page handles its own PDF download/share/print.
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [receiptUrl, setReceiptUrl]             = useState("");
 
-  // ── Preview invoice states ──────────────────────────────────────────────
-  const [previewLoading, setPreviewLoading] = useState(false);
+  // ── Preview invoice state ───────────────────────────────────────────────
+  const [previewLoading, setPreviewLoading]   = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState("");
+  const [previewUrl, setPreviewUrl]           = useState("");
 
   // ── Fetch orders ────────────────────────────────────────────────────────
   const fetchOrders = useCallback(async (silent = false) => {
@@ -147,20 +159,7 @@ const CustomerOrderPortal = () => {
     fetchOrders();
   }, [fetchOrders]);
 
-  // ── Cleanup blob URLs on unmount ────────────────────────────────────────
-  useEffect(() => {
-    return () => {
-      if (receiptPreviewUrl) URL.revokeObjectURL(receiptPreviewUrl);
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    };
-  }, [receiptPreviewUrl, previewUrl]);
-
   // ── Cart actions ────────────────────────────────────────────────────────
-  // ── Optimistic cart helpers ─────────────────────────────────────────────
-  // Update local state INSTANTLY, then sync with server in background.
-  // If server fails, roll back to previous state and show error.
-  // This eliminates the delay between button click and UI update.
-
   const handleIncreaseQty = async (orderId) => {
     const prev = orders;
     setOrders((os) =>
@@ -178,19 +177,14 @@ const CustomerOrderPortal = () => {
       }
     } catch (err) {
       setOrders(prev);
-      const msg = err?.response?.data?.message || "Failed to increase quantity";
-      toast.error(msg);
-    } finally {
+      toast.error(err?.response?.data?.message || "Failed to increase quantity");
     }
   };
 
   const handleReduceQty = async (orderId) => {
     const order = orders.find((o) => o._id === orderId);
     if (!order) return;
-    if (order.quantity <= 1) {
-      handleDeleteOrder(orderId);
-      return;
-    }
+    if (order.quantity <= 1) { handleDeleteOrder(orderId); return; }
     const prev = orders;
     setOrders((os) =>
       os.map((o) =>
@@ -201,62 +195,49 @@ const CustomerOrderPortal = () => {
     );
     try {
       const res = await axiosInstance.post(`/orders/reduce/${orderId}`);
-      if (!res.data.success) {
-        setOrders(prev);
-        toast.error("Failed to reduce quantity");
-      }
+      if (!res.data.success) { setOrders(prev); toast.error("Failed to reduce quantity"); }
     } catch {
       setOrders(prev);
       toast.error("Failed to reduce quantity");
-    } finally {
     }
   };
 
   const handleDeleteOrder = async (orderId) => {
     const prev = orders;
-    // Optimistic update — remove immediately
     setOrders((os) => os.filter((o) => o._id !== orderId));
     try {
       const res = await axiosInstance.delete(`/orders/remove/${orderId}`);
-      if (!res.data.success) {
-        setOrders(prev); // rollback
-        toast.error("Failed to remove item");
-      } else {
-        toast.success("Item removed");
-      }
+      if (!res.data.success) { setOrders(prev); toast.error("Failed to remove item"); }
+      else toast.success("Item removed");
     } catch {
-      setOrders(prev); // rollback
+      setOrders(prev);
       toast.error("Failed to remove item");
     }
   };
 
   // ── Derived ─────────────────────────────────────────────────────────────
-  const grandTotal = orders.reduce(
-    (sum, o) => sum + (o.total ?? o.quantity * o.price),
-    0
-  );
-  const totalItems = orders.reduce((sum, o) => sum + o.quantity, 0);
+  const grandTotal  = orders.reduce((sum, o) => sum + (o.total ?? o.quantity * o.price), 0);
+  const totalItems  = orders.reduce((sum, o) => sum + o.quantity, 0);
 
   // ── Preview invoice ─────────────────────────────────────────────────────
+  // The invoice endpoint now returns HTML, so we just build the URL and
+  // pass it directly to the iframe — no blob fetch needed.
   const handlePreviewInvoice = async () => {
-    if (!orders.length) {
-      toast.info("Add items to your cart first");
-      return;
-    }
+    if (!orders.length) { toast.info("Add items to your cart first"); return; }
     try {
       setPreviewLoading(true);
-      const query = new URLSearchParams({
-        customerName: user?.name || "Customer",
+      // Build the invoice URL with an auth token in the query string so the
+      // iframe (which is a new browser context) can authenticate the request.
+      // We read the token from localStorage the same way axiosInstance does.
+      const token  = localStorage.getItem("pos-token") || "";
+      const params = new URLSearchParams({
+        customerName:  user?.name || "Customer",
         paymentMethod: "Paystack",
-        mode: "preview",
-      }).toString();
-
-      const res = await axiosInstance.get(`/orders/invoice?${query}`, {
-        responseType: "blob",
+        mode:          "preview",
+        token,          // pass token so the iframe request is authenticated
       });
-
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      const url = URL.createObjectURL(res.data);
+      const baseUrl = axiosInstance.defaults.baseURL || "/api";
+      const url     = `${baseUrl}/orders/invoice?${params.toString()}`;
       setPreviewUrl(url);
       setShowPreviewModal(true);
     } catch (err) {
@@ -269,20 +250,50 @@ const CustomerOrderPortal = () => {
 
   const handleClosePreview = () => {
     setShowPreviewModal(false);
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl("");
   };
 
+  // ── Paystack pre-check ──────────────────────────────────────────────────
+  const handlePrePayCheck = async () => {
+    try {
+      const res = await axiosInstance.post("/orders/verify-stock");
+      return res.data.success;
+    } catch (err) {
+      const data = err?.response?.data;
+      if (data?.message === "STOCK_CONFLICT" && data?.conflicts?.length) {
+        const lines = data.conflicts.map((c) =>
+          c.available === 0
+            ? `• "${c.productName}" is out of stock`
+            : `• "${c.productName}": you need ${c.requested}, only ${c.available} available`
+        );
+        toast.error(
+          <div>
+            <p className="font-semibold text-sm">Stock issue — cannot proceed</p>
+            <div className="text-xs mt-1 leading-relaxed space-y-1">
+              {lines.map((l, i) => <p key={i}>{l}</p>)}
+            </div>
+            <p className="text-xs mt-2 text-gray-200">Please update your cart quantities and try again.</p>
+          </div>,
+          { autoClose: 9000 }
+        );
+        fetchOrders(true);
+      } else {
+        toast.error("Could not verify stock. Please try again.");
+      }
+      return false;
+    }
+  };
+
   // ── Paystack success ────────────────────────────────────────────────────
-  // ✅ Receives full Paystack response so we can pass the reference for auto-refund
   const handlePaymentSuccess = async (paystackResponse) => {
-    const paystackReference = paystackResponse?.reference || paystackResponse?.trxref || null;
+    const paystackReference =
+      paystackResponse?.reference || paystackResponse?.trxref || null;
 
     try {
       const completeRes = await axiosInstance.post("/orders/complete", {
-        paymentMethod: "Paystack",
-        buyerName: user?.name || "Customer",
-        paystackReference, // ✅ sent to backend so it can auto-refund if stock fails
+        paymentMethod:     "Paystack",
+        buyerName:         user?.name || "Customer",
+        paystackReference,
       });
 
       if (!completeRes.data.success) {
@@ -292,25 +303,28 @@ const CustomerOrderPortal = () => {
 
       toast.success("Payment successful! 🎉");
 
-      const query = new URLSearchParams({
-        customerName: user?.name || "Customer",
+      // Build the final receipt URL — the HTML page the iframe will load.
+      // We include the auth token because the iframe creates a new request
+      // that won't automatically carry the Authorization header.
+      const token  = localStorage.getItem("pos-token") || "";
+      const params = new URLSearchParams({
+        customerName:  user?.name || "Customer",
         paymentMethod: "Paystack",
-        mode: "final",
-      }).toString();
-
-      const res = await axiosInstance.get(`/orders/invoice?${query}`, {
-        responseType: "blob",
+        mode:          "final",
+        token,
       });
+      const baseUrl = axiosInstance.defaults.baseURL || "/api";
+      const url     = `${baseUrl}/orders/invoice?${params.toString()}`;
 
-      setReceiptBlob(res.data);
-      const blobUrl = URL.createObjectURL(res.data);
-      setReceiptPreviewUrl(blobUrl);
-      setShowReceiptPrompt(true);
+      // Show the receipt modal — the iframe loads the full HTML receipt
+      // which has its own working PDF / Save Image / Print / Share buttons.
+      setReceiptUrl(url);
+      setShowReceiptModal(true);
       setOrders([]);
       fetchOrders(true);
+
     } catch (err) {
       console.error("Order completion failed:", err);
-
       const { title, message, type } = parseOrderError(err);
 
       if (type === "stock") {
@@ -333,70 +347,20 @@ const CustomerOrderPortal = () => {
     }
   };
 
-  // ✅ Pre-payment stock check — called when customer clicks Pay button
-  // Verifies stock BEFORE Paystack opens so we avoid charging for unavailable items
-  const handlePrePayCheck = async () => {
-    try {
-      const res = await axiosInstance.post("/orders/verify-stock");
-      return res.data.success; // true = safe to proceed
-    } catch (err) {
-      const data = err?.response?.data;
-
-      if (data?.message === "STOCK_CONFLICT" && data?.conflicts?.length) {
-        // Build a readable list of conflicts
-        const lines = data.conflicts.map((c) =>
-          c.available === 0
-            ? `• "${c.productName}" is out of stock`
-            : `• "${c.productName}": you need ${c.requested}, only ${c.available} available`
-        );
-
-        toast.error(
-          <div>
-            <p className="font-semibold text-sm">Stock issue — cannot proceed</p>
-            <div className="text-xs mt-1 leading-relaxed space-y-1">
-              {lines.map((l, i) => <p key={i}>{l}</p>)}
-            </div>
-            <p className="text-xs mt-2 text-gray-200">Please update your cart quantities and try again.</p>
-          </div>,
-          { autoClose: 9000 }
-        );
-        fetchOrders(true); // refresh cart to show current stock
-      } else {
-        toast.error("Could not verify stock. Please try again.");
-      }
-      return false; // block Paystack from opening
-    }
-  };
-
-  // ── Download receipt ────────────────────────────────────────────────────
-  const handleDownloadFinalReceipt = () => {
-    if (!receiptBlob) {
-      toast.error("Receipt not ready");
-      return;
-    }
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(receiptBlob);
-    link.download = `Receipt_${user?.name || "Customer"}_${Date.now()}.pdf`;
-    link.click();
-    handleCloseReceiptModal();
-  };
-
+  // ── Close receipt modal ──────────────────────────────────────────────────
   const handleCloseReceiptModal = () => {
-    setShowReceiptPrompt(false);
-    if (receiptPreviewUrl) URL.revokeObjectURL(receiptPreviewUrl);
-    setReceiptPreviewUrl("");
-    setReceiptBlob(null);
+    setShowReceiptModal(false);
+    setReceiptUrl("");
   };
 
   // ── Skeleton ────────────────────────────────────────────────────────────
   if (loading) return <CartSkeleton />;
 
-
-  // ── Render ──────────────────────────────────────────────────────────────
+  // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
 
-      {/* ── Page header ──────────────────────────────────────────────── */}
+      {/* ── Page header ── */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -409,7 +373,6 @@ const CustomerOrderPortal = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Refresh */}
           <motion.button
             onClick={() => fetchOrders(true)}
             disabled={refreshing}
@@ -420,7 +383,6 @@ const CustomerOrderPortal = () => {
             Refresh
           </motion.button>
 
-          {/* Pending orders */}
           <motion.button
             onClick={() => setShowPendingModal(true)}
             whileTap={{ scale: 0.94 }}
@@ -437,16 +399,16 @@ const CustomerOrderPortal = () => {
         </div>
       </div>
 
-      {/* ── Stats row ────────────────────────────────────────────────── */}
+      {/* ── Stats row ── */}
       {orders.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <StatCard icon={ShoppingCart} label="Items in Cart" value={orders.length} color="bg-indigo-500" />
-          <StatCard icon={PackageOpen} label="Total Units" value={totalItems} color="bg-blue-500" />
-          <StatCard icon={Clock} label="Pending Orders" value={pendingOrders.length} color="bg-amber-500" />
+          <StatCard icon={ShoppingCart} label="Items in Cart"   value={orders.length}         color="bg-indigo-500" />
+          <StatCard icon={PackageOpen}  label="Total Units"     value={totalItems}             color="bg-blue-500"   />
+          <StatCard icon={Clock}        label="Pending Orders"  value={pendingOrders.length}   color="bg-amber-500"  />
         </div>
       )}
 
-      {/* ── Orders table / empty state ────────────────────────────────── */}
+      {/* ── Orders table / empty state ── */}
       <AnimatePresence mode="wait">
         {orders.length === 0 ? (
           <EmptyCart key="empty" />
@@ -464,11 +426,9 @@ const CustomerOrderPortal = () => {
               onDelete={handleDeleteOrder}
             />
 
-            {/* ── Checkout footer ───────────────────────────────────── */}
+            {/* ── Checkout footer ── */}
             <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-
-                {/* Grand total */}
                 <div>
                   <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-0.5">
                     Grand Total
@@ -482,9 +442,7 @@ const CustomerOrderPortal = () => {
                   </p>
                 </div>
 
-                {/* Action buttons */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-                  {/* Preview invoice */}
                   <motion.button
                     onClick={handlePreviewInvoice}
                     disabled={previewLoading}
@@ -498,8 +456,6 @@ const CustomerOrderPortal = () => {
                     {previewLoading ? "Generating..." : "Preview Invoice"}
                   </motion.button>
 
-                  {/* Paystack */}
-                  {/* onPreCheck runs BEFORE the popup opens — blocks payment if stock is short */}
                   <PaystackButton
                     email={user?.email}
                     amount={grandTotal}
@@ -513,7 +469,6 @@ const CustomerOrderPortal = () => {
                 </div>
               </div>
 
-              {/* Disclaimer */}
               <p className="text-xs text-gray-400 mt-4 border-t border-gray-50 pt-3">
                 By proceeding, your cart will be cleared upon successful payment
                 and a receipt will be generated automatically.
@@ -523,22 +478,23 @@ const CustomerOrderPortal = () => {
         )}
       </AnimatePresence>
 
-      {/* ── Modals ───────────────────────────────────────────────────── */}
+      {/* ── Modals ── */}
 
-      {/* Pending orders modal */}
       <PendingOrdersModal
         isOpen={showPendingModal}
         onClose={() => setShowPendingModal(false)}
         pendingOrders={pendingOrders}
       />
 
-      {/* Final receipt modal */}
+      {/* Final receipt modal — iframe loads the full HTML receipt page.
+          All PDF / Save Image / Print / Share buttons live inside that
+          page and work independently. The modal only needs Close.       */}
       <ReceiptModal
-        open={showReceiptPrompt}
+        open={showReceiptModal}
         onClose={handleCloseReceiptModal}
-        previewUrl={receiptPreviewUrl}
+        previewUrl={receiptUrl}
+        mode="final"
         role="customer"
-        onDownload={handleDownloadFinalReceipt}
       />
 
       {/* Preview invoice modal */}
@@ -558,7 +514,6 @@ const CustomerOrderPortal = () => {
               exit={{ scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <div className="flex items-center gap-2">
                   <FileText size={18} className="text-indigo-600" />
@@ -572,7 +527,6 @@ const CustomerOrderPortal = () => {
                 </button>
               </div>
 
-              {/* PDF iframe */}
               <div className="h-[60vh]">
                 {previewUrl ? (
                   <iframe
@@ -587,7 +541,6 @@ const CustomerOrderPortal = () => {
                 )}
               </div>
 
-              {/* Footer */}
               <div className="flex justify-end gap-3 px-5 py-4 border-t border-gray-100 bg-gray-50">
                 <button
                   onClick={handleClosePreview}
@@ -600,6 +553,7 @@ const CustomerOrderPortal = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
     </div>
   );
 };

@@ -19,7 +19,7 @@ const Product = () => {
   const [products, setProducts]                 = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [searchValue, setSearchValue]           = useState(""); // ✅ track search
+  const [searchValue, setSearchValue]           = useState(""); // ✅
   const [loading, setLoading]                   = useState(false);
   const [image, setImage]                       = useState(null);
   const [showDeletedPopup, setShowDeletedPopup] = useState(false);
@@ -31,6 +31,18 @@ const Product = () => {
 
   const scrollRef = useRef(null);
 
+  // ✅ Reactive filter — runs automatically whenever products, search, or category changes
+  useEffect(() => {
+    const filtered = products.filter((p) => {
+      const matchesSearch   = p.name.toLowerCase().includes(searchValue);
+      const matchesCategory = selectedCategory
+        ? p.categoryId?._id === selectedCategory
+        : true; // empty = All Categories = show everything
+      return matchesSearch && matchesCategory;
+    });
+    setFilteredProducts(filtered);
+  }, [products, searchValue, selectedCategory]);
+
   const fetchProducts = async () => {
     setLoading(true);
     try {
@@ -39,7 +51,7 @@ const Product = () => {
         setCategories(response.data.categories);
         setSuppliers(response.data.suppliers);
         setProducts(response.data.products);
-        setFilteredProducts(response.data.products);
+        // ✅ no setFilteredProducts here — useEffect handles it
       } else {
         toast.error("Error fetching products. Please try again");
       }
@@ -97,31 +109,14 @@ const Product = () => {
     setImage(null);
   };
 
-  // ✅ FIXED: both filters always pass each other's current value
-  const filterProducts = (search, category) => {
-    setFilteredProducts(
-      products.filter((p) => {
-        const matchesSearch   = p.name.toLowerCase().includes(search);
-        const matchesCategory = category
-          ? p.categoryId._id === category
-          : true; // empty string = All Categories = show everything
-        return matchesSearch && matchesCategory;
-      })
-    );
-  };
-
-  // ✅ FIXED: passes current selectedCategory alongside new search value
+  // ✅ Just set state — useEffect does the filtering
   const handleSearch = (e) => {
-    const value = e.target.value.toLowerCase();
-    setSearchValue(value);
-    filterProducts(value, selectedCategory);
+    setSearchValue(e.target.value.toLowerCase());
   };
 
-  // ✅ FIXED: passes current searchValue alongside new category value
+  // ✅ Just set state — useEffect does the filtering
   const handleCategoryChange = (e) => {
-    const category = e.target.value;
-    setSelectedCategory(category);
-    filterProducts(searchValue, category);
+    setSelectedCategory(e.target.value);
   };
 
   const handleEdit = (product) => {
@@ -144,10 +139,9 @@ const Product = () => {
     if (!confirmDelete) return;
 
     const previousProducts = products;
-    const previousFiltered = filteredProducts;
 
     setProducts((prev) => prev.filter((p) => p._id !== id));
-    setFilteredProducts((prev) => prev.filter((p) => p._id !== id));
+    // ✅ no need to update filteredProducts manually — useEffect handles it
 
     try {
       const response = await axiosInstance.delete(`/products/${id}`);
@@ -155,12 +149,10 @@ const Product = () => {
         toast.success("Product deleted successfully!");
       } else {
         setProducts(previousProducts);
-        setFilteredProducts(previousFiltered);
         toast.error("Error deleting product.");
       }
     } catch {
       setProducts(previousProducts);
-      setFilteredProducts(previousFiltered);
       toast.error("Error deleting product. Please try again");
     }
   };
@@ -180,10 +172,11 @@ const Product = () => {
       if (formData.removeImage) data.append("removeImage", "true");
 
       const url = isEditing ? `/products/${targetId}` : "/products/add";
-      if (isEditing) setUpdatingProductId(targetId);
 
       // ✅ Close modal immediately so user sees table with skeleton
       closeModal();
+
+      if (isEditing) setUpdatingProductId(targetId);
 
       const response = await axiosInstance({
         method: isEditing ? "put" : "post",
@@ -204,10 +197,8 @@ const Product = () => {
           if (refreshed.data.success) {
             const updated = refreshed.data.products.find((p) => p._id === targetId);
             if (updated) {
+              // ✅ just update products — useEffect handles filteredProducts
               setProducts((prev) =>
-                prev.map((p) => (p._id === targetId ? updated : p))
-              );
-              setFilteredProducts((prev) =>
                 prev.map((p) => (p._id === targetId ? updated : p))
               );
             }
