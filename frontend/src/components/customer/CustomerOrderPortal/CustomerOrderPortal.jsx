@@ -103,7 +103,7 @@ const CustomerOrderPortal = () => {
 
   // ── Receipt states ──────────────────────────────────────────────────────
   const [showReceiptPrompt, setShowReceiptPrompt] = useState(false);
-  const [receiptHtml, setReceiptHtml] = useState("");
+  const [receiptUrl, setReceiptUrl] = useState("");
   const [receiptDownloadUrl, setReceiptDownloadUrl] = useState("");
 
   // ── Preview invoice states ──────────────────────────────────────────────
@@ -244,11 +244,8 @@ const CustomerOrderPortal = () => {
         mode: "preview",
       }).toString();
 
-      const res = await axiosInstance.get(`/orders/invoice?${query}`, {
-        responseType: "text",
-      });
-
-      setPreviewUrl(res.data);
+      const url = `/orders/invoice?${query}`;
+      setPreviewUrl(url);
       setShowPreviewModal(true);
     } catch (err) {
       console.error(err);
@@ -289,11 +286,8 @@ const CustomerOrderPortal = () => {
         mode: "final",
       }).toString();
 
-      const res = await axiosInstance.get(`/orders/invoice?${query}`, {
-        responseType: "text",
-      });
-
-      setReceiptHtml(res.data);
+      const url = `/orders/invoice?${query}`;
+      setReceiptUrl(url);
       setReceiptDownloadUrl(`/orders/invoice?${query}&download=true`);
       setShowReceiptPrompt(true);
       setOrders([]);
@@ -376,7 +370,7 @@ const CustomerOrderPortal = () => {
 
   const handleCloseReceiptModal = () => {
     setShowReceiptPrompt(false);
-    setReceiptHtml("");
+    setReceiptUrl("");
     setReceiptDownloadUrl("");
   };
 
@@ -528,7 +522,7 @@ const CustomerOrderPortal = () => {
       <ReceiptModal
         open={showReceiptPrompt}
         onClose={handleCloseReceiptModal}
-        html={receiptHtml}
+        previewUrl={receiptUrl}
         role="customer"
         downloadUrl={receiptDownloadUrl}
         onDownload={handleDownloadFinalReceipt}

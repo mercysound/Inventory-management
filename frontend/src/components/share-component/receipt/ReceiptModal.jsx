@@ -6,7 +6,6 @@ const ReceiptModal = ({
   open,
   onClose,
   blob,
-  html,
   previewUrl,
   downloadUrl,
   mode = "final",
@@ -42,9 +41,7 @@ const ReceiptModal = ({
 
   if (!open) return null;
 
-  const iframeProps = html
-    ? { srcDoc: html }
-    : { src: previewUrl || objectUrl };
+  const iframeProps = { src: previewUrl || objectUrl };
 
   const handlePrint = () => {
     if (iframeRef.current?.contentWindow?.print) {
@@ -110,7 +107,7 @@ const ReceiptModal = ({
 
           {/* ================= BODY ================= */}
           <div className="flex-1 bg-gray-50 p-2 sm:p-4">
-            {(html || previewUrl || objectUrl) ? (
+            {(previewUrl || objectUrl) ? (
               <iframe
                 ref={iframeRef}
                 {...iframeProps}

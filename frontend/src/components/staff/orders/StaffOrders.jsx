@@ -65,7 +65,7 @@ const StaffOrders = () => {
   const [processing, setProcessing] = useState(false);
 
   const [showReceiptModal, setShowReceiptModal] = useState(false);
-  const [receiptHtml, setReceiptHtml] = useState("");
+  const [receiptUrl, setReceiptUrl] = useState("");
   const [receiptDownloadUrl, setReceiptDownloadUrl] = useState("");
   const [receiptMode, setReceiptMode] = useState("preview");
 
@@ -128,8 +128,6 @@ const StaffOrders = () => {
       } catch {
         setOrders(prev);
         toast.error("Failed to reduce quantity");
-      } finally {
-        setLoadingOrderId(null);
       }
       return;
     }
@@ -210,11 +208,8 @@ const StaffOrders = () => {
         paymentMethod: paymentMethod || "Not Specified",
       }).toString();
 
-      const res = await axiosInstance.get(`/orders/invoice?${query}`, {
-        responseType: "text",
-      });
-
-      setReceiptHtml(res.data);
+      const url = `/orders/invoice?${query}`;
+      setReceiptUrl(url);
       setReceiptDownloadUrl(`/orders/invoice?${query}&download=true`);
       setReceiptMode("preview");
       setShowReceiptModal(true);
@@ -248,11 +243,8 @@ const StaffOrders = () => {
           paymentMethod,
         }).toString();
 
-        const invoiceRes = await axiosInstance.get(`/orders/invoice?${query}`, {
-          responseType: "text",
-        });
-
-        setReceiptHtml(invoiceRes.data);
+        const url = `/orders/invoice?${query}`;
+        setReceiptUrl(url);
         setReceiptDownloadUrl(`/orders/invoice?${query}&download=true`);
         setReceiptMode("final");
         setShowReceiptModal(true);
@@ -284,7 +276,7 @@ const StaffOrders = () => {
   // ── Close modal ─────────────────────────────────────────────────────────
   const handleCloseReceiptModal = () => {
     setShowReceiptModal(false);
-    setReceiptHtml("");
+    setReceiptUrl("");
     setReceiptDownloadUrl("");
   };
 
@@ -374,7 +366,7 @@ const StaffOrders = () => {
       <ReceiptModal
         open={showReceiptModal}
         onClose={handleCloseReceiptModal}
-        html={receiptHtml}
+        previewUrl={receiptUrl}
         mode={receiptMode}
         role="staff"
         storeAccount={STORE_ACCOUNT}

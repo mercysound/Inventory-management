@@ -9,7 +9,7 @@ const AdminCompletedHistory = () => {
   const [loading, setLoading] = useState(true);
 
   // receipt modal
-  const [receiptHtml, setReceiptHtml] = useState("");
+  const [receiptUrl, setReceiptUrl] = useState("");
   const [receiptDownloadUrl, setReceiptDownloadUrl] = useState("");
   const [showReceiptPrompt, setShowReceiptPrompt] = useState(false);
 
@@ -65,11 +65,8 @@ const AdminCompletedHistory = () => {
       historyReceipt: true
     }).toString();
 
-    const res = await axiosInstance.get(`/orders/invoice?${query}`, {
-      responseType: "text",
-    });
-
-    setReceiptHtml(res.data);
+    const url = `/orders/invoice?${query}`;
+    setReceiptUrl(url);
     setReceiptDownloadUrl(`/orders/invoice?${query}&download=true`);
     setShowReceiptPrompt(true);
   } catch (err) {
@@ -99,7 +96,7 @@ const AdminCompletedHistory = () => {
       <ReceiptModal
         open={showReceiptPrompt}
         onClose={() => setShowReceiptPrompt(false)}
-        html={receiptHtml}
+        previewUrl={receiptUrl}
         mode="final"
         role="admin"
         downloadUrl={receiptDownloadUrl}

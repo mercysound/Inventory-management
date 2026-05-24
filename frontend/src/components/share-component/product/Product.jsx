@@ -113,8 +113,17 @@ const Product = () => {
   };
 
   useEffect(() => {
-    filterProducts(searchValue, selectedCategory);
-  }, [products]);
+    const normalizedSearch = String(searchValue || "").toLowerCase();
+    setFilteredProducts(
+      products.filter((p) => {
+        const matchesSearch = p.name.toLowerCase().includes(normalizedSearch);
+        const productCategoryId =
+          p.categoryId?._id || (typeof p.categoryId === "string" ? p.categoryId : "");
+        const matchesCategory = selectedCategory ? productCategoryId === selectedCategory : true;
+        return matchesSearch && matchesCategory;
+      })
+    );
+  }, [products, searchValue, selectedCategory]);
 
   const handleSearch = (e) => {
     const value = e.target.value.toLowerCase();
@@ -126,7 +135,12 @@ const Product = () => {
   const handleCategoryChange = (e) => {
     const category = e.target.value;
     setSelectedCategory(category);
-    filterProducts(searchValue, category);
+    if (category === "") {
+      // "All Categories" selected — refresh from server to ensure latest products
+      fetchProducts();
+    } else {
+      filterProducts(searchValue, category);
+    }
   };
 
   const handleEdit = (product) => {
@@ -199,7 +213,11 @@ const Product = () => {
 
       if (response.data.success) {
         if (!isEditing) {
-          try { await axiosInstance.delete("/products/draft"); } catch { }
+          try {
+            await axiosInstance.delete("/products/draft");
+          } catch (e) {
+            console.debug("Failed to clear product draft:", e);
+          }
         }
 
         toast.success(isEditing ? "Product updated successfully!" : "Product added successfully!");
