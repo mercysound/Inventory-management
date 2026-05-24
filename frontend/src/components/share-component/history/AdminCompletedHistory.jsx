@@ -4,21 +4,14 @@ import SharedOrderTable from "./SharedOrderTable";
 import axiosInstance from "../../../utils/axiosInstance";
 import ReceiptModal from "../receipt/ReceiptModal";
 
-// ── Helper: build invoice URL with auth token for iframe ────────────────────
-const buildInvoiceUrl = (params) => {
-  const token   = localStorage.getItem("pos-token") || "";
-  const baseUrl = axiosInstance.defaults.baseURL || "/api";
-  const qs      = new URLSearchParams({ ...params, token }).toString();
-  return `${baseUrl}/orders/invoice?${qs}`;
-};
-
 const AdminCompletedHistory = () => {
-  const [orders, setOrders]   = useState([]);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ── Receipt modal state ──────────────────────────────────────────────────
-  const [showReceiptModal, setShowReceiptModal] = useState(false);
-  const [receiptUrl, setReceiptUrl]             = useState("");
+  // receipt modal
+  const [receiptHtml, setReceiptHtml] = useState("");
+  const [receiptDownloadUrl, setReceiptDownloadUrl] = useState("");
+  const [showReceiptPrompt, setShowReceiptPrompt] = useState(false);
 
   const fetchOrders = async () => {
     try {
@@ -58,28 +51,36 @@ const AdminCompletedHistory = () => {
     }
   };
 
-  // ── View receipt ─────────────────────────────────────────────────────────
-  // Build the invoice URL directly — no blob fetch, no responseType:"blob".
-  // The iframe loads the full HTML receipt page with all buttons working.
-  const handleViewReceipt = (orderId, order) => {
-    const url = buildInvoiceUrl({
+  // ------------------ RECEIPT PREVIEW ------------------
+      const handleViewReceipt = async (orderId, order) => {
+    console.log(order);
+    
+  try {
+    const query = new URLSearchParams({
       orderId,
-      mode:           "final",
-      customerName:   order.buyerName || "Customer",
-      paymentMethod:  order.paymentMethod || "",
-      orderSource:    order.userOrdering?.role || "customer",
-      historyReceipt: "true",
+      mode: "final",
+      customerName: order.buyerName,
+      paymentMethod: order.paymentMethod,
+      orderSource:order.userOrdering.role, // ✅ REAL source from DB
+      historyReceipt: true
+    }).toString();
+
+    const res = await axiosInstance.get(`/orders/invoice?${query}`, {
+      responseType: "text",
     });
-    setReceiptUrl(url);
-    setShowReceiptModal(true);
-  };
 
-  const handleCloseReceipt = () => {
-    setShowReceiptModal(false);
-    setReceiptUrl("");
-  };
+    setReceiptHtml(res.data);
+    setReceiptDownloadUrl(`/orders/invoice?${query}&download=true`);
+    setShowReceiptPrompt(true);
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to load receipt");
+  }
+};
 
-  useEffect(() => { fetchOrders(); }, []);
+  useEffect(() => {
+    fetchOrders();
+  }, []);
 
   if (loading) return <p className="text-center py-10">Loading...</p>;
 
@@ -92,16 +93,16 @@ const AdminCompletedHistory = () => {
         role="admin"
         onDelete={deleteOrder}
         onClearAll={clearAllOrders}
-        onViewReceipt={handleViewReceipt}
+        onViewReceipt={handleViewReceipt} // ✅ add receipt button
       />
 
-      {/* Receipt Modal — iframe loads HTML receipt page directly */}
       <ReceiptModal
-        open={showReceiptModal}
-        onClose={handleCloseReceipt}
-        previewUrl={receiptUrl}
+        open={showReceiptPrompt}
+        onClose={() => setShowReceiptPrompt(false)}
+        html={receiptHtml}
         mode="final"
         role="admin"
+        downloadUrl={receiptDownloadUrl}
       />
     </div>
   );

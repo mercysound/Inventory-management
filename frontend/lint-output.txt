@@ -1,0 +1,134 @@
+
+> frontend@0.0.0 lint
+> eslint .
+
+
+D:\Inventory-management\frontend\src\components\admin\category\Category.jsx
+  41:6  warning  React Hook useEffect has a missing dependency: 'fetchCategories'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\Inventory-management\frontend\src\components\admin\category\CategoryForm.jsx
+  2:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\Inventory-management\frontend\src\components\admin\dashboard\Summary.jsx
+    4:10  error    'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                 no-unused-vars
+  256:37  warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  261:38  error    'topCategories' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                 no-unused-vars
+  261:58  error    'recentActivity' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                no-unused-vars
+
+D:\Inventory-management\frontend\src\components\admin\purchase\PlacedOrders.jsx
+  105:14  error  'err' is defined but never used    no-unused-vars
+  129:14  error  'error' is defined but never used  no-unused-vars
+
+D:\Inventory-management\frontend\src\components\admin\supplier\SupplierForm.jsx
+  2:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\Inventory-management\frontend\src\components\admin\supplier\Suppliers.jsx
+   3:10  error    'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                      no-unused-vars
+  54:6   warning  React Hook useEffect has a missing dependency: 'fetchSuppliers'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\Inventory-management\frontend\src\components\admin\user\AddUserPanel.jsx
+  3:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\Inventory-management\frontend\src\components\admin\user\EditUserModal.jsx
+  3:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\Inventory-management\frontend\src\components\admin\user\EmailBroadcastPanel.jsx
+  3:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\Inventory-management\frontend\src\components\admin\user\Users.jsx
+   3:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                                   no-unused-vars
+  16:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\Inventory-management\frontend\src\components\admin\user\UsersTable.jsx
+  2:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\Inventory-management\frontend\src\components\customer\CustomerOrderPortal\CustomerOrderPortal.jsx
+    3:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+   20:27  error  'Icon' is defined but never used                                               no-unused-vars
+   61:26  error  Unexpected constant nullishness on the left-hand side of a `??` expression     no-constant-binary-expression
+  176:15  error  Empty block statement                                                          no-empty
+  204:15  error  Empty block statement                                                          no-empty
+
+D:\Inventory-management\frontend\src\components\customer\CustomerOrderPortal\CustomerOrderTable.jsx
+  2:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\Inventory-management\frontend\src\components\customer\CustomerOrderPortal\PaystackButton.jsx
+  2:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\Inventory-management\frontend\src\components\customer\CustomerOrderPortal\PendingOrdersModal.jsx
+  4:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\Inventory-management\frontend\src\components\customer\customerProduct\CustomerProducts.jsx
+  3:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\Inventory-management\frontend\src\components\customer\customerProduct\OrderModal.jsx
+   2:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u               no-unused-vars
+  58:19  error  'setLoading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\Inventory-management\frontend\src\components\share-component\complete-profile\CompleteProfile.jsx
+   4:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u         no-unused-vars
+  17:11  error  'user' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\Inventory-management\frontend\src\components\share-component\history\SharedOrderTable.jsx
+  28:20  error  React Hook "useMemo" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  react-hooks/rules-of-hooks
+  42:18  error  React Hook "useMemo" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  react-hooks/rules-of-hooks
+
+D:\Inventory-management\frontend\src\components\share-component\product\Product.jsx
+  117:6   warning  React Hook useEffect has missing dependencies: 'filterProducts', 'searchValue', and 'selectedCategory'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  202:72  error    Empty block statement                                                                                                                                       no-empty
+
+D:\Inventory-management\frontend\src\components\share-component\product\ProductTable.jsx
+  224:4  warning  React Hook useEffect has a missing dependency: 'visibleCount'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\Inventory-management\frontend\src\components\share-component\receipt\ReceiptModal.jsx
+  2:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\Inventory-management\frontend\src\components\share-component\sidebar\Sidebar.jsx
+   6:10  error    'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                                                           no-unused-vars
+  47:6   warning  React Hook useEffect has missing dependencies: 'adminMenu', 'customerMenu', and 'customerUserMenu'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\Inventory-management\frontend\src\components\staff\orders\StaffOrders.jsx
+    3:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+   27:25  error  Unexpected constant nullishness on the left-hand side of a `??` expression     no-constant-binary-expression
+   81:14  error  'err' is defined but never used                                                no-unused-vars
+  115:15  error  Empty block statement                                                          no-empty
+  132:9   error  'setLoadingOrderId' is not defined                                             no-undef
+  149:15  error  Empty block statement                                                          no-empty
+  221:14  error  'err' is defined but never used                                                no-unused-vars
+
+D:\Inventory-management\frontend\src\components\staff\orders\StaffTable.jsx
+  2:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\Inventory-management\frontend\src\context\AuthContext.jsx
+    3:8   error    'api' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                                      no-unused-vars
+   98:6   warning  React Hook useEffect has a missing dependency: 'scheduleAutoLogout'. Either include it or remove the dependency array           react-hooks/exhaustive-deps
+  107:14  error    Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\Inventory-management\frontend\src\hooks\useLocalStorage.js
+  2:20  error  'useEffect' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\Inventory-management\frontend\src\pages\ForgotPassword.jsx
+  3:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\Inventory-management\frontend\src\pages\LandingPage.jsx
+   3:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                  no-unused-vars
+  22:10  error  'googleLoading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\Inventory-management\frontend\src\pages\ResetPassword.jsx
+   3:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  36:14  error  'error' is defined but never used                                              no-unused-vars
+
+D:\Inventory-management\frontend\src\schemas\validationSchemas.js
+   31:17  error  Unnecessary escape character: \+  no-useless-escape
+   94:17  error  Unnecessary escape character: \+  no-useless-escape
+  147:17  error  Unnecessary escape character: \+  no-useless-escape
+
+D:\Inventory-management\frontend\src\test\setup.js
+   2:10  error  'expect' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  33:1   error  'global' is not defined                                                        no-undef
+
+D:\Inventory-management\frontend\vitest.config.js
+  22:25  error  '__dirname' is not defined  no-undef
+
+G£û 61 problems (54 errors, 7 warnings)
+
