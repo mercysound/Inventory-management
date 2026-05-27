@@ -3,15 +3,13 @@ import { toast } from "react-toastify";
 import SharedOrderTable from "./SharedOrderTable";
 import axiosInstance from "../../../utils/axiosInstance";
 import ReceiptModal from "../receipt/ReceiptModal";
+import buildInvoiceUrl from "../../../utils/buildInvoiceUrl";
 
 const AdminCompletedHistory = () => {
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders]   = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // receipt modal
-  const [receiptUrl, setReceiptUrl] = useState("");
-  const [receiptDownloadUrl, setReceiptDownloadUrl] = useState("");
-  const [showReceiptPrompt, setShowReceiptPrompt] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [receiptUrl, setReceiptUrl]             = useState("");
 
   const fetchOrders = async () => {
     try {
@@ -51,55 +49,44 @@ const AdminCompletedHistory = () => {
     }
   };
 
-  // ------------------ RECEIPT PREVIEW ------------------
-      const handleViewReceipt = async (orderId, order) => {
-    console.log(order);
-    
-  try {
-    const query = new URLSearchParams({
+  const handleViewReceipt = (orderId, order) => {
+    const url = buildInvoiceUrl({
       orderId,
-      mode: "final",
-      customerName: order.buyerName,
-      paymentMethod: order.paymentMethod,
-      orderSource:order.userOrdering.role, // ✅ REAL source from DB
-      historyReceipt: true
-    }).toString();
-
-    const url = `/orders/invoice?${query}`;
+      mode:           "final",
+      customerName:   order.buyerName || "Customer",
+      paymentMethod:  order.paymentMethod || "",
+      orderSource:    order.userOrdering?.role || "customer",
+      historyReceipt: "true",
+    });
     setReceiptUrl(url);
-    setReceiptDownloadUrl(`/orders/invoice?${query}&download=true`);
-    setShowReceiptPrompt(true);
-  } catch (err) {
-    console.error(err);
-    toast.error("Failed to load receipt");
-  }
-};
+    setShowReceiptModal(true);
+  };
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
+  const handleCloseReceipt = () => {
+    setShowReceiptModal(false);
+    setReceiptUrl("");
+  };
+
+  useEffect(() => { fetchOrders(); }, []);
 
   if (loading) return <p className="text-center py-10">Loading...</p>;
 
   return (
     <div className="p-5">
       <h2 className="text-2xl font-bold mb-3">📜 Admin Completed Orders</h2>
-
       <SharedOrderTable
         orders={orders}
         role="admin"
         onDelete={deleteOrder}
         onClearAll={clearAllOrders}
-        onViewReceipt={handleViewReceipt} // ✅ add receipt button
+        onViewReceipt={handleViewReceipt}
       />
-
       <ReceiptModal
-        open={showReceiptPrompt}
-        onClose={() => setShowReceiptPrompt(false)}
+        open={showReceiptModal}
+        onClose={handleCloseReceipt}
         previewUrl={receiptUrl}
         mode="final"
         role="admin"
-        downloadUrl={receiptDownloadUrl}
       />
     </div>
   );

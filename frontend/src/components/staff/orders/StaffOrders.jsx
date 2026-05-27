@@ -5,6 +5,7 @@ import axiosInstance from "../../../utils/axiosInstance";
 import StaffTable from "./StaffTable";
 import StaffSkeleton from "./StaffSkeleton";
 import ReceiptModal from "../../share-component/receipt/ReceiptModal";
+import buildInvoiceUrl from "../../../utils/buildInvoiceUrl";
 
 const STORE_ACCOUNT = {
   bankName: "MELECH BANK",
@@ -14,25 +15,19 @@ const STORE_ACCOUNT = {
 
 const PAYMENT_OPTIONS = ["card", "bank_transfer", "cash_on_delivery", "paystack"];
 
-// ─── Stock error parser ─────────────────────────────────────────────────────
-// Backend sends: STOCK_ERROR:ProductName:requestedQty:remainingStock
-// Staff get a more operational message — they need to know what to adjust.
+// ── Stock error parser ───────────────────────────────────────────────────────
 const parseOrderError = (err) => {
   const raw = err?.response?.data?.message || err?.message || "";
 
   if (raw.startsWith("STOCK_ERROR:")) {
-    const parts     = raw.replace("STOCK_ERROR:", "").split(":");
+    const parts       = raw.replace("STOCK_ERROR:", "").split(":");
     const productName = parts[0] || "This item";
     const requested   = Number(parts[1]) || 0;
     const remaining   = Number(parts[2]) ?? 0;
-
-    let stockLine = "";
-    if (remaining === 0) {
-      stockLine = "It is now completely out of stock — remove it from the cart.";
-    } else {
-      stockLine = `Only ${remaining} unit${remaining !== 1 ? "s" : ""} available, but the cart has ${requested}. Please reduce the quantity to ${remaining} or less and try again.`;
-    }
-
+    const stockLine   =
+      remaining === 0
+        ? "It is now completely out of stock — remove it from the cart."
+        : `Only ${remaining} unit${remaining !== 1 ? "s" : ""} available, but the cart has ${requested}. Please reduce the quantity to ${remaining} or less and try again.`;
     return {
       title: "Stock Conflict",
       message: `"${productName}" could not be reserved — a customer may have just purchased the last units. ${stockLine}`,
@@ -57,28 +52,33 @@ const parseOrderError = (err) => {
   };
 };
 
+// ── Helper: build the invoice URL with auth token ────────────────────────────
+// buildInvoiceUrl imported from src/utils/buildInvoiceUrl.js
+// Produces an absolute URL so React Router is bypassed by the iframe.
+
 const StaffOrders = () => {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [orders, setOrders]             = useState([]);
+  const [loading, setLoading]           = useState(true);
   const [paymentMethod, setPaymentMethod] = useState("");
   const [customerName, setCustomerName] = useState("");
-  const [processing, setProcessing] = useState(false);
+  const [processing, setProcessing]     = useState(false);
 
+  // ── Receipt modal state ──────────────────────────────────────────────────
+  // receiptUrl: direct HTML invoice URL — no blob needed.
   const [showReceiptModal, setShowReceiptModal] = useState(false);
-  const [receiptUrl, setReceiptUrl] = useState("");
-  const [receiptDownloadUrl, setReceiptDownloadUrl] = useState("");
-  const [receiptMode, setReceiptMode] = useState("preview");
+  const [receiptUrl, setReceiptUrl]             = useState("");
+  const [receiptMode, setReceiptMode]           = useState("preview");
 
-  // ── Fetch orders ────────────────────────────────────────────────────────
+  // ── Fetch orders ─────────────────────────────────────────────────────────
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axiosInstance.get("/orders");
+      const res  = await axiosInstance.get("/orders");
       const data = Array.isArray(res.data)
         ? res.data
         : res.data.data || res.data.orders || [];
       setOrders(data);
-    } catch (err) {
+    } catch {
       toast.error("Failed to fetch orders.");
     } finally {
       setLoading(false);
@@ -92,11 +92,7 @@ const StaffOrders = () => {
     return () => window.removeEventListener("ordersUpdated", handler);
   }, [fetchOrders]);
 
-  // ── Cart actions — optimistic UI ────────────────────────────────────────
-  // State is updated INSTANTLY on click. Server call happens in background.
-  // If server fails, state rolls back and error toast shows.
-  // This removes the full page reload that was happening before.
-
+  // ── Cart actions (optimistic) ────────────────────────────────────────────
   const handleIncreaseQty = async (orderId) => {
     const prev = orders;
     setOrders((os) =>
@@ -110,9 +106,7 @@ const StaffOrders = () => {
       await axiosInstance.post(`/orders/increase/${orderId}`);
     } catch (err) {
       setOrders(prev);
-      const msg = err?.response?.data?.message || "Failed to increase quantity";
-      toast.error(msg);
-    } finally {
+      toast.error(err?.response?.data?.message || "Failed to increase quantity");
     }
   };
 
@@ -144,7 +138,6 @@ const StaffOrders = () => {
     } catch {
       setOrders(prev);
       toast.error("Failed to reduce quantity");
-    } finally {
     }
   };
 
@@ -156,7 +149,7 @@ const StaffOrders = () => {
       await axiosInstance.delete(`/orders/remove/${orderId}`);
       toast.success("Item deleted");
     } catch {
-      setOrders(prev); // rollback
+      setOrders(prev);
       toast.error("Failed to delete item");
     }
   };
@@ -177,56 +170,43 @@ const StaffOrders = () => {
     0
   );
 
-  // ── Error handler using the parser ──────────────────────────────────────
+  // ── Error handler ────────────────────────────────────────────────────────
   const handleApiError = (err) => {
     const { title, message, type } = parseOrderError(err);
-
     if (type === "stock") {
       toast.error(
         <div>
           <p className="font-semibold text-sm">{title}</p>
           <p className="text-xs mt-1 leading-relaxed">{message}</p>
         </div>,
-        { autoClose: 9000 } // staff need more time to read the action required
+        { autoClose: 9000 }
       );
-      // Refresh so staff can see the current quantities immediately
       fetchOrders();
     } else {
       toast.error(`${title}: ${message}`);
     }
   };
 
-  // ── Preview invoice ─────────────────────────────────────────────────────
-  const previewInvoice = async () => {
-    if (!orders.length) return toast.error("No orders to preview");
-
-    try {
-      setProcessing(true);
-      const query = new URLSearchParams({
-        mode: "preview",
-        customerName: customerName || "Walk-in Customer",
-        paymentMethod: paymentMethod || "Not Specified",
-      }).toString();
-
-      const url = `/orders/invoice?${query}`;
-      setReceiptUrl(url);
-      setReceiptDownloadUrl(`/orders/invoice?${query}&download=true`);
-      setReceiptMode("preview");
-      setShowReceiptModal(true);
-    } catch (err) {
-      toast.error("Failed to generate preview");
-    } finally {
-      setProcessing(false);
-    }
+  // ── Preview invoice ──────────────────────────────────────────────────────
+  // Build the invoice URL and open the modal — no blob fetch needed.
+  const previewInvoice = () => {
+    if (!orders.length) { toast.error("No orders to preview"); return; }
+    const url = buildInvoiceUrl({
+      mode:          "preview",
+      customerName:  customerName || "Walk-in Customer",
+      paymentMethod: paymentMethod || "Not Specified",
+    });
+    setReceiptUrl(url);
+    setReceiptMode("preview");
+    setShowReceiptModal(true);
   };
 
-  // ── Complete order ──────────────────────────────────────────────────────
+  // ── Complete order ───────────────────────────────────────────────────────
   const completeOrder = async () => {
-    if (!paymentMethod) return toast.error("Select payment method first");
-    if (!orders.length) return toast.error("No orders to complete");
+    if (!paymentMethod)  { toast.error("Select payment method first"); return; }
+    if (!orders.length)  { toast.error("No orders to complete"); return; }
 
     setProcessing(true);
-
     try {
       const res = await axiosInstance.post("/orders/complete", {
         paymentMethod,
@@ -236,16 +216,14 @@ const StaffOrders = () => {
       if (res.data.success) {
         toast.success("Order completed successfully");
 
-        const query = new URLSearchParams({
-          mode: "final",
-          orderSource: "staff",
-          customerName: customerName || "Walk-in Customer",
+        // Build the final receipt URL and open the modal
+        const url = buildInvoiceUrl({
+          mode:          "final",
+          orderSource:   "staff",
+          customerName:  customerName || "Walk-in Customer",
           paymentMethod,
-        }).toString();
-
-        const url = `/orders/invoice?${query}`;
+        });
         setReceiptUrl(url);
-        setReceiptDownloadUrl(`/orders/invoice?${query}&download=true`);
         setReceiptMode("final");
         setShowReceiptModal(true);
 
@@ -260,24 +238,10 @@ const StaffOrders = () => {
     }
   };
 
-  // ── Download receipt ────────────────────────────────────────────────────
-  const handleDownloadReceipt = () => {
-    if (!receiptDownloadUrl) return;
-    const link = document.createElement("a");
-    link.href = receiptDownloadUrl;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    handleCloseReceiptModal();
-  };
-
-  // ── Close modal ─────────────────────────────────────────────────────────
+  // ── Close receipt modal ──────────────────────────────────────────────────
   const handleCloseReceiptModal = () => {
     setShowReceiptModal(false);
     setReceiptUrl("");
-    setReceiptDownloadUrl("");
   };
 
   return (
@@ -327,7 +291,7 @@ const StaffOrders = () => {
                 disabled={processing}
                 className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition-all disabled:opacity-60"
               >
-                Complete Order
+                {processing ? "Processing..." : "Complete Order"}
               </button>
               <button
                 onClick={handleClearAll}
@@ -342,9 +306,7 @@ const StaffOrders = () => {
         {/* Orders Table */}
         {loading ? (
           <div className="space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <StaffSkeleton key={i} />
-            ))}
+            {Array.from({ length: 3 }).map((_, i) => <StaffSkeleton key={i} />)}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -362,7 +324,8 @@ const StaffOrders = () => {
         </div>
       </motion.div>
 
-      {/* Receipt Modal */}
+      {/* Receipt Modal — iframe loads the HTML receipt page directly.
+          All PDF / Save Image / Print / Share buttons are inside the page. */}
       <ReceiptModal
         open={showReceiptModal}
         onClose={handleCloseReceiptModal}
@@ -370,8 +333,6 @@ const StaffOrders = () => {
         mode={receiptMode}
         role="staff"
         storeAccount={STORE_ACCOUNT}
-        downloadUrl={receiptDownloadUrl}
-        onDownload={handleDownloadReceipt}
       />
     </>
   );
