@@ -435,8 +435,8 @@ const generateInvoice = async (req, res) => {
     /* ======================================================
        3  TOTALS
     ====================================================== */
-    const totalAmount   = orders.reduce((sum, o) => sum + o.totalPrice, 0);
-    const orderIdShort  = receiptOrderId
+    const totalAmount  = orders.reduce((sum, o) => sum + o.totalPrice, 0);
+    const orderIdShort = receiptOrderId
       ? String(receiptOrderId).slice(-10).toUpperCase()
       : "N/A";
     const dateStr = new Date().toLocaleString("en-NG", {
@@ -446,17 +446,16 @@ const generateInvoice = async (req, res) => {
 
     /* ======================================================
        4  RAW PDF DOWNLOAD - only when ?download=true
+          React modal Download button hits this with ?download=true
     ====================================================== */
-    const wantRaw    = req.query.download === "true";
-    const downloadUrl =
-      "?" + new URLSearchParams({ ...req.query, download: "true" }).toString();
+    const wantRaw = req.query.download === "true";
 
     if (wantRaw) {
-      const receiptWidth  = 300;
-      const margin        = 20;
-      const contentWidth  = receiptWidth - margin * 2;
-      const doc           = new PDFDocument({ margin, size: [receiptWidth, 800] });
-      const chunks        = [];
+      const receiptWidth = 300;
+      const margin       = 20;
+      const contentWidth = receiptWidth - margin * 2;
+      const doc          = new PDFDocument({ margin, size: [receiptWidth, 800] });
+      const chunks       = [];
       doc.on("data", (c) => chunks.push(c));
 
       await new Promise((resolve, reject) => {
@@ -603,18 +602,16 @@ const generateInvoice = async (req, res) => {
     }
 
     /* ======================================================
-       5  HTML RECEIPT - all devices
+       5  HTML RECEIPT - pure display, no scripts at all.
+          CSP blocks inline scripts and external CDNs inside
+          the iframe, so we serve clean HTML only.
+          All action buttons (Download, Print) live in the
+          React ReceiptModal component outside the iframe.
     ====================================================== */
+
     const statusColor  = paymentStatus === "Paid" ? "#15803d" : "#b91c1c";
     const statusBg     = paymentStatus === "Paid" ? "#f0fdf4" : "#fef2f2";
     const statusBorder = paymentStatus === "Paid" ? "#bbf7d0" : "#fecaca";
-
-    const safeCustomer = customerName.replace(/"/g, "&quot;");
-    const safeDateStr  = dateStr.replace(/"/g, "&quot;");
-    const safeTotal    = totalAmount.toLocaleString();
-    const safeOrderId  = orderIdShort;
-    const safeStatus   = paymentStatus;
-    const safeDlUrl    = downloadUrl.replace(/"/g, "&quot;");
 
     const itemRows = orders.map((o, idx) => {
       const name = o.product.name || "-";
@@ -647,288 +644,113 @@ const generateInvoice = async (req, res) => {
       )
       : "";
 
-    // The entire page is built as a joined array so the string </script>
-    // never appears literally in Node.js source, preventing the HTML
-    // parser from prematurely ending any inline script block.
-    const lines = [];
+    // Pure HTML — zero JavaScript, zero external scripts.
+    // CSP compliance guaranteed.
+    const html = [
+      '<!DOCTYPE html>',
+      '<html lang="en">',
+      '<head>',
+      '<meta charset="UTF-8"/>',
+      '<meta name="viewport" content="width=device-width,initial-scale=1"/>',
+      '<title>Receipt - MELECH STORE</title>',
+      '<style>',
+      '*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}',
+      'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f0f2f5;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:16px 12px 32px;color:#111827}',
+      '.card{background:#fff;width:100%;max-width:480px;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.10)}',
+      '.store-hd{background:#1E3A8A;color:#fff;text-align:center;padding:22px 16px 16px}',
+      '.store-logo{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.18);display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;margin-bottom:8px;letter-spacing:.05em}',
+      '.store-name{font-size:1.1rem;font-weight:700;letter-spacing:.1em}',
+      '.store-sub{font-size:.7rem;opacity:.7;margin-top:3px;letter-spacing:.06em}',
+      '.dash{border:none;border-top:1.5px dashed #e5e7eb;margin:0 16px}',
+      '.meta{padding:14px 18px;display:flex;flex-direction:column;gap:5px}',
+      '.meta-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.78rem;line-height:1.4}',
+      '.meta-lbl{font-weight:600;color:#6b7280;flex-shrink:0}',
+      '.meta-val{color:#111827;text-align:right;word-break:break-all}',
+      '.status-badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.72rem;font-weight:700;background:' + statusBg + ';color:' + statusColor + ';border:1px solid ' + statusBorder + '}',
+      'table{width:100%;border-collapse:collapse;font-size:.75rem}',
+      'thead tr{background:#1E3A8A;color:#fff}',
+      'thead th{padding:9px 6px;font-weight:700;font-size:.68rem;letter-spacing:.04em;text-align:left;line-height:1.3}',
+      'thead th small{display:block;font-weight:400;opacity:.65;font-size:.6rem;letter-spacing:0}',
+      '.td-num{text-align:center;color:#9ca3af;font-size:.68rem;padding:8px 4px;width:22px;vertical-align:top}',
+      '.td-item{padding:8px 6px;vertical-align:top;width:42%}',
+      '.td-c{text-align:center;padding:8px 4px;vertical-align:middle;width:14%}',
+      '.td-r{text-align:right;padding:8px 6px;vertical-align:middle;width:20%}',
+      '.td-bold{font-weight:700;color:#111827}',
+      '.r-even{background:#f9fafb}',
+      '.r-odd{background:#fff}',
+      '.i-name{display:block;font-weight:700;font-size:.76rem;color:#1f2937}',
+      '.i-cat{display:block;font-size:.65rem;color:#1E3A8A;font-weight:600;margin-top:2px}',
+      '.i-desc{display:block;font-size:.65rem;color:#6b7280;margin-top:2px}',
+      '.total-bar{display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border-top:2px solid #111827;margin-top:2px}',
+      '.total-lbl{font-size:.85rem;font-weight:700}',
+      '.total-amount{font-size:1.1rem;font-weight:800;color:#1E3A8A}',
+      '.pay-box{margin:0 16px 16px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 14px;font-size:.75rem}',
+      '.pay-title{font-weight:700;color:#b91c1c;font-size:.74rem;text-align:center;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em}',
+      '.pay-row{display:flex;justify-content:space-between;gap:8px;padding:3px 0;color:#374151}',
+      '.pay-lbl{font-weight:600;color:#6b7280;flex-shrink:0}',
+      '.pay-acct{font-weight:700;color:#111827;letter-spacing:.04em}',
+      '.footer{text-align:center;padding:12px 16px 18px;font-size:.68rem;color:#9ca3af;line-height:1.7;border-top:1.5px dashed #e5e7eb}',
+      '@media print{body{background:#fff;padding:0}.card{box-shadow:none;border-radius:0;max-width:100%}}',
+      '</style>',
+      '</head>',
+      '<body>',
+      '<div class="card">',
 
-    lines.push('<!DOCTYPE html>');
-    lines.push('<html lang="en">');
-    lines.push('<head>');
-    lines.push('<meta charset="UTF-8"/>');
-    lines.push('<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>');
-    lines.push('<title>Receipt - MELECH STORE</title>');
-    lines.push('<style>');
-    lines.push('*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}');
-    lines.push('body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f0f2f5;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px 12px 48px;color:#111827}');
-    lines.push('.actions{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;justify-content:center;width:100%;max-width:480px}');
-    lines.push('.btn{flex:1;min-width:90px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 10px;border-radius:10px;font-size:.78rem;font-weight:600;border:none;cursor:pointer;text-decoration:none;letter-spacing:.02em;transition:opacity .15s,transform .1s;white-space:nowrap;-webkit-tap-highlight-color:transparent}');
-    lines.push('.btn:disabled{opacity:.55;cursor:not-allowed;transform:none!important}');
-    lines.push('.btn:active{transform:scale(.97);opacity:.88}');
-    lines.push('.btn-dl{background:#1E3A8A;color:#fff}');
-    lines.push('.btn-img{background:#7c3aed;color:#fff}');
-    lines.push('.btn-print{background:#fff;color:#374151;border:1.5px solid #e5e7eb}');
-    lines.push('.btn-share{background:#16a34a;color:#fff}');
-    lines.push('.btn svg{flex-shrink:0}');
-    lines.push('.share-wrap{position:relative;flex:1;min-width:90px}');
-    lines.push('.share-picker{display:none;position:absolute;bottom:calc(100% + 8px);left:0;right:0;min-width:220px;background:#fff;border:1.5px solid #e5e7eb;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.15);overflow:hidden;z-index:9999}');
-    lines.push('.share-opt{display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border:none;background:transparent;cursor:pointer;text-align:left;font-family:inherit;transition:background .12s;-webkit-tap-highlight-color:transparent}');
-    lines.push('.share-opt:hover,.share-opt:active{background:#f3f4f6}');
-    lines.push('.share-opt svg{flex-shrink:0;color:#6b7280}');
-    lines.push('.share-opt span{display:flex;flex-direction:column;gap:2px}');
-    lines.push('.share-opt strong{font-size:.78rem;color:#111827;font-weight:600}');
-    lines.push('.share-opt small{font-size:.68rem;color:#9ca3af;font-weight:400}');
-    lines.push('.opt-divider{height:1px;background:#f3f4f6;margin:0 12px}');
-    lines.push('.card{background:#fff;width:100%;max-width:480px;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.10)}');
-    lines.push('.store-hd{background:#1E3A8A;color:#fff;text-align:center;padding:22px 16px 16px}');
-    lines.push('.store-logo{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.18);display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;margin-bottom:8px;letter-spacing:.05em}');
-    lines.push('.store-name{font-size:1.1rem;font-weight:700;letter-spacing:.1em}');
-    lines.push('.store-sub{font-size:.7rem;opacity:.7;margin-top:3px;letter-spacing:.06em}');
-    lines.push('.dash{border:none;border-top:1.5px dashed #e5e7eb;margin:0 16px}');
-    lines.push('.meta{padding:14px 18px;display:flex;flex-direction:column;gap:5px}');
-    lines.push('.meta-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.78rem;line-height:1.4}');
-    lines.push('.meta-lbl{font-weight:600;color:#6b7280;flex-shrink:0}');
-    lines.push('.meta-val{color:#111827;text-align:right;word-break:break-all}');
-    lines.push('.status-badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.72rem;font-weight:700;background:' + statusBg + ';color:' + statusColor + ';border:1px solid ' + statusBorder + '}');
-    lines.push('table{width:100%;border-collapse:collapse;font-size:.75rem}');
-    lines.push('thead tr{background:#1E3A8A;color:#fff}');
-    lines.push('thead th{padding:9px 6px;font-weight:700;font-size:.68rem;letter-spacing:.04em;text-align:left;line-height:1.3}');
-    lines.push('thead th small{display:block;font-weight:400;opacity:.65;font-size:.6rem;letter-spacing:0}');
-    lines.push('.td-num{text-align:center;color:#9ca3af;font-size:.68rem;padding:8px 4px;width:22px;vertical-align:top}');
-    lines.push('.td-item{padding:8px 6px;vertical-align:top;width:42%}');
-    lines.push('.td-c{text-align:center;padding:8px 4px;vertical-align:middle;width:14%}');
-    lines.push('.td-r{text-align:right;padding:8px 6px;vertical-align:middle;width:20%}');
-    lines.push('.td-bold{font-weight:700;color:#111827}');
-    lines.push('.r-even{background:#f9fafb}');
-    lines.push('.r-odd{background:#fff}');
-    lines.push('.i-name{display:block;font-weight:700;font-size:.76rem;color:#1f2937}');
-    lines.push('.i-cat{display:block;font-size:.65rem;color:#1E3A8A;font-weight:600;margin-top:2px}');
-    lines.push('.i-desc{display:block;font-size:.65rem;color:#6b7280;margin-top:2px}');
-    lines.push('.total-bar{display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border-top:2px solid #111827;margin-top:2px}');
-    lines.push('.total-lbl{font-size:.85rem;font-weight:700}');
-    lines.push('.total-amount{font-size:1.1rem;font-weight:800;color:#1E3A8A}');
-    lines.push('.pay-box{margin:0 16px 16px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 14px;font-size:.75rem}');
-    lines.push('.pay-title{font-weight:700;color:#b91c1c;font-size:.74rem;text-align:center;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em}');
-    lines.push('.pay-row{display:flex;justify-content:space-between;gap:8px;padding:3px 0;color:#374151}');
-    lines.push('.pay-lbl{font-weight:600;color:#6b7280;flex-shrink:0}');
-    lines.push('.pay-acct{font-weight:700;color:#111827;letter-spacing:.04em}');
-    lines.push('.footer{text-align:center;padding:12px 16px 18px;font-size:.68rem;color:#9ca3af;line-height:1.7;border-top:1.5px dashed #e5e7eb}');
-    lines.push('@media print{body{background:#fff;padding:0}.actions{display:none!important}.card{box-shadow:none;border-radius:0;max-width:100%}}');
-    lines.push('@media(min-width:600px){body{padding:32px 24px 64px}.btn{font-size:.84rem}table{font-size:.8rem}}');
-    lines.push('</style>');
-    lines.push('</head>');
-    lines.push('<body>');
+      // Store header
+      '<div class="store-hd">',
+      '<div class="store-logo">MS</div>',
+      '<div class="store-name">MELECH STORE</div>',
+      '<div class="store-sub">Official Sales Receipt</div>',
+      '</div>',
 
-    // ── ACTION BAR ──────────────────────────────────────────────────────────
-    lines.push('<div class="actions" id="actionBar">');
+      '<hr class="dash"/>',
 
-    // 1. Download PDF
-    lines.push('<a class="btn btn-dl" id="btnPdf" href="' + safeDlUrl + '" download="receipt-' + safeOrderId + '.pdf">');
-    lines.push('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>');
-    lines.push('PDF</a>');
+      // Order meta
+      '<div class="meta">',
+      '<div class="meta-row"><span class="meta-lbl">Order ID</span><span class="meta-val">#' + orderIdShort + '</span></div>',
+      '<div class="meta-row"><span class="meta-lbl">Date</span><span class="meta-val">' + dateStr + '</span></div>',
+      '<div class="meta-row"><span class="meta-lbl">Customer</span><span class="meta-val">' + customerName + '</span></div>',
+      '<div class="meta-row"><span class="meta-lbl">Payment method</span><span class="meta-val">' + paymentMethod + '</span></div>',
+      '<div class="meta-row"><span class="meta-lbl">Status</span><span class="meta-val"><span class="status-badge">' + paymentStatus + '</span></span></div>',
+      '</div>',
 
-    // 2. Save Image
-    lines.push('<button class="btn btn-img" id="btnSaveImg">');
-    lines.push('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>');
-    lines.push('Save image</button>');
+      '<hr class="dash"/>',
 
-    // 3. Print
-    lines.push('<button class="btn btn-print" id="btnPrint">');
-    lines.push('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>');
-    lines.push('Print</button>');
+      // Items table
+      '<table>',
+      '<thead><tr>',
+      '<th style="width:22px;text-align:center">#</th>',
+      '<th>Item <small>Name / desc / category</small></th>',
+      '<th style="text-align:center">Qty</th>',
+      '<th style="text-align:right">Unit <small>price</small></th>',
+      '<th style="text-align:right">Subtotal <small>Qty x price</small></th>',
+      '</tr></thead>',
+      '<tbody>' + itemRows + '</tbody>',
+      '</table>',
 
-    // 4. Share + picker
-    lines.push('<div class="share-wrap">');
-    lines.push('<button class="btn btn-share" id="btnShare" style="width:100%">');
-    lines.push('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>');
-    lines.push('Share &#9662;</button>');
-    lines.push('<div class="share-picker" id="sharePicker">');
-    // Option A — image
-    lines.push('<button class="share-opt" id="btnShareImg">');
-    lines.push('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>');
-    lines.push('<span><strong>Share as Image</strong><small>PNG &middot; Best for WhatsApp &amp; Facebook</small></span>');
-    lines.push('</button>');
-    lines.push('<div class="opt-divider"></div>');
-    // Option B — pdf
-    lines.push('<button class="share-opt" id="btnSharePdf">');
-    lines.push('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>');
-    lines.push('<span><strong>Share as PDF</strong><small>Full document &middot; Best for email &amp; print</small></span>');
-    lines.push('</button>');
-    lines.push('</div>'); // end share-picker
-    lines.push('</div>'); // end share-wrap
+      // Total
+      '<div class="total-bar">',
+      '<span class="total-lbl">Total &nbsp;<span style="font-weight:400;font-size:.78rem;color:#6b7280">(' + orders.length + ' item' + (orders.length > 1 ? 's' : '') + ')</span></span>',
+      '<span class="total-amount">&#8358;' + totalAmount.toLocaleString() + '</span>',
+      '</div>',
 
-    lines.push('</div>'); // end .actions
+      '<hr class="dash"/>',
 
-    // ── RECEIPT CARD ────────────────────────────────────────────────────────
-    lines.push('<div class="card" id="receipt">');
-    lines.push('<div class="store-hd">');
-    lines.push('<div class="store-logo">MS</div>');
-    lines.push('<div class="store-name">MELECH STORE</div>');
-    lines.push('<div class="store-sub">Official Sales Receipt</div>');
-    lines.push('</div>');
-    lines.push('<hr class="dash"/>');
-    lines.push('<div class="meta">');
-    lines.push('<div class="meta-row"><span class="meta-lbl">Order ID</span><span class="meta-val">#' + safeOrderId + '</span></div>');
-    lines.push('<div class="meta-row"><span class="meta-lbl">Date</span><span class="meta-val">' + dateStr + '</span></div>');
-    lines.push('<div class="meta-row"><span class="meta-lbl">Customer</span><span class="meta-val">' + customerName + '</span></div>');
-    lines.push('<div class="meta-row"><span class="meta-lbl">Payment method</span><span class="meta-val">' + paymentMethod + '</span></div>');
-    lines.push('<div class="meta-row"><span class="meta-lbl">Status</span><span class="meta-val"><span class="status-badge">' + paymentStatus + '</span></span></div>');
-    lines.push('</div>');
-    lines.push('<hr class="dash"/>');
-    lines.push('<table>');
-    lines.push('<thead><tr>');
-    lines.push('<th style="width:22px;text-align:center">#</th>');
-    lines.push('<th>Item <small>Name / desc / category</small></th>');
-    lines.push('<th style="text-align:center">Qty</th>');
-    lines.push('<th style="text-align:right">Unit <small>price</small></th>');
-    lines.push('<th style="text-align:right">Subtotal <small>Qty x price</small></th>');
-    lines.push('</tr></thead>');
-    lines.push('<tbody>' + itemRows + '</tbody>');
-    lines.push('</table>');
-    lines.push('<div class="total-bar">');
-    lines.push('<span class="total-lbl">Total &nbsp;<span style="font-weight:400;font-size:.78rem;color:#6b7280">(' + orders.length + ' item' + (orders.length > 1 ? 's' : '') + ')</span></span>');
-    lines.push('<span class="total-amount">&#8358;' + totalAmount.toLocaleString() + '</span>');
-    lines.push('</div>');
-    lines.push('<hr class="dash"/>');
-    lines.push(payBlock);
-    lines.push('<div class="footer">Thank you for shopping with MELECH STORE<br/>No signature required &middot; Auto-generated receipt</div>');
-    lines.push('</div>'); // end #receipt
+      payBlock,
 
-    // ── INLINE SCRIPT ───────────────────────────────────────────────────────
-    // All logic is inside window.initReceipt() which is called by the
-    // html2canvas <script> onload callback below. This guarantees
-    // html2canvas is always available before any button is clicked.
-    lines.push('<' + 'script>');
-    lines.push('window.RECEIPT_DATA = {');
-    lines.push('  orderId:  "' + safeOrderId  + '",');
-    lines.push('  dateStr:  "' + safeDateStr  + '",');
-    lines.push('  customer: "' + safeCustomer + '",');
-    lines.push('  total:    "' + safeTotal    + '",');
-    lines.push('  status:   "' + safeStatus   + '",');
-    lines.push('  dlUrl:    "' + safeDlUrl    + '"');
-    lines.push('};');
-    lines.push('');
-    lines.push('window.initReceipt = function () {');
-    lines.push('  var D         = window.RECEIPT_DATA;');
-    lines.push('  var actionBar = document.getElementById("actionBar");');
-    lines.push('  var btnShare  = document.getElementById("btnShare");');
-    lines.push('  var picker    = document.getElementById("sharePicker");');
-    lines.push('  var origShare = btnShare.innerHTML;');
-    lines.push('');
-    // Print button
-    lines.push('  document.getElementById("btnPrint").addEventListener("click", function () {');
-    lines.push('    window.print();');
-    lines.push('  });');
-    lines.push('');
-    // Feedback helper
-    lines.push('  function feedback(btn, html, bg, ms) {');
-    lines.push('    var oh = btn.innerHTML; var ob = btn.style.background;');
-    lines.push('    btn.innerHTML = html; btn.style.background = bg; btn.disabled = true;');
-    lines.push('    setTimeout(function(){ btn.innerHTML=oh; btn.style.background=ob; btn.disabled=false; }, ms);');
-    lines.push('  }');
-    lines.push('');
-    // Download blob helper
-    lines.push('  function dlBlob(blob, name) {');
-    lines.push('    var u = URL.createObjectURL(blob);');
-    lines.push('    var a = document.createElement("a");');
-    lines.push('    a.href=u; a.download=name;');
-    lines.push('    document.body.appendChild(a); a.click();');
-    lines.push('    document.body.removeChild(a); URL.revokeObjectURL(u);');
-    lines.push('  }');
-    lines.push('');
-    // Capture receipt as PNG blob
-    lines.push('  function capture() {');
-    lines.push('    actionBar.style.display = "none";');
-    lines.push('    return window.html2canvas(document.getElementById("receipt"), {');
-    lines.push('      scale:2, useCORS:true, backgroundColor:"#ffffff", logging:false');
-    lines.push('    }).then(function(canvas){');
-    lines.push('      actionBar.style.display = "";');
-    lines.push('      return new Promise(function(res){');
-    lines.push('        canvas.toBlob(function(blob){ res(blob); }, "image/png", 1.0);');
-    lines.push('      });');
-    lines.push('    }).catch(function(e){ actionBar.style.display=""; throw e; });');
-    lines.push('  }');
-    lines.push('');
-    // Save Image button
-    lines.push('  document.getElementById("btnSaveImg").addEventListener("click", function(){');
-    lines.push('    var btn=this; btn.disabled=true; btn.innerHTML="Generating...";');
-    lines.push('    capture().then(function(blob){');
-    lines.push('      dlBlob(blob, "receipt-"+D.orderId+".png");');
-    lines.push('      feedback(btn, "Saved!", "#0f766e", 2500);');
-    lines.push('    }).catch(function(){');
-    lines.push('      btn.disabled=false; btn.innerHTML="Save image";');
-    lines.push('      alert("Could not generate image. Please try again.");');
-    lines.push('    });');
-    lines.push('  });');
-    lines.push('');
-    // Share button toggles picker
-    lines.push('  btnShare.addEventListener("click", function(e){');
-    lines.push('    e.stopPropagation();');
-    lines.push('    picker.style.display = picker.style.display === "block" ? "none" : "block";');
-    lines.push('  });');
-    lines.push('  picker.addEventListener("click", function(e){ e.stopPropagation(); });');
-    lines.push('  document.addEventListener("click", function(){ picker.style.display="none"; });');
-    lines.push('');
-    // Share as Image
-    lines.push('  document.getElementById("btnShareImg").addEventListener("click", function(){');
-    lines.push('    picker.style.display="none";');
-    lines.push('    btnShare.disabled=true; btnShare.innerHTML="Preparing...";');
-    lines.push('    capture().then(function(blob){');
-    lines.push('      var file=new File([blob],"receipt-"+D.orderId+".png",{type:"image/png"});');
-    lines.push('      if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){');
-    lines.push('        return navigator.share({');
-    lines.push('          files:[file],');
-    lines.push('          title:"MELECH STORE Receipt #"+D.orderId,');
-    lines.push('          text:"Receipt from MELECH STORE\\nOrder: #"+D.orderId+"\\nDate: "+D.dateStr+"\\nCustomer: "+D.customer+"\\nTotal: N"+D.total+"\\nStatus: "+D.status');
-    lines.push('        }).then(function(){ btnShare.disabled=false; btnShare.innerHTML=origShare; })');
-    lines.push('         .catch(function(err){');
-    lines.push('           btnShare.disabled=false; btnShare.innerHTML=origShare;');
-    lines.push('           if(err.name!=="AbortError"){ dlBlob(blob,"receipt-"+D.orderId+".png"); alert("Share failed. Image downloaded - attach it manually."); }');
-    lines.push('         });');
-    lines.push('      }');
-    lines.push('      dlBlob(blob,"receipt-"+D.orderId+".png");');
-    lines.push('      feedback(btnShare,"Image saved - attach in WhatsApp","#0f766e",3000);');
-    lines.push('    }).catch(function(){ btnShare.disabled=false; btnShare.innerHTML=origShare; alert("Could not prepare image."); });');
-    lines.push('  });');
-    lines.push('');
-    // Share as PDF
-    lines.push('  document.getElementById("btnSharePdf").addEventListener("click", function(){');
-    lines.push('    picker.style.display="none";');
-    lines.push('    btnShare.disabled=true; btnShare.innerHTML="Fetching PDF...";');
-    lines.push('    fetch(D.dlUrl)');
-    lines.push('      .then(function(r){ if(!r.ok) throw new Error("fetch failed"); return r.blob(); })');
-    lines.push('      .then(function(blob){');
-    lines.push('        var file=new File([blob],"receipt-"+D.orderId+".pdf",{type:"application/pdf"});');
-    lines.push('        if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){');
-    lines.push('          return navigator.share({');
-    lines.push('            files:[file],');
-    lines.push('            title:"MELECH STORE Receipt #"+D.orderId,');
-    lines.push('            text:"Receipt from MELECH STORE\\nOrder: #"+D.orderId+"\\nTotal: N"+D.total');
-    lines.push('          }).then(function(){ btnShare.disabled=false; btnShare.innerHTML=origShare; })');
-    lines.push('           .catch(function(err){');
-    lines.push('             btnShare.disabled=false; btnShare.innerHTML=origShare;');
-    lines.push('             if(err.name!=="AbortError"){ dlBlob(blob,"receipt-"+D.orderId+".pdf"); alert("Share failed. PDF downloaded - attach manually."); }');
-    lines.push('           });');
-    lines.push('        }');
-    lines.push('        dlBlob(blob,"receipt-"+D.orderId+".pdf");');
-    lines.push('        feedback(btnShare,"PDF saved - attach manually","#1E3A8A",3000);');
-    lines.push('      })');
-    lines.push('      .catch(function(){ btnShare.disabled=false; btnShare.innerHTML=origShare; alert("Could not fetch PDF. Try the Download PDF button."); });');
-    lines.push('  });');
-    lines.push('');
-    lines.push('}'); // end window.initReceipt
-    lines.push('<' + '/script>');
+      // Footer
+      '<div class="footer">',
+      'Thank you for shopping with MELECH STORE<br/>',
+      'No signature required &middot; Auto-generated receipt',
+      '</div>',
 
-    // html2canvas loaded LAST. Its onload calls window.initReceipt()
-    // so all button handlers are guaranteed to attach only after
-    // html2canvas is fully available.
-    lines.push('<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" onload="window.initReceipt()" onerror="window.initReceipt()" crossorigin="anonymous"><' + '/script>');
-
-    lines.push('</body>');
-    lines.push('</html>');
+      '</div>', // end .card
+      '</body>',
+      '</html>',
+    ].join("\n");
 
     res.setHeader("Content-Type", "text/html");
-    return res.send(lines.join("\n"));
+    return res.send(html);
 
   } catch (error) {
     console.error("generateInvoice error:", error);
