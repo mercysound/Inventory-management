@@ -231,7 +231,7 @@ const ReceiptModal = ({
                 srcDoc={html}
                 title="Receipt"
                 className="w-full h-full border-0"
-                sandbox="allow-same-origin allow-modals"
+                sandbox="allow-same-origin allow-modals allow-scripts"
               />
             ) : previewUrl || blobUrl ? (
               // Render provided PDF URL (preview or blob)
