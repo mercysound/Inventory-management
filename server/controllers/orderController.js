@@ -339,6 +339,16 @@ const completeOrder = async (req, res) => {
 
 
 /* generateInvoice - produce a PDF invoice for current user's active orders. */
+const escapeHtml = (value) => {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+};
+
 const generateInvoice = async (req, res) => {
   try {
     const {
@@ -349,6 +359,10 @@ const generateInvoice = async (req, res) => {
       orderId,
       historyReceipt,
     } = req.query;
+
+    const safeCustomerName = escapeHtml(customerName);
+    const safePaymentMethod = escapeHtml(paymentMethod);
+    const safeOrderSource = escapeHtml(orderSource);
 
     const paymentStatus = mode === "final" ? "Paid" : "Unpaid";
     let orders = [];
@@ -614,9 +628,9 @@ const generateInvoice = async (req, res) => {
     const statusBorder = paymentStatus === "Paid" ? "#bbf7d0" : "#fecaca";
 
     const itemRows = orders.map((o, idx) => {
-      const name = o.product.name || "-";
-      const cat  = o.product.categoryName || "";
-      const raw  = o.product.desc || "";
+      const name = escapeHtml(o.product.name || "-");
+      const cat  = escapeHtml(o.product.categoryName || "");
+      const raw  = escapeHtml(o.product.desc || "");
       const desc = raw.length > 60 ? raw.slice(0, 60) + "..." : raw;
       return (
         '<tr class="' + (idx % 2 === 0 ? "r-even" : "r-odd") + '">' +
@@ -637,9 +651,9 @@ const generateInvoice = async (req, res) => {
       ? (
         '<div class="pay-box">' +
         '<div class="pay-title">Payment instructions</div>' +
-        '<div class="pay-row"><span class="pay-lbl">Bank</span><span>' + STORE_ACCOUNT.bankName + "</span></div>" +
-        '<div class="pay-row"><span class="pay-lbl">Account name</span><span>' + STORE_ACCOUNT.accountName + "</span></div>" +
-        '<div class="pay-row"><span class="pay-lbl">Account no.</span><span class="pay-acct">' + STORE_ACCOUNT.accountNumber + "</span></div>" +
+        '<div class="pay-row"><span class="pay-lbl">Bank</span><span>' + escapeHtml(STORE_ACCOUNT.bankName) + "</span></div>" +
+        '<div class="pay-row"><span class="pay-lbl">Account name</span><span>' + escapeHtml(STORE_ACCOUNT.accountName) + "</span></div>" +
+        '<div class="pay-row"><span class="pay-lbl">Account no.</span><span>' + escapeHtml(STORE_ACCOUNT.accountNumber) + "</span></div>" +
         "</div>"
       )
       : "";
@@ -709,8 +723,8 @@ const generateInvoice = async (req, res) => {
       '<div class="meta">',
       '<div class="meta-row"><span class="meta-lbl">Order ID</span><span class="meta-val">#' + orderIdShort + '</span></div>',
       '<div class="meta-row"><span class="meta-lbl">Date</span><span class="meta-val">' + dateStr + '</span></div>',
-      '<div class="meta-row"><span class="meta-lbl">Customer</span><span class="meta-val">' + customerName + '</span></div>',
-      '<div class="meta-row"><span class="meta-lbl">Payment method</span><span class="meta-val">' + paymentMethod + '</span></div>',
+      '<div class="meta-row"><span class="meta-lbl">Customer</span><span class="meta-val">' + safeCustomerName + '</span></div>',
+      '<div class="meta-row"><span class="meta-lbl">Payment method</span><span class="meta-val">' + safePaymentMethod + '</span></div>',
       '<div class="meta-row"><span class="meta-lbl">Status</span><span class="meta-val"><span class="status-badge">' + paymentStatus + '</span></span></div>',
       '</div>',
 

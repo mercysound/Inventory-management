@@ -22,12 +22,7 @@ const StockBadge = ({ stock, showStock }) => {
         <AlertTriangle size={10} /> Out of stock
       </span>
     );
-  if (!showStock)
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-        Available
-      </span>
-    );
+  if (!showStock) return null;
   if (stock < 5)
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">

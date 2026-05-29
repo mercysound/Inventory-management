@@ -9,8 +9,6 @@ const authMiddleware = async (req, res, next) => {
 
     if (authHeader && authHeader.startsWith("Bearer ")) {
       token = authHeader.split(" ")[1];
-    } else if (req.query.token) {
-      token = req.query.token;
     }
 
     if (!token) {
@@ -37,7 +35,7 @@ const authMiddleware = async (req, res, next) => {
 
 const optionalAuthMiddleware = async (req, res, next) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1] || req.query.token;
+    const token = req.headers.authorization?.split(" ")[1];
     
     if (token) {
       try {
