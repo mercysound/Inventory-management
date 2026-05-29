@@ -578,6 +578,7 @@ const CustomerProducts = () => {
           closeModal={() => setOpenModal(false)}
           patchCart={patchCart}
           showStock={canSeeStock}
+          showStockText={canSeeStock}
         />
       )}
     </div>

@@ -60,7 +60,7 @@ const StepBtn = ({ onClick, disabled, children }) => (
 );
 
 // ─── Main modal ──────────────────────────────────────────────────────────────
-const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock }) => {
+const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock, showStockText = true }) => {
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
 
@@ -308,14 +308,8 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock 
                 </StepBtn>
               </div>
 
-              {!showStock && orderData.stock > 0 && (
-                <p className="text-xs text-gray-400 mt-2">
-                  Requested quantity is validated against current inventory.
-                </p>
-              )}
-
               {/* Stock progress bar */}
-              {showStock && orderData.stock > 0 && (
+              {orderData.stock > 0 && (
                 <div className="mt-2">
                   <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                     <motion.div
@@ -328,6 +322,11 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock 
                       transition={{ duration: 0.15 }}
                     />
                   </div>
+                  {showStockText && (
+                    <p className="text-xs text-gray-400 mt-1 text-right">
+                      {qty} of {orderData.stock} available
+                    </p>
+                  )}
                 </div>
               )}
             </div>
