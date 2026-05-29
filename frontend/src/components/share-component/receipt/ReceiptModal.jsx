@@ -1,24 +1,41 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "react-toastify";
+import axiosInstance from "../../../utils/axiosInstance";
 import useEscapeToClose from "./useEscapeToClose";
-import buildInvoiceUrl from "../../../utils/buildInvoiceUrl";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ReceiptModal
 //
-// Shows the receipt in an iframe (pure HTML, no scripts — CSP safe).
-// Download PDF and Print buttons live here in React, outside the iframe,
-// so they are never affected by the iframe's Content Security Policy.
+// Fetches the invoice HTML via axiosInstance (auth handled automatically)
+// and injects it as srcdoc into the iframe.
+//
+// This approach:
+//   ✅ No URL/React Router interception issues
+//   ✅ No auth token in query string
+//   ✅ Works on all devices and browsers
+//   ✅ No buildInvoiceUrl helper needed
+//
+// Props:
+//   open          — boolean
+//   onClose       — function
+//   invoiceParams — object: the query params sent to /orders/invoice
+//                   e.g. { mode, customerName, paymentMethod, orderId, ... }
+//   mode          — "preview" | "final"  (for header label only)
+//   role          — "customer" | "staff" | "admin"
+//   storeAccount  — { bankName, accountName, accountNumber } for staff preview
 // ─────────────────────────────────────────────────────────────────────────────
 const ReceiptModal = ({
   open,
   onClose,
-  previewUrl,       // the HTML receipt URL loaded in the iframe
+  invoiceParams,
   mode = "final",
   role = "customer",
   storeAccount,
 }) => {
-  const modalRef = useRef(null);
+  const modalRef            = useRef(null);
+  const [html, setHtml]     = useState("");
+  const [fetching, setFetching] = useState(false);
 
   useEscapeToClose(open, onClose);
 
@@ -26,32 +43,65 @@ const ReceiptModal = ({
     if (open && modalRef.current) modalRef.current.focus();
   }, [open]);
 
+  // ── Fetch the HTML receipt via axios whenever the modal opens ─────────────
+  // axios automatically attaches the Authorization header from localStorage,
+  // so no token-in-URL trick is needed. The response is a plain HTML string
+  // which we inject directly into the iframe via srcdoc.
+  useEffect(() => {
+    if (!open || !invoiceParams) return;
+
+    let cancelled = false;
+    setHtml("");
+    setFetching(true);
+
+    axiosInstance
+      .get("/orders/invoice", { params: invoiceParams })
+      .then((res) => {
+        if (!cancelled) setHtml(res.data); // res.data is the HTML string
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error("Receipt fetch error:", err);
+          toast.error("Failed to load receipt. Please try again.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setFetching(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [open, JSON.stringify(invoiceParams)]);
+
   // ── Download PDF ──────────────────────────────────────────────────────────
-  // Build the download URL by appending ?download=true to the same params.
-  // This hits the same endpoint which returns a raw PDF blob when that flag
-  // is present — completely outside the iframe, no CSP involvement.
-  const handleDownload = () => {
-    if (!previewUrl) return;
-    // Parse existing params from previewUrl and add download=true
-    const urlObj   = new URL(previewUrl);
-    urlObj.searchParams.set("download", "true");
-    // Trigger download via a hidden <a> tag
-    const a        = document.createElement("a");
-    a.href         = urlObj.toString();
-    a.download     = "receipt.pdf";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  // Re-fetches with download=true which returns a PDF blob.
+  // axios handles auth — no URL building needed.
+  const handleDownload = async () => {
+    if (!invoiceParams) return;
+    try {
+      const res = await axiosInstance.get("/orders/invoice", {
+        params: { ...invoiceParams, download: "true" },
+        responseType: "blob",
+      });
+      const url  = URL.createObjectURL(res.data);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = "receipt.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Failed to download PDF. Please try again.");
+    }
   };
 
   // ── Print ─────────────────────────────────────────────────────────────────
-  // Open the receipt HTML in a new tab and call window.print() on it.
-  // This avoids any iframe print restrictions.
+  // Prints the iframe content directly.
   const handlePrint = () => {
-    if (!previewUrl) return;
-    const printWindow = window.open(previewUrl, "_blank");
-    if (printWindow) {
-      printWindow.onload = () => printWindow.print();
+    const iframe = document.getElementById("receipt-iframe");
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
     }
   };
 
@@ -98,22 +148,29 @@ const ReceiptModal = ({
             </button>
           </div>
 
-          {/* ── IFRAME — pure HTML receipt, no scripts ── */}
+          {/* ── BODY ── */}
           <div className="flex-1 overflow-hidden bg-gray-100">
-            {previewUrl ? (
-              <iframe
-                key={previewUrl}
-                src={previewUrl}
-                title="Receipt"
-                className="w-full h-full border-0"
-                allow=""
-              />
-            ) : (
+            {fetching ? (
+              // Loading spinner while HTML is being fetched
               <div className="flex items-center justify-center h-full">
                 <div className="flex flex-col items-center gap-3 text-gray-400">
                   <div className="w-8 h-8 border-2 border-gray-200 border-t-indigo-400 rounded-full animate-spin" />
                   <p className="text-sm">Loading receipt...</p>
                 </div>
+              </div>
+            ) : html ? (
+              // srcdoc injects the HTML string directly — no URL, no auth issues
+              <iframe
+                id="receipt-iframe"
+                key={JSON.stringify(invoiceParams)}
+                srcDoc={html}
+                title="Receipt"
+                className="w-full h-full border-0"
+                sandbox="allow-same-origin allow-modals"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-gray-400">Receipt not available.</p>
               </div>
             )}
           </div>
@@ -128,7 +185,7 @@ const ReceiptModal = ({
             </div>
           )}
 
-          {/* ── FOOTER — buttons live in React, outside iframe, no CSP issues ── */}
+          {/* ── FOOTER — buttons in React, no CSP/iframe issues ── */}
           <div className="flex justify-between items-center px-5 py-4 border-t border-gray-100 bg-white flex-shrink-0 gap-3">
             <button
               onClick={onClose}
@@ -136,21 +193,17 @@ const ReceiptModal = ({
             >
               Close
             </button>
-
             <div className="flex gap-2">
-              {/* Print — opens receipt in new tab and prints */}
               <button
                 onClick={handlePrint}
-                disabled={!previewUrl}
+                disabled={!html || fetching}
                 className="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium transition disabled:opacity-40"
               >
                 🖨 Print
               </button>
-
-              {/* Download PDF — fetches ?download=true from backend */}
               <button
                 onClick={handleDownload}
-                disabled={!previewUrl}
+                disabled={!invoiceParams || fetching}
                 className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow transition disabled:opacity-40"
               >
                 ⬇ Download PDF
