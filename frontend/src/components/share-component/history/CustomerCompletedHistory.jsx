@@ -3,13 +3,16 @@ import { toast } from "react-toastify";
 import SharedOrderTable from "./SharedOrderTable";
 import axiosInstance from "../../../utils/axiosInstance";
 import ReceiptModal from "../receipt/ReceiptModal";
-import buildInvoiceUrl from "../../../utils/buildInvoiceUrl";
+
 
 const CustomerCompletedHistory = () => {
-  const [orders, setOrders]   = useState([]);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showReceiptModal, setShowReceiptModal] = useState(false);
-  const [receiptUrl, setReceiptUrl]             = useState("");
+
+  // receipt modal
+  const [receiptBlob, setReceiptBlob] = useState(null);
+  const [receiptPreviewUrl, setReceiptPreviewUrl] = useState("");
+  const [showReceiptPrompt, setShowReceiptPrompt] = useState(false);
 
   const fetchOrders = async () => {
     try {
@@ -49,31 +52,44 @@ const CustomerCompletedHistory = () => {
     }
   };
 
-  const handleViewReceipt = (orderId, order) => {
-    const url = buildInvoiceUrl({
+  // ------------------ RECEIPT PREVIEW ------------------
+  const handleViewReceipt = async (orderId, order) => {
+    console.log(order);
+    
+  try {
+    const query = new URLSearchParams({
       orderId,
-      mode:           "final",
-      customerName:   order.userOrdering?.name || "Customer",
-      paymentMethod:  order.paymentMethod || "",
-      orderSource:    order.userOrdering?.role || "customer",
-      historyReceipt: "true",
+      mode: "final",
+      customerName: order.userOrdering.name,
+      paymentMethod: order.paymentMethod,
+      orderSource:order.userOrdering.role, // ✅ REAL source from DB
+      historyReceipt: true
+    }).toString();
+
+    const res = await axiosInstance.get(`/orders/invoice?${query}`, {
+      responseType: "blob",
     });
-    setReceiptUrl(url);
-    setShowReceiptModal(true);
-  };
 
-  const handleCloseReceipt = () => {
-    setShowReceiptModal(false);
-    setReceiptUrl("");
-  };
+    setReceiptBlob(res.data);
+    setReceiptPreviewUrl(URL.createObjectURL(res.data));
+    setShowReceiptPrompt(true);
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to load receipt");
+  }
+};
 
-  useEffect(() => { fetchOrders(); }, []);
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
 
   if (loading) return <p className="text-center py-10">Loading...</p>;
 
   return (
     <div className="p-5">
       <h2 className="text-2xl font-bold mb-3">📜 Your Completed Orders</h2>
+
       <SharedOrderTable
         orders={orders}
         role="customer"
@@ -81,12 +97,21 @@ const CustomerCompletedHistory = () => {
         onClearAll={clearAllOrders}
         onViewReceipt={handleViewReceipt}
       />
+
       <ReceiptModal
-        open={showReceiptModal}
-        onClose={handleCloseReceipt}
-        previewUrl={receiptUrl}
+        open={showReceiptPrompt}
+        onClose={() => setShowReceiptPrompt(false)}
+        blob={receiptBlob}
+        previewUrl={receiptPreviewUrl}
         mode="final"
         role="customer"
+        onDownload={() => {
+          if (!receiptBlob) return;
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(receiptBlob);
+          link.download = "receipt.pdf";
+          link.click();
+        }}
       />
     </div>
   );
