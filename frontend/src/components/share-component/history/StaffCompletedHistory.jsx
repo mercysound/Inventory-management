@@ -10,8 +10,7 @@ const StaffCompletedHistory = () => {
   const [loading, setLoading] = useState(true);
 
   // receipt modal
-  const [receiptBlob, setReceiptBlob] = useState(null);
-  const [receiptPreviewUrl, setReceiptPreviewUrl] = useState("");
+  const [invoiceParams, setInvoiceParams] = useState(null);
   const [showReceiptPrompt, setShowReceiptPrompt] = useState(false);
 
   const fetchOrders = async () => {
@@ -53,31 +52,18 @@ const StaffCompletedHistory = () => {
   };
 
   // ------------------ RECEIPT PREVIEW ------------------
-    const handleViewReceipt = async (orderId, order) => {
-    console.log(order);
-    
-  try {
-    const query = new URLSearchParams({
+    const handleViewReceipt = (orderId, order) => {
+    const params = {
       orderId,
       mode: "final",
       customerName: order.buyerName,
       paymentMethod: order.paymentMethod,
-      orderSource:order.userOrdering.role, // ✅ REAL source from DB
-      // historyReceipt: true
-    }).toString();
+      orderSource: order.userOrdering.role,
+    };
 
-    const res = await axiosInstance.get(`/orders/invoice?${query}`, {
-      responseType: "blob",
-    });
-
-    setReceiptBlob(res.data);
-    setReceiptPreviewUrl(URL.createObjectURL(res.data));
+    setInvoiceParams(params);
     setShowReceiptPrompt(true);
-  } catch (err) {
-    console.error(err);
-    toast.error("Failed to load receipt");
-  }
-};
+  };
 
   useEffect(() => {
     fetchOrders();
@@ -100,17 +86,9 @@ const StaffCompletedHistory = () => {
       <ReceiptModal
         open={showReceiptPrompt}
         onClose={() => setShowReceiptPrompt(false)}
-        blob={receiptBlob}
-        previewUrl={receiptPreviewUrl}
+        invoiceParams={invoiceParams}
         mode="final"
         role="staff"
-        onDownload={() => {
-          if (!receiptBlob) return;
-          const link = document.createElement("a");
-          link.href = URL.createObjectURL(receiptBlob);
-          link.download = "receipt.pdf";
-          link.click();
-        }}
       />
     </div>
   );

@@ -269,14 +269,14 @@ const ReceiptModal = ({
             <div className="flex gap-2">
               <button
                 onClick={handlePrint}
-                disabled={!html || fetching}
+                disabled={!(html || previewUrl || blobUrl) || fetching}
                 className="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium transition disabled:opacity-40"
               >
                 🖨 Print
               </button>
               <button
                 onClick={handleDownload}
-                disabled={!invoiceParams || fetching}
+                disabled={!(invoiceParams || previewUrl || blobUrl || typeof onDownload === 'function') || fetching}
                 className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow transition disabled:opacity-40"
               >
                 ⬇ Download PDF

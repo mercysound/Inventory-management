@@ -48,7 +48,9 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => {
     const duration = Date.now() - response.config.metadata?.startTime;
-    console.log(`✅ ${response.config.method?.toUpperCase()} ${response.status} (${duration}ms)`);
+    if (import.meta.env.DEV) {
+      console.log(`✅ ${response.config.method?.toUpperCase()} ${response.status} (${duration}ms)`);
+    }
     return response;
   },
   async (error) => {
