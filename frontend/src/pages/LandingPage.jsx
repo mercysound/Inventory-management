@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import axiosInstance from "../utils/axiosInstance";
 import { GoogleLogin } from "@react-oauth/google";
-import { Loader2 } from "lucide-react"; // spinner icon
+import { Loader2, CheckCircle2, Package, BarChart3, ShieldCheck } from "lucide-react";
 
 const LandingPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -214,181 +214,232 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-indigo-400 to-gray-100 flex flex-col">
-      {/* HERO */}
-      <header className="flex flex-col items-center justify-center py-16 text-center">
-        <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-5xl font-extrabold text-white drop-shadow-lg"
-        >
-          Melech Solution Hub System
-        </motion.h1>
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-col gap-10 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-8 lg:max-w-xl">
+            <div className="flex items-center gap-3 text-sm uppercase tracking-[0.35em] text-emerald-300">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-200">
+                <ShieldCheck size={18} />
+              </span>
+              Inventory made simple for teams
+            </div>
 
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-4 text-lg text-gray-100 max-w-2xl"
-        >
-          Manage your stock, orders, and customers efficiently with real-time tracking.
-        </motion.p>
-      </header>
+            <motion.div
+              initial={{ opacity: 0, y: -18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="space-y-6"
+            >
+              <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white">
+                MELECH SH
+              </h1>
+              <p className="text-lg leading-8 text-slate-300 max-w-2xl">
+                A professional inventory dashboard for retail, warehouse and distribution teams.
+                Track stock health, orders, suppliers and invoices in one live workspace.
+              </p>
 
-      {/* FORM CARD */}
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="mx-auto bg-white shadow-2xl rounded-3xl w-full max-w-md p-8"
-      >
-        <h2 className="text-2xl font-bold text-center text-indigo-700 mb-6">
-          {isLogin ? "Login to Continue" : "Create Your Account"}
-        </h2>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!isLogin && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-              <div>
-                <input
-                  type="text"
-                  name="name"
-                  placeholder="Full Name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="input-field"
-                  required
-                />
-                {errors.name && <p className="error-text">{errors.name}</p>}
-              </div>
-
-              <div>
-                <input
-                  type="text"
-                  name="address"
-                  placeholder="Address *"
-                  value={formData.address}
-                  onChange={handleChange}
-                  className="input-field"
-                  required
-                />
-                {errors.address && <p className="error-text">{errors.address}</p>}
-              </div>
-
-              <div>
-                <input
-                  type="tel"
-                  name="phone"
-                  placeholder="Phone Number (e.g. 08012345678) *"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className="input-field"
-                  required
-                />
-                {errors.phone && <p className="error-text">{errors.phone}</p>}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-lg shadow-black/10">
+                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-200 mb-3">
+                    <BarChart3 size={20} />
+                  </div>
+                  <h3 className="font-semibold text-white">Live stock & KPI tracking</h3>
+                  <p className="mt-2 text-sm text-slate-400">View products, orders and revenue in real time.</p>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-lg shadow-black/10">
+                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/15 text-indigo-200 mb-3">
+                    <Package size={20} />
+                  </div>
+                  <h3 className="font-semibold text-white">Supplier reorder shortcuts</h3>
+                  <p className="mt-2 text-sm text-slate-400">Quickly restock low inventory from your supplier list.</p>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-lg shadow-black/10">
+                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/15 text-sky-200 mb-3">
+                    <CheckCircle2 size={20} />
+                  </div>
+                  <h3 className="font-semibold text-white">Role-based access</h3>
+                  <p className="mt-2 text-sm text-slate-400">Admin, staff and customer workflows with secure permissions.</p>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-lg shadow-black/10">
+                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/15 text-rose-200 mb-3">
+                    <Package size={20} />
+                  </div>
+                  <h3 className="font-semibold text-white">Order & invoice exports</h3>
+                  <p className="mt-2 text-sm text-slate-400">Generate receipts and export order summaries in seconds.</p>
+                </div>
               </div>
             </motion.div>
-          )}
-
-          <div>
-            <input
-              type="email"
-              name="email"
-              placeholder="Email"
-              value={formData.email}
-              onChange={handleChange}
-              className="input-field"
-              required
-            />
-            {errors.email && <p className="error-text">{errors.email}</p>}
           </div>
 
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              name="password"
-              placeholder="Password"
-              value={formData.password}
-              onChange={handleChange}
-              className="input-field pr-10"
-              required
-            />
-
-            <span
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-gray-600"
-            >
-              {showPassword ? "🙈" : "👁️"}
-            </span>
-
-            {errors.password && <p className="error-text">{errors.password}</p>}
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg shadow-lg"
-          >
-            {loading ? "Processing..." : isLogin ? "Login" : "Create Account"}
-          </button>
-        </form>
-
-        <p className="text-center text-gray-600 mt-6">
-          {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-          <button
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-indigo-700 hover:underline font-semibold"
-          >
-            {isLogin ? "Sign up" : "Login"}
-          </button>
-        </p>
-
-        {isLogin && (
-          <p className="text-center text-gray-600 mt-2">
-            <button
-              onClick={() => navigate("/forgot-password")}
-              className="text-indigo-700 hover:underline text-sm"
-            >
-              Forgot your password?
-            </button>
-          </p>
-        )}
-
-        {/* GOOGLE LOGIN */}
-        <div className="my-6">
-          <div className="flex items-center gap-3 my-6">
-            <div className="h-[1px] flex-1 bg-gray-300"></div>
-            <span className="text-gray-500 text-sm">Or continue with</span>
-            <div className="h-[1px] flex-1 bg-gray-300"></div>
-          </div>
-
-          {/* /* Wrap in motion.div since render prop is gone in v0.12+ */ }
           <motion.div
-            variants={googleButtonVariants}
-            initial="initial"
-            whileHover="hover"
-            whileTap="tap"
-            className="w-full max-w-[368px] mx-auto"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55 }}
+            className="w-full max-w-xl rounded-[36px] border border-white/10 bg-slate-900/90 p-8 shadow-2xl shadow-black/25 backdrop-blur-xl"
           >
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={() => {
-                toast.error("Google sign-in failed. Please try again.");
-              }}
-              useOneTap={false}
-              theme="outline"
-              size="large"
-              text={isLogin ? "signin_with" : "signup_with"}
-              shape="rectangular"
-              width={320}
-            />
+            <div className="mb-8 text-center">
+              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-emerald-300">Access the dashboard</p>
+              <h2 className="mt-4 text-3xl font-semibold text-white">{isLogin ? "Login" : "Sign up"}</h2>
+              <p className="mt-2 text-sm text-slate-400">
+                {isLogin
+                  ? "Enter your credentials to access MELECH SH."
+                  : "Create your account to start managing inventory with your team."}
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {!isLogin && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-300">Full name</label>
+                    <input
+                      type="text"
+                      name="name"
+                      placeholder="John Doe"
+                      value={formData.name}
+                      onChange={handleChange}
+                      className="w-full rounded-3xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-emerald-400"
+                    />
+                    {errors.name && <p className="mt-2 text-xs text-rose-400">{errors.name}</p>}
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-300">Phone</label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      placeholder="080 1234 5678"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      className="w-full rounded-3xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-emerald-400"
+                    />
+                    {errors.phone && <p className="mt-2 text-xs text-rose-400">{errors.phone}</p>}
+                  </div>
+                </div>
+              )}
+
+              {!isLogin && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-300">Address</label>
+                  <input
+                    type="text"
+                    name="address"
+                    placeholder="123 Market Road"
+                    value={formData.address}
+                    onChange={handleChange}
+                    className="w-full rounded-3xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-emerald-400"
+                  />
+                  {errors.address && <p className="mt-2 text-xs text-rose-400">{errors.address}</p>}
+                </div>
+              )}
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-300">Email address</label>
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="you@example.com"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="w-full rounded-3xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-emerald-400"
+                />
+                {errors.email && <p className="mt-2 text-xs text-rose-400">{errors.email}</p>}
+              </div>
+
+              <div className="relative">
+                <label className="mb-2 block text-sm font-medium text-slate-300">Password</label>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  placeholder="Enter a strong password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="w-full rounded-3xl border border-slate-800 bg-slate-950 px-4 py-3 pr-12 text-sm text-slate-100 outline-none transition focus:border-emerald-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-11 text-slate-400 hover:text-slate-200"
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+                {errors.password && <p className="mt-2 text-xs text-rose-400">{errors.password}</p>}
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-3xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? "Processing..." : isLogin ? "Login" : "Create account"}
+              </button>
+            </form>
+
+            <div className="mt-6 flex items-center justify-between text-xs text-slate-500">
+              <span>{isLogin ? "New to MELECH SH?" : "Already have an account?"}</span>
+              <button
+                onClick={() => setIsLogin(!isLogin)}
+                className="font-semibold text-white hover:text-emerald-300"
+              >
+                {isLogin ? "Create an account" : "Sign in instead"}
+              </button>
+            </div>
+
+            {isLogin && (
+              <button
+                onClick={() => navigate("/forgot-password")}
+                className="mt-4 w-full text-center text-sm text-slate-300 hover:text-white"
+              >
+                Forgot your password?
+              </button>
+            )}
+
+            <div className="my-7">
+              <div className="flex items-center gap-3 text-xs uppercase tracking-[0.3em] text-slate-500">
+                <span className="h-px flex-1 bg-slate-700"></span>
+                <span>or continue with</span>
+                <span className="h-px flex-1 bg-slate-700"></span>
+              </div>
+
+              <motion.div
+                variants={googleButtonVariants}
+                initial="initial"
+                whileHover="hover"
+                whileTap="tap"
+                className="mt-5"
+              >
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => {
+                    toast.error("Google sign-in failed. Please try again.");
+                  }}
+                  useOneTap={false}
+                  theme="outline"
+                  size="large"
+                  text={isLogin ? "signin_with" : "signup_with"}
+                  shape="rectangular"
+                  width={320}
+                />
+              </motion.div>
+            </div>
           </motion.div>
-
         </div>
-      </motion.div>
 
-      {/* FOOTER */}
-      <footer className="mt-16 py-6 bg-indigo-700 text-white text-center text-sm">
-        © {new Date().getFullYear()} Melech Solution Hub. All rights reserved.
-      </footer>
+        <div className="mt-16 grid gap-6 md:grid-cols-3">
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-slate-200 shadow-lg shadow-black/10">
+            <h3 className="font-semibold text-white">Built for real operations</h3>
+            <p className="mt-3 text-sm text-slate-400">Designed for retail stores, warehouses and distribution teams who need fast inventory visibility.</p>
+          </div>
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-slate-200 shadow-lg shadow-black/10">
+            <h3 className="font-semibold text-white">Live alerts, not guesswork</h3>
+            <p className="mt-3 text-sm text-slate-400">Get low-stock warnings, supplier reminders and order summaries without manual spreadsheets.</p>
+          </div>
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-slate-200 shadow-lg shadow-black/10">
+            <h3 className="font-semibold text-white">Simple for every role</h3>
+            <p className="mt-3 text-sm text-slate-400">Admin, staff and customer access paths are clear, secure and easy to use.</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

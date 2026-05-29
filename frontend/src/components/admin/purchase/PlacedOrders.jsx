@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import axiosInstance from "../../../utils/axiosInstance";
 import { toast } from "react-toastify";
+import { FaCalendarAlt } from "react-icons/fa";
 import PlacedOrdersTable from "./PlacedOrdersTable";
 import PlacedOrdersSkeleton from "./PlacedOrdersSkeleton";
 
@@ -310,19 +311,31 @@ const PlacedOrders = () => {
               <option value="processing">Processing</option>
               <option value="delivered">Delivered</option>
             </select>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            />
-            <span className="text-gray-400 text-sm">to</span>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            />
+            <label className="flex flex-col gap-1 text-xs text-gray-500 sm:flex-row sm:items-end sm:gap-2">
+              <span className="flex items-center gap-1 text-gray-500">
+                <FaCalendarAlt className="text-gray-400" /> From
+              </span>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                aria-label="Start date"
+                className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+            </label>
+            <span className="text-gray-400 text-sm self-end mt-2 sm:mt-0">to</span>
+            <label className="flex flex-col gap-1 text-xs text-gray-500 sm:flex-row sm:items-end sm:gap-2">
+              <span className="flex items-center gap-1 text-gray-500">
+                <FaCalendarAlt className="text-gray-400" /> To
+              </span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                aria-label="End date"
+                className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+            </label>
             {hasFilters && (
               <button
                 onClick={resetFilters}
