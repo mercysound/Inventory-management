@@ -8,7 +8,7 @@ import useEscapeToClose from "./useEscapeToClose";
 // ReceiptModal
 //
 // Fetches the invoice HTML via axiosInstance (auth handled automatically)
-// and injects it as srcdoc into the iframe.
+// and injects it as a blob URL into the iframe.
 //
 // This approach:
 //   ✅ No URL/React Router interception issues
@@ -40,6 +40,7 @@ const ReceiptModal = ({
   const [html, setHtml]     = useState("");
   const [fetching, setFetching] = useState(false);
   const [blobUrl, setBlobUrl] = useState("");
+  const [contentUrl, setContentUrl] = useState("");
 
   useEscapeToClose(open, onClose);
 
@@ -50,17 +51,21 @@ const ReceiptModal = ({
   // ── Fetch the HTML receipt via axios whenever the modal opens ─────────────
   // axios automatically attaches the Authorization header from localStorage,
   // so no token-in-URL trick is needed. The response is a plain HTML string
-  // which we inject directly into the iframe via srcdoc.
+  // which we wrap in a blob URL and render inside the iframe.
   useEffect(() => {
     // Reset state
     setHtml("");
     setFetching(false);
 
-    // Cleanup any object URL created from blob
+    // Cleanup any object URL created from blob or HTML content
     return () => {
       if (blobUrl) {
         URL.revokeObjectURL(blobUrl);
         setBlobUrl("");
+      }
+      if (contentUrl) {
+        URL.revokeObjectURL(contentUrl);
+        setContentUrl("");
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -78,7 +83,17 @@ const ReceiptModal = ({
       axiosInstance
         .get("/orders/invoice", { params: invoiceParams })
         .then((res) => {
-          if (!cancelled) setHtml(res.data); // res.data is the HTML string
+          if (!cancelled) {
+            setHtml(res.data); // res.data is the HTML string
+            try {
+              const url = URL.createObjectURL(
+                new Blob([res.data], { type: "text/html" })
+              );
+              setContentUrl(url);
+            } catch (err) {
+              console.error("Failed to create HTML content URL", err);
+            }
+          }
         })
         .catch((err) => {
           if (!cancelled) {
@@ -223,23 +238,15 @@ const ReceiptModal = ({
                   <p className="text-sm">Loading receipt...</p>
                 </div>
               </div>
-            ) : html ? (
-              // srcdoc injects the HTML string directly — no URL, no auth issues
+            ) : contentUrl || previewUrl || blobUrl ? (
+              // Render provided content URL or PDF URL
               <iframe
                 id="receipt-iframe"
                 key={JSON.stringify(invoiceParams)}
-                srcDoc={html}
+                src={contentUrl || previewUrl || blobUrl}
                 title="Receipt"
                 className="w-full h-full border-0"
                 sandbox="allow-modals"
-              />
-            ) : previewUrl || blobUrl ? (
-              // Render provided PDF URL (preview or blob)
-              <iframe
-                id="receipt-iframe"
-                src={previewUrl || blobUrl}
-                title="Receipt"
-                className="w-full h-full border-0"
               />
             ) : (
               <div className="flex items-center justify-center h-full">
