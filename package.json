@@ -1,0 +1,13 @@
+{
+  "name": "inventory-management",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "cd frontend && npm ci && npm run build && cd ../server && npm ci",
+    "start": "cd server && node index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
