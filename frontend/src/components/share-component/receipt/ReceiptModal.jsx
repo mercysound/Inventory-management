@@ -29,13 +29,17 @@ const ReceiptModal = ({
   open,
   onClose,
   invoiceParams,
+  previewUrl, // legacy: direct PDF URL created from blob
+  blob,       // legacy: PDF blob
   mode = "final",
   role = "customer",
   storeAccount,
+  onDownload, // optional custom download handler
 }) => {
   const modalRef            = useRef(null);
   const [html, setHtml]     = useState("");
   const [fetching, setFetching] = useState(false);
+  const [blobUrl, setBlobUrl] = useState("");
 
   useEscapeToClose(open, onClose);
 
@@ -48,51 +52,112 @@ const ReceiptModal = ({
   // so no token-in-URL trick is needed. The response is a plain HTML string
   // which we inject directly into the iframe via srcdoc.
   useEffect(() => {
-    if (!open || !invoiceParams) return;
-
-    let cancelled = false;
+    // Reset state
     setHtml("");
-    setFetching(true);
+    setFetching(false);
 
-    axiosInstance
-      .get("/orders/invoice", { params: invoiceParams })
-      .then((res) => {
-        if (!cancelled) setHtml(res.data); // res.data is the HTML string
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          console.error("Receipt fetch error:", err);
-          toast.error("Failed to load receipt. Please try again.");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setFetching(false);
-      });
+    // Cleanup any object URL created from blob
+    return () => {
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
+        setBlobUrl("");
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
-    return () => { cancelled = true; };
-  }, [open, JSON.stringify(invoiceParams)]);
+  useEffect(() => {
+    if (!open) return;
+
+    // Priority: invoiceParams (fetch HTML) > previewUrl (direct PDF URL) > blob (PDF blob)
+    if (invoiceParams) {
+      let cancelled = false;
+      setHtml("");
+      setFetching(true);
+
+      axiosInstance
+        .get("/orders/invoice", { params: invoiceParams })
+        .then((res) => {
+          if (!cancelled) setHtml(res.data); // res.data is the HTML string
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            console.error("Receipt fetch error:", err);
+            toast.error("Failed to load receipt. Please try again.");
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setFetching(false);
+        });
+
+      return () => { cancelled = true; };
+    }
+
+    if (previewUrl) {
+      // nothing to fetch — iframe will point to previewUrl
+      setHtml("");
+      setFetching(false);
+      return;
+    }
+
+    if (blob) {
+      try {
+        const url = URL.createObjectURL(blob);
+        setBlobUrl(url);
+        setFetching(false);
+      } catch (err) {
+        console.error("Failed to create blob URL", err);
+        toast.error("Failed to load receipt. Please try again.");
+      }
+      return;
+    }
+  }, [open, JSON.stringify(invoiceParams), previewUrl, blob]);
 
   // ── Download PDF ──────────────────────────────────────────────────────────
   // Re-fetches with download=true which returns a PDF blob.
   // axios handles auth — no URL building needed.
   const handleDownload = async () => {
-    if (!invoiceParams) return;
-    try {
-      const res = await axiosInstance.get("/orders/invoice", {
-        params: { ...invoiceParams, download: "true" },
-        responseType: "blob",
-      });
-      const url  = URL.createObjectURL(res.data);
-      const a    = document.createElement("a");
-      a.href     = url;
-      a.download = "receipt.pdf";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch {
-      toast.error("Failed to download PDF. Please try again.");
+    // If parent provided a custom download handler, use it
+    if (typeof onDownload === "function") return onDownload();
+
+    // If invoiceParams available, re-fetch PDF blob from server
+    if (invoiceParams) {
+      try {
+        const res = await axiosInstance.get("/orders/invoice", {
+          params: { ...invoiceParams, download: "true" },
+          responseType: "blob",
+        });
+        const url  = URL.createObjectURL(res.data);
+        const a    = document.createElement("a");
+        a.href     = url;
+        a.download = "receipt.pdf";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch {
+        toast.error("Failed to download PDF. Please try again.");
+      }
+      return;
     }
+
+    // If a blob URL or previewUrl exists, download from that
+    const src = blobUrl || previewUrl;
+    if (src) {
+      try {
+        const a = document.createElement("a");
+        a.href = src;
+        a.download = "receipt.pdf";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } catch {
+        toast.error("Failed to download PDF. Please try again.");
+      }
+      return;
+    }
+
+    toast.error("Receipt not available for download");
   };
 
   // ── Print ─────────────────────────────────────────────────────────────────
@@ -167,6 +232,14 @@ const ReceiptModal = ({
                 title="Receipt"
                 className="w-full h-full border-0"
                 sandbox="allow-same-origin allow-modals"
+              />
+            ) : previewUrl || blobUrl ? (
+              // Render provided PDF URL (preview or blob)
+              <iframe
+                id="receipt-iframe"
+                src={previewUrl || blobUrl}
+                title="Receipt"
+                className="w-full h-full border-0"
               />
             ) : (
               <div className="flex items-center justify-center h-full">
