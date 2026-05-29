@@ -246,7 +246,7 @@ const ReceiptModal = ({
                 src={contentUrl || previewUrl || blobUrl}
                 title="Receipt"
                 className="w-full h-full border-0"
-                sandbox="allow-modals"
+                sandbox="allow-modals allow-scripts"
               />
             ) : (
               <div className="flex items-center justify-center h-full">

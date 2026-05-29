@@ -577,6 +577,7 @@ const CustomerProducts = () => {
           setOrderData={setOrderData}
           closeModal={() => setOpenModal(false)}
           patchCart={patchCart}
+          showStock={canSeeStock}
         />
       )}
     </div>

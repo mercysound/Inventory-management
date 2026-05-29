@@ -15,11 +15,17 @@ import {
 import axiosInstance from "../../../utils/axiosInstance";
 
 // ─── Stock level badge ───────────────────────────────────────────────────────
-const StockBadge = ({ stock }) => {
+const StockBadge = ({ stock, showStock }) => {
   if (stock === 0)
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-600">
         <AlertTriangle size={10} /> Out of stock
+      </span>
+    );
+  if (!showStock)
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+        Available
       </span>
     );
   if (stock < 5)
@@ -54,7 +60,7 @@ const StepBtn = ({ onClick, disabled, children }) => (
 );
 
 // ─── Main modal ──────────────────────────────────────────────────────────────
-const OrderModal = ({ orderData, setOrderData, closeModal, patchCart }) => {
+const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock }) => {
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
 
@@ -83,7 +89,7 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart }) => {
     const n = parseInt(raw, 10);
     if (isNaN(n) || n < 0) return;
     if (n > orderData.stock) {
-      toast.warning("Not enough stock");
+      toast.warning("Quantity exceeds available stock");
       return;
     }
     setQty(n);
@@ -246,7 +252,7 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart }) => {
                   <Tag size={11} className="text-gray-400" />
                   <span className="text-xs text-gray-500">{orderData.productCategory}</span>
                 </div>
-                <StockBadge stock={orderData.stock} />
+                <StockBadge stock={orderData.stock} showStock={showStock} />
               </div>
             </div>
 
@@ -302,8 +308,14 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart }) => {
                 </StepBtn>
               </div>
 
+              {!showStock && orderData.stock > 0 && (
+                <p className="text-xs text-gray-400 mt-2">
+                  Requested quantity is validated against current inventory.
+                </p>
+              )}
+
               {/* Stock progress bar */}
-              {orderData.stock > 0 && (
+              {showStock && orderData.stock > 0 && (
                 <div className="mt-2">
                   <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                     <motion.div
@@ -316,9 +328,6 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart }) => {
                       transition={{ duration: 0.15 }}
                     />
                   </div>
-                  <p className="text-xs text-gray-400 mt-1 text-right">
-                    {qty} of {orderData.stock} available
-                  </p>
                 </div>
               )}
             </div>
