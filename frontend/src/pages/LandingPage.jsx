@@ -533,4 +533,7 @@ const AuthForm = ({
       </div>
     </>
   );
+};
+
+export default LandingPage;
 

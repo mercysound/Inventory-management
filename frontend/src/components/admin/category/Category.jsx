@@ -123,6 +123,7 @@ const Category = () => {
   if (loading) return <CategorySkeleton />;
 
   return (
+    <>
     <div className="py-6 px-4 md:px-6">
       <h1 className="text-2xl font-bold mb-6 text-gray-800">📂 Category Management</h1>
 
@@ -154,6 +155,7 @@ const Category = () => {
         onCancel={() => setConfirmOpen(false)}
         dangerText={deletingId ? 'Deleting...' : 'Delete'}
       />
+    </>
   );
 };
 

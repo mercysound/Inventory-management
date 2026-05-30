@@ -35,36 +35,36 @@ function App() {
     <>
       <ToastContainer />
       <ErrorBoundary>
-      <Router>
-        <Routes>
-          {/* Landing/Login Page */}
-          <Route path="/" element={<LandingPage />} />
-          {/* Complete Profile Page */}
-          <Route path="/complete-profile" element={<CompleteProfile />} />
-          {/* Forgot Password Page */}
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          {/* Reset Password Page */}
-          <Route path="/reset-password" element={<ResetPassword />} />
-          {/* Admin Dashboard */}
-          <Route
-            path="/admin-dashboard/*"
-      </Router>
-      </ErrorBoundary>
-              <ProtectedRoute requireRole={["admin"]}>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Summary />} />
-            <Route path="categories" element={<Categories />} />
-            <Route path="products" element={<Product />} />
-            <Route path="suppliers" element={<Suppliers/>} />
-            <Route path="placed-orders" element={<PlacedOrders />} />
-            <Route path="completed-history" element={<AdminCompletedHistory />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="users" element={<Users />} />
-            <Route path="logout" element={<Logout />} />
-          </Route>
+        <Router>
+          <Routes>
+            {/* Landing/Login Page */}
+            <Route path="/" element={<LandingPage />} />
+            {/* Complete Profile Page */}
+            <Route path="/complete-profile" element={<CompleteProfile />} />
+            {/* Forgot Password Page */}
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            {/* Reset Password Page */}
+            <Route path="/reset-password" element={<ResetPassword />} />
+
+            {/* Admin Dashboard */}
+            <Route
+              path="/admin-dashboard/*"
+              element={
+                <ProtectedRoute requireRole={["admin"]}>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Summary />} />
+              <Route path="categories" element={<Categories />} />
+              <Route path="products" element={<Product />} />
+              <Route path="suppliers" element={<Suppliers/>} />
+              <Route path="placed-orders" element={<PlacedOrders />} />
+              <Route path="completed-history" element={<AdminCompletedHistory />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="users" element={<Users />} />
+              <Route path="logout" element={<Logout />} />
+            </Route>
 
           {/* Staff Dashboard */}
           <Route
@@ -110,6 +110,7 @@ function App() {
           />
         </Routes>
       </Router>
+      </ErrorBoundary>
     </>
   );
 }
