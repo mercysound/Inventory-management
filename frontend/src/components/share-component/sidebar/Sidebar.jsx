@@ -54,15 +54,15 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
           animate={{ x: 0 }}
           exit={{ x: -250 }}
           transition={{ duration: 0.3 }}
-          className="fixed md:static top-0 left-0 h-screen w-64 bg-gradient-to-b from-gray-900 to-gray-800 text-white shadow-lg flex flex-col z-40"
+          className="fixed md:static top-0 left-0 h-screen w-64 bg-gradient-to-b from-slate-900 via-slate-950 to-black text-white shadow-xl flex flex-col z-40 border-r border-white/5"
         >
-          <div className="h-16 flex items-center justify-between border-b border-gray-700 px-4">
-            <span className="text-lg md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-pink-400">
+          <div className="h-16 flex items-center justify-between border-b border-white/5 px-4">
+            <span className="text-lg md:text-2xl font-bold text-emerald-400">
               MELECH SH
             </span>
             <button
               onClick={toggleSidebar}
-              className="md:hidden p-1 rounded hover:bg-gray-700 transition"
+              className="md:hidden p-1 rounded hover:bg-slate-800 transition"
             >
               <FaTimes />
             </button>
@@ -78,7 +78,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                       toggleSidebar();
                       navigate("/", { replace: true });
                     }}
-                    className="flex items-center w-full p-3 rounded-lg hover:bg-gray-700 transition-all duration-200 text-left"
+                    className="flex items-center w-full p-3 rounded-lg hover:bg-slate-800/50 transition-all duration-200 text-left text-slate-300 hover:text-white"
                   >
                     <span className="text-lg">{item.icon}</span>
                     <span className="ml-3 font-medium">{item.name}</span>
@@ -91,8 +91,8 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                     className={({ isActive }) =>
                       `flex items-center p-3 rounded-lg transition-all duration-200 ${
                         isActive
-                          ? "bg-gradient-to-r from-indigo-500 to-pink-500 shadow-md"
-                          : "hover:bg-gray-700"
+                          ? "bg-emerald-500/20 border-l-2 border-emerald-400 text-emerald-300"
+                          : "text-slate-300 hover:bg-slate-800/30 hover:text-white"
                       }`
                     }
                   >
@@ -104,7 +104,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             ))}
           </ul>
 
-          <div className="p-4 border-t border-gray-700 text-center text-gray-400 text-sm">
+          <div className="p-4 border-t border-white/5 text-center text-slate-500 text-xs">
             © {new Date().getFullYear()} MELECH SH
           </div>
         </motion.aside>

@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import axiosInstance from "../../../utils/axiosInstance";
+import LoadingButton from "../../share-component/LoadingButton";
 
 // ─── Stock level badge ───────────────────────────────────────────────────────
 const StockBadge = ({ stock, showStock }) => {
@@ -154,6 +155,7 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
       });
     };
 
+    setLoading(true);
     doRequest()
       .then((res) => {
         if (!res.data.success) {
@@ -171,7 +173,8 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
           err?.response?.data?.error ||
           "Connection error — cart restored. Please try again.";
         toast.error(msg);
-      });
+      })
+      .finally(() => setLoading(false));
   };
 
   return (
@@ -376,11 +379,10 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
                 Cancel
               </button>
 
-              <motion.button
+              <LoadingButton
                 type="submit"
+                loading={loading}
                 disabled={orderData.stock === 0 || (!isUpdate && qty < 1)}
-                whileTap={!loading ? { scale: 0.96 } : {}}
-                transition={{ duration: 0.07 }}
                 className={`flex-1 py-2.5 rounded-xl text-white text-sm font-semibold
                   flex items-center justify-center gap-2 transition shadow-sm
                   ${
@@ -398,7 +400,7 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
                 ) : (
                   <><ShoppingCart size={14} /> Add to Cart</>
                 )}
-              </motion.button>
+              </LoadingButton>
             </div>
           </form>
         </motion.div>

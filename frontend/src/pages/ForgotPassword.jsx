@@ -3,7 +3,8 @@ import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../utils/axiosInstance";
-import { ArrowLeft, Mail, Loader2 } from "lucide-react";
+import { ArrowLeft, Mail } from "lucide-react";
+import LoadingButton from "../components/share-component/LoadingButton";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -154,23 +155,16 @@ const ForgotPassword = () => {
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white py-3 rounded-lg shadow-lg transition-colors flex items-center justify-center"
-          >
+          <LoadingButton loading={loading} type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white py-3 rounded-lg shadow-lg transition-colors flex items-center justify-center">
             {loading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                Sending...
-              </>
+              <>Sending...</>
             ) : (
               <>
                 <Mail className="w-5 h-5 mr-2" />
                 Send Reset Link
               </>
             )}
-          </button>
+          </LoadingButton>
         </form>
 
         <p className="text-center text-gray-600 mt-6 text-sm">

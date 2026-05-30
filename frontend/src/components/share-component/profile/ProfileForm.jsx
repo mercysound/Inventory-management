@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import LoadingButton from "../LoadingButton";
 
 const ProfileForm = ({
   user,
@@ -180,13 +181,13 @@ const ProfileForm = ({
         </button>
       ) : (
         <div className="flex gap-2 mt-2">
-          <button
+          <LoadingButton
             type="submit"
-            disabled={saving}
+            loading={saving}
             className="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? "Saving..." : "Save Changes"}
-          </button>
+          </LoadingButton>
           <button
             type="button"
             onClick={handleCancel}

@@ -1,6 +1,7 @@
 import React from "react";
+import LoadingButton from "../../share-component/LoadingButton";
 
-const UsersForm = ({ formData, handleChange, handleSubmit }) => {
+const UsersForm = ({ formData, handleChange, handleSubmit, submitting }) => {
   return (
     <div>
       <h2 className="text-lg md:text-xl font-semibold mb-4 text-gray-800">Add New User</h2>
@@ -66,12 +67,13 @@ const UsersForm = ({ formData, handleChange, handleSubmit }) => {
           <option value="staff">Staff</option>
         </select>
 
-        <button
+        <LoadingButton
           type="submit"
+          loading={!!submitting}
           className="w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 transition-colors font-medium"
         >
           Save User
-        </button>
+        </LoadingButton>
       </form>
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import axiosInstance from "../../../utils/axiosInstance";
+import LoadingButton from "../../share-component/LoadingButton";
 
 const roleColors = {
   admin:    { bg:"#f3f0ff", text:"#6d28d9", border:"#ddd6fe" },
@@ -201,9 +202,9 @@ export default function EditUserModal({ user, onClose, onSuccess }) {
 
             <div className="eum-footer">
               <button type="button" onClick={onClose} className="eum-cancel">Cancel</button>
-              <button type="submit" disabled={saving} className="eum-save" style={{opacity:saving?0.7:1}}>
+              <LoadingButton type="submit" loading={saving} className="eum-save" style={{opacity:saving?0.7:1}}>
                 {saving?"Saving…":"Save changes"}
-              </button>
+              </LoadingButton>
             </div>
           </form>
         </motion.div>

@@ -10,6 +10,7 @@ import Summary from "./components/admin/dashboard/Summary.jsx";
 import { ToastContainer } from "react-toastify";
 import LandingPage from "./pages/LandingPage.jsx";
 import Unauthorized from "./pages/unauthorized/Unauthorized.jsx";
+import ErrorBoundary from "./components/share-component/ErrorBoundary";
 import CustomerOrderPortal from "./components/customer/CustomerOrderPortal/CustomerOrderPortal";
 import CustomerProducts from "./components/customer/customerProduct/CustomerProducts.jsx";
 import Suppliers from "./components/admin/supplier/Suppliers.jsx";
@@ -33,6 +34,7 @@ function App() {
   return (
     <>
       <ToastContainer />
+      <ErrorBoundary>
       <Router>
         <Routes>
           {/* Landing/Login Page */}
@@ -46,7 +48,8 @@ function App() {
           {/* Admin Dashboard */}
           <Route
             path="/admin-dashboard/*"
-            element={
+      </Router>
+      </ErrorBoundary>
               <ProtectedRoute requireRole={["admin"]}>
                 <Dashboard />
               </ProtectedRoute>

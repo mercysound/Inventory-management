@@ -3,6 +3,7 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Home } from "lucide-react";
+import LoadingButton from "../LoadingButton";
 import { useAuth } from "../../../context/AuthContext";
 import axiosInstance from "../../../utils/axiosInstance";
 
@@ -154,22 +155,13 @@ const CompleteProfile = () => {
           </div>
 
           {/* Submit Button */}
-          <motion.button
+          <LoadingButton
             type="submit"
-            disabled={loading}
+            loading={loading}
             className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-semibold py-3 rounded-lg shadow-md transition duration-200 mt-6"
-            whileHover={!loading ? { scale: 1.02 } : {}}
-            whileTap={!loading ? { scale: 0.98 } : {}}
           >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                Updating...
-              </span>
-            ) : (
-              "Complete Profile"
-            )}
-          </motion.button>
+            {loading ? "Updating..." : "Complete Profile"}
+          </LoadingButton>
         </form>
 
         {/* Footer Info */}

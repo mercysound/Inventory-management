@@ -1,6 +1,8 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Pencil, PlusCircle } from "lucide-react";
+import FormInput from "../../share-component/FormInput";
+import LoadingButton from "../../share-component/LoadingButton";
 
 const CategoryForm = ({
   categoryName,
@@ -10,6 +12,7 @@ const CategoryForm = ({
   onCancel,
   onChangeName,
   onChangeDescription,
+  submitting,
 }) => {
   return (
     <motion.div
@@ -23,37 +26,34 @@ const CategoryForm = ({
           {editCategory ? "✏️ Edit Category" : "➕ Add New Category"}
         </h2>
         <form className="space-y-4" onSubmit={onSubmit}>
-          <input
-            type="text"
+          <FormInput
+            label="Category Name"
+            name="categoryName"
             placeholder="Category Name"
-            className="border w-full p-3 rounded-md focus:ring-2 focus:ring-blue-400 outline-none transition"
-            required
             value={categoryName}
             onChange={onChangeName}
+            required
           />
 
-          <input
-            type="text"
+          <FormInput
+            label="Category Description"
+            name="categoryDescription"
             placeholder="Category Description"
-            className="border w-full p-3 rounded-md focus:ring-2 focus:ring-blue-400 outline-none transition"
-            required
             value={categoryDescription}
             onChange={onChangeDescription}
+            required
           />
 
           <div className="flex gap-2">
-            <button
+            <LoadingButton
               className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition-all duration-200 font-medium"
               type="submit"
+              loading={!!submitting}
             >
               {editCategory ? <Pencil size={18} /> : <PlusCircle size={18} />}
-              <span className="hidden sm:inline">
-                {editCategory ? "Save Changes" : "Add Category"}
-              </span>
-              <span className="sm:hidden">
-                {editCategory ? "Save" : "Add"}
-              </span>
-            </button>
+              <span className="hidden sm:inline">{editCategory ? "Save Changes" : "Add Category"}</span>
+              <span className="sm:hidden">{editCategory ? "Save" : "Add"}</span>
+            </LoadingButton>
 
             {editCategory && (
               <button

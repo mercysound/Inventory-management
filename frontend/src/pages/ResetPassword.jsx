@@ -3,7 +3,8 @@ import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import axiosInstance from "../utils/axiosInstance";
-import { ArrowLeft, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { ArrowLeft, Lock, Eye, EyeOff } from "lucide-react";
+import LoadingButton from "../components/share-component/LoadingButton";
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
@@ -208,14 +209,9 @@ const ResetPassword = () => {
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white py-3 rounded-lg shadow-lg transition-colors flex items-center justify-center"
-          >
+          <LoadingButton loading={loading} type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white py-3 rounded-lg shadow-lg transition-colors flex items-center justify-center">
             {loading ? (
               <>
-                <Loader2 className="w-5 h-5 animate-spin mr-2" />
                 Resetting...
               </>
             ) : (
@@ -224,7 +220,7 @@ const ResetPassword = () => {
                 Reset Password
               </>
             )}
-          </button>
+          </LoadingButton>
         </form>
       </motion.div>
 

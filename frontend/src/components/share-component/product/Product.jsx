@@ -5,6 +5,7 @@ import ProductForm from "./ProductForm";
 import ProductSkeleton from "./ProductSkeleton";
 import axiosInstance from "../../../utils/axiosInstance";
 import DeletedProductsPopup from "./DeletedProductsPopup";
+import ConfirmDialog from "../ConfirmDialog";
 
 const emptyForm = {
   name: "", description: "", price: "", stock: "",
@@ -28,6 +29,10 @@ const Product = () => {
   const [updatingProductId, setUpdatingProductId] = useState(null);
   const [formData, setFormData]                 = useState(emptyForm);
   const [draftRestored, setDraftRestored]       = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(null); // 'delete' | 'permanent'
+  const [deletingId, setDeletingId] = useState(null);
 
   const scrollRef = useRef(null);
 
@@ -158,13 +163,19 @@ const Product = () => {
     setOpenModal(true);
   };
 
-  const handleDelete = async (id) => {
-    const confirmDelete = confirm("Are you sure you want to delete this product?");
-    if (!confirmDelete) return;
+  const handleDelete = (id) => {
+    setConfirmTarget(id);
+    setConfirmAction("delete");
+    setConfirmOpen(true);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!confirmTarget) return;
+    const id = confirmTarget;
     const previousProducts = products;
     const previousFiltered = filteredProducts;
 
+    setDeletingId(id);
     setProducts((prev) => prev.filter((p) => p._id !== id));
     setFilteredProducts((prev) => prev.filter((p) => p._id !== id));
 
@@ -177,10 +188,15 @@ const Product = () => {
         setFilteredProducts(previousFiltered);
         toast.error("Error deleting product.");
       }
-    } catch {
+    } catch (err) {
       setProducts(previousProducts);
       setFilteredProducts(previousFiltered);
-      toast.error("Error deleting product. Please try again");
+      toast.error(err.response?.data?.message || "Error deleting product. Please try again");
+    } finally {
+      setDeletingId(null);
+      setConfirmOpen(false);
+      setConfirmTarget(null);
+      setConfirmAction(null);
     }
   };
 
@@ -296,9 +312,16 @@ const Product = () => {
     }
   };
 
-  const handlePermanentDelete = async (id) => {
-    const confirmDelete = confirm("Are you sure? This cannot be undone.");
-    if (!confirmDelete) return;
+  const handlePermanentDelete = (id) => {
+    setConfirmTarget(id);
+    setConfirmAction("permanent");
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmPermanentDelete = async () => {
+    if (!confirmTarget) return;
+    const id = confirmTarget;
+    setDeletingId(id);
     try {
       const response = await axiosInstance.delete(`/products/permanent/${id}`);
       if (response.data.success) {
@@ -307,7 +330,12 @@ const Product = () => {
       }
     } catch (error) {
       console.error(error);
-      toast.error("Failed to delete product permanently");
+      toast.error(error.response?.data?.message || "Failed to delete product permanently");
+    } finally {
+      setDeletingId(null);
+      setConfirmOpen(false);
+      setConfirmTarget(null);
+      setConfirmAction(null);
     }
   };
 
@@ -365,6 +393,19 @@ const Product = () => {
           onClearDraft={handleClearDraft}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title={confirmAction === 'permanent' ? 'Permanently delete product' : 'Delete product'}
+        message={
+          confirmAction === 'permanent'
+            ? 'This action is irreversible. Permanently delete this product?'
+            : 'This will move the product to deleted items. Continue?'
+        }
+        onConfirm={confirmAction === 'permanent' ? handleConfirmPermanentDelete : handleConfirmDelete}
+        onCancel={() => setConfirmOpen(false)}
+        dangerText={deletingId ? 'Deleting...' : 'Delete'}
+      />
 
       <DeletedProductsPopup
         open={showDeletedPopup}

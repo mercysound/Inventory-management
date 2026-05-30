@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import axiosInstance from "../../../utils/axiosInstance";
+import LoadingButton from "../LoadingButton";
 
 // How long to wait after the admin stops typing before saving to server (ms).
 // Keeps API calls low — one save per pause, not one per keystroke.
@@ -320,9 +321,9 @@ const ProductForm = ({
 
           {/* ACTION BUTTONS */}
           <div className="flex gap-2 pt-1">
-            <button
+            <LoadingButton
               type="submit"
-              disabled={loading}
+              loading={loading}
               className={`flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition ${
                 loading ? "bg-gray-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
               }`}
@@ -330,7 +331,7 @@ const ProductForm = ({
               {loading
                 ? editProduct ? "Saving..." : "Adding..."
                 : editProduct ? "Save changes" : "Add product"}
-            </button>
+            </LoadingButton>
             <button
               type="button"
               onClick={onClose}

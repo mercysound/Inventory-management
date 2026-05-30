@@ -8,6 +8,7 @@ import { FaUserPlus, FaSearch } from "react-icons/fa";
 import { AlertTriangle, Phone, Mail } from "lucide-react";
 import axiosInstance from "../../../utils/axiosInstance";
 import { parseApiError } from "../../../../../server/utils/parseApiError";
+import ConfirmDialog from "../../share-component/ConfirmDialog";
 
 
 const Suppliers = () => {
@@ -17,6 +18,10 @@ const Suppliers = () => {
   const [openModal, setOpenModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [updatingSupplierId, setUpdatingSupplierId] = useState(null); // ✅ tracks which row
+  const [submittingModal, setSubmittingModal] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   const emptyForm = {
     name: "",
@@ -84,6 +89,8 @@ const fetchSuppliers = async (attempt = 1) => {
   const isEditing = Boolean(editSupplier);
   const targetId = editSupplier;
 
+  setSubmittingModal(true);
+
   // ❌ Remove closeModal() from here — don't close before we know it succeeded
 
   if (isEditing) {
@@ -124,20 +131,28 @@ const fetchSuppliers = async (attempt = 1) => {
       toast.error("Something went wrong. Try again.");
       if (isEditing) fetchSuppliers();
     }
-} catch (error) {
-  toast.error(parseApiError(error));
-} finally {
+  } catch (error) {
+    toast.error(parseApiError(error));
+  } finally {
     setUpdatingSupplierId(null);
+    setSubmittingModal(false);
   }
 };
 
   // ✅ Optimistic delete — row disappears instantly
-  const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this supplier?")) return;
+  const handleDelete = (id) => {
+    setConfirmTarget(id);
+    setConfirmOpen(true);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!confirmTarget) return;
+    const id = confirmTarget;
     const previousSuppliers = suppliers;
     const previousFiltered = filterSupplier;
 
+    setDeletingId(id);
+    // optimistic remove
     setSuppliers((prev) => prev.filter((s) => s._id !== id));
     setFilterSupplier((prev) => prev.filter((s) => s._id !== id));
 
@@ -157,6 +172,10 @@ const fetchSuppliers = async (attempt = 1) => {
       setFilterSupplier(previousFiltered);
       const msg = error.response?.data?.message || "Error deleting supplier";
       toast.error(msg);
+    } finally {
+      setDeletingId(null);
+      setConfirmOpen(false);
+      setConfirmTarget(null);
     }
   };
 
@@ -271,9 +290,18 @@ const fetchSuppliers = async (attempt = 1) => {
           setFormData={setFormData}
           editSupplier={editSupplier}
           handleSubmit={handleSubmit}
+          submitting={submittingModal}
           closeModal={closeModal}
         />
       )}
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Delete supplier"
+        message="This will permanently remove the supplier and associated links. Continue?"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmOpen(false)}
+        dangerText={deletingId ? 'Deleting...' : 'Delete'}
+      />
     </div>
   );
 };

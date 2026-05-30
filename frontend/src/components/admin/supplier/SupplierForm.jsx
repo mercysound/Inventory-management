@@ -1,5 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
+import LoadingButton from "../../share-component/LoadingButton";
 
 const SupplierForm = ({
   formData,
@@ -7,6 +8,7 @@ const SupplierForm = ({
   editSupplier,
   handleSubmit,
   closeModal,
+  submitting,
 }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -150,12 +152,13 @@ const SupplierForm = ({
 
           {/* Action buttons */}
           <div className="flex gap-2 pt-1">
-            <button
+            <LoadingButton
               type="submit"
+              loading={!!submitting}
               className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition"
             >
               {editSupplier ? "Save changes" : "Add supplier"}
-            </button>
+            </LoadingButton>
             <button
               type="button"
               onClick={closeModal}

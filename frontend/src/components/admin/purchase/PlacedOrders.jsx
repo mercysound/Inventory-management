@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { FaCalendarAlt } from "react-icons/fa";
 import PlacedOrdersTable from "./PlacedOrdersTable";
 import PlacedOrdersSkeleton from "./PlacedOrdersSkeleton";
+import ConfirmDialog from "../../share-component/ConfirmDialog";
 
 // ✅ Debounce hook — prevents filter from firing on every keystroke
 const useDebounce = (value, delay = 300) => {
@@ -19,6 +20,9 @@ const PlacedOrders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null); // ✅ track which row is updating
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(null);
 
   // ── RAW filter inputs (debounced below)
   const [searchOrderIdRaw, setSearchOrderIdRaw] = useState("");
@@ -70,14 +74,7 @@ const PlacedOrders = () => {
   };
 
   // ✅ Optimistic status update — UI changes instantly, rolls back on failure
-  const updateDeliveryStatus = useCallback(async (orderId, newStatus) => {
-    if (newStatus === "delivered") {
-      const confirmDelivery = window.confirm(
-        "Are you sure this order has been delivered? Once confirmed, it will move to history."
-      );
-      if (!confirmDelivery) return;
-    }
-
+  const updateDeliveryStatusImpl = useCallback(async (orderId, newStatus) => {
     const previousOrders = orders; // save for rollback
 
     // ✅ Update UI instantly
@@ -111,10 +108,26 @@ const PlacedOrders = () => {
     }
   }, [orders]);
 
+  const requestUpdateDeliveryStatus = (orderId, newStatus) => {
+    if (newStatus === "delivered") {
+      setConfirmTarget({ orderId, newStatus });
+      setConfirmAction("deliver");
+      setConfirmOpen(true);
+      return;
+    }
+    updateDeliveryStatusImpl(orderId, newStatus);
+  };
+
   // ✅ Optimistic delete — removes row instantly, rolls back on failure
   const handleDeleteOrder = useCallback(async (id) => {
-    if (!window.confirm("Are you sure you want to delete this order?")) return;
+    setConfirmTarget({ orderId: id });
+    setConfirmAction("delete-order");
+    setConfirmOpen(true);
+  }, [orders]);
 
+  const handleConfirmDeleteOrder = async () => {
+    const id = confirmTarget?.orderId;
+    if (!id) return;
     const previousOrders = orders;
 
     setOrders((prev) => prev.filter((o) => o._id !== id)); // ✅ remove instantly
@@ -130,8 +143,12 @@ const PlacedOrders = () => {
     } catch (error) {
       setOrders(previousOrders); // ✅ rollback
       toast.error("Error deleting order");
+    } finally {
+      setConfirmOpen(false);
+      setConfirmTarget(null);
+      setConfirmAction(null);
     }
-  }, [orders]);
+  };
 
   // ── FILTER ──
   const filtered = useMemo(() => {
@@ -356,7 +373,7 @@ const PlacedOrders = () => {
               <PlacedOrdersTable
                 orders={paginated}
                 allOrders={orders}
-                updateDeliveryStatus={updateDeliveryStatus}
+                updateDeliveryStatus={requestUpdateDeliveryStatus}
                 deleteOrder={handleDeleteOrder}
                 updatingId={updatingId} // ✅ pass specific row id instead of boolean
                 sortField={sortField}
@@ -396,6 +413,31 @@ const PlacedOrders = () => {
           )}
         </>
       )}
+      <ConfirmDialog
+        open={confirmOpen}
+        title={confirmAction === "deliver" ? "Confirm delivery" : "Delete order"}
+        message={
+          confirmAction === "deliver"
+            ? "Are you sure this order has been delivered? Once confirmed, it will move to history."
+            : "Are you sure you want to delete this order?"
+        }
+        onConfirm={
+          confirmAction === "deliver"
+            ? () => {
+                updateDeliveryStatusImpl(confirmTarget?.orderId, confirmTarget?.newStatus);
+                setConfirmOpen(false);
+                setConfirmTarget(null);
+                setConfirmAction(null);
+              }
+            : handleConfirmDeleteOrder
+        }
+        onCancel={() => {
+          setConfirmOpen(false);
+          setConfirmTarget(null);
+          setConfirmAction(null);
+        }}
+        dangerText={"Confirm"}
+      />
     </div>
   );
 };

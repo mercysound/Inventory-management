@@ -5,13 +5,18 @@ import CategoryForm from "./CategoryForm";
 import CategoryTable from "./CategoryTable";
 import CategorySkeleton from "./CategorySkeleton";
 import axiosInstance from "../../../utils/axiosInstance";
+import ConfirmDialog from "../../share-component/ConfirmDialog";
 
 const Category = () => {
   const [categoryName, setCategoryName] = useState("");
   const [categoryDescription, setCategoryDescription] = useState("");
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [editCategory, setEditCategory] = useState(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const navigate = useNavigate();
 
   const fetchCategories = async () => {
@@ -42,7 +47,7 @@ const Category = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    setSubmitting(true);
     try {
       let response;
       if (editCategory) {
@@ -73,6 +78,8 @@ const Category = () => {
     } catch (error) {
       console.error("Category request error:", error);
       toast.error("Something went wrong, please try again.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -88,12 +95,16 @@ const Category = () => {
     setCategoryDescription("");
   };
 
-  const handleDelete = async (id) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this category?");
-    if (!confirmDelete) return;
+  const handleDelete = (id) => {
+    setConfirmTarget(id);
+    setConfirmOpen(true);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!confirmTarget) return;
+    setDeletingId(confirmTarget);
     try {
-      const response = await axiosInstance.delete(`/category/${id}`);
+      const response = await axiosInstance.delete(`/category/${confirmTarget}`);
       if (response.data.success) {
         toast.success("Category deleted successfully!");
         fetchCategories();
@@ -102,6 +113,10 @@ const Category = () => {
       }
     } catch (error) {
       toast.error(error.response?.data?.message || "Error deleting category.");
+    } finally {
+      setDeletingId(null);
+      setConfirmOpen(false);
+      setConfirmTarget(null);
     }
   };
 
@@ -117,6 +132,7 @@ const Category = () => {
           categoryDescription={categoryDescription}
           editCategory={editCategory}
           onSubmit={handleSubmit}
+          submitting={submitting}
           onCancel={handleCancel}
           onChangeName={(e) => setCategoryName(e.target.value)}
           onChangeDescription={(e) => setCategoryDescription(e.target.value)}
@@ -125,10 +141,19 @@ const Category = () => {
         <CategoryTable
           categories={categories}
           onEdit={handleEdit}
-          onDelete={handleDelete}
+            onDelete={handleDelete}
         />
       </div>
     </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Delete category"
+        message="This will permanently remove the category and cannot be undone. Do you want to continue?"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmOpen(false)}
+        dangerText={deletingId ? 'Deleting...' : 'Delete'}
+      />
   );
 };
 

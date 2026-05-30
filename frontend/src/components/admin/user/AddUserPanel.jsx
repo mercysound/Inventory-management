@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import axiosInstance from "../../../utils/axiosInstance";
+import LoadingButton from "../../share-component/LoadingButton";
 
 const EMPTY = { name:"", email:"", password:"", phone:"", address:"", role:"" };
 
@@ -160,9 +161,9 @@ export default function AddUserPanel({ onSuccess }) {
               </motion.div>
             )}
 
-            <button type="submit" disabled={saving} className="aup-submit" style={{opacity:saving?0.7:1}}>
+            <LoadingButton type="submit" loading={saving} className="aup-submit" style={{opacity:saving?0.7:1}}>
               {saving?"Adding user…":"Add User →"}
-            </button>
+            </LoadingButton>
           </form>
         </motion.div>
 
