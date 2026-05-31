@@ -319,6 +319,7 @@ const LandingPage = () => {
                       type="text"
                       name="name"
                       placeholder="John Doe"
+                      autoComplete="name"
                       value={formData.name}
                       onChange={handleChange}
                       className="w-full rounded-3xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-emerald-400"
@@ -331,6 +332,7 @@ const LandingPage = () => {
                       type="tel"
                       name="phone"
                       placeholder="080 1234 5678"
+                      autoComplete="tel"
                       value={formData.phone}
                       onChange={handleChange}
                       className="w-full rounded-3xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-emerald-400"
@@ -347,6 +349,7 @@ const LandingPage = () => {
                     type="text"
                     name="address"
                     placeholder="123 Market Road"
+                    autoComplete="street-address"
                     value={formData.address}
                     onChange={handleChange}
                     className="w-full rounded-3xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-emerald-400"
@@ -361,6 +364,7 @@ const LandingPage = () => {
                   type="email"
                   name="email"
                   placeholder="you@example.com"
+                  autoComplete="email"
                   value={formData.email}
                   onChange={handleChange}
                   className="w-full rounded-3xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-emerald-400"
@@ -374,6 +378,7 @@ const LandingPage = () => {
                   type={showPassword ? "text" : "password"}
                   name="password"
                   placeholder="Enter a strong password"
+                  autoComplete={isLogin ? "current-password" : "new-password"}
                   value={formData.password}
                   onChange={handleChange}
                   className="w-full rounded-3xl border border-slate-800 bg-slate-950 px-4 py-3 pr-12 text-sm text-slate-100 outline-none transition focus:border-emerald-400"
