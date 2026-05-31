@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -25,6 +25,11 @@ const LandingPage = () => {
 
   const navigate = useNavigate();
   const { login } = useAuth();
+  const formRef = useRef(null);
+
+  const scrollToAuth = () => {
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   // Redirect logged-in users
   useEffect(() => {
@@ -214,8 +219,24 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-gray-950 text-slate-100">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        <div className="sticky top-0 z-30 mb-6 rounded-3xl border border-white/10 bg-slate-950/95 px-4 py-4 shadow-xl shadow-black/20 backdrop-blur-xl backdrop-saturate-150 sm:px-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.35em] text-emerald-300">MELECH SH</p>
+              <p className="mt-1 text-sm text-slate-400">Fast access to your inventory dashboard.</p>
+            </div>
+            <button
+              type="button"
+              onClick={scrollToAuth}
+              className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 shadow-xl shadow-emerald-500/25 transition hover:bg-emerald-400"
+            >
+              Login / Sign up
+            </button>
+          </div>
+        </div>
+
         <div className="flex flex-col gap-10 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-8 lg:max-w-xl">
             <div className="flex items-center gap-3 text-sm uppercase tracking-[0.35em] text-emerald-300">
@@ -273,6 +294,7 @@ const LandingPage = () => {
           </div>
 
           <motion.div
+            ref={formRef}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55 }}
@@ -406,7 +428,7 @@ const LandingPage = () => {
                 initial="initial"
                 whileHover="hover"
                 whileTap="tap"
-                className="mt-5"
+                className="mt-5 w-full max-w-[340px]"
               >
                 <GoogleLogin
                   onSuccess={handleGoogleSuccess}
@@ -418,7 +440,7 @@ const LandingPage = () => {
                   size="large"
                   text={isLogin ? "signin_with" : "signup_with"}
                   shape="rectangular"
-                  width={320}
+                  style={{ width: "100%" }}
                 />
               </motion.div>
             </div>
