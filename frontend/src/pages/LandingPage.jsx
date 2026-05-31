@@ -1,19 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import axiosInstance from "../utils/axiosInstance";
 import { GoogleLogin } from "@react-oauth/google";
-import { CheckCircle2, Package, BarChart3, TrendingUp, Lock } from "lucide-react";
-import FormInput from "../components/share-component/FormInput";
-import LoadingButton from "../components/share-component/LoadingButton";
-import Tooltip from "../components/share-component/Tooltip";
-import HelpText from "../components/share-component/HelpText";
+import { Loader2, CheckCircle2, Package, BarChart3, ShieldCheck } from "lucide-react";
 
 const LandingPage = () => {
   const [isLogin, setIsLogin] = useState(true);
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -30,6 +25,11 @@ const LandingPage = () => {
 
   const navigate = useNavigate();
   const { login } = useAuth();
+  const formRef = useRef(null);
+
+  const scrollToAuth = () => {
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   // Redirect logged-in users
   useEffect(() => {
@@ -219,321 +219,256 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-950 to-black text-slate-100">
-      {/* ── HEADER ── */}
-      <header className="sticky top-0 z-50 border-b border-white/5 bg-slate-950/80 backdrop-blur-md">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-4">
-            <div className="flex items-center gap-2">
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400">
-                <BarChart3 size={20} />
-              </div>
-              <h1 className="text-xl font-bold">MELECH SH</h1>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-gray-950 text-slate-100">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        <div className="sticky top-0 z-30 mb-6 rounded-3xl border border-white/10 bg-slate-950/95 px-4 py-4 shadow-xl shadow-black/20 backdrop-blur-xl backdrop-saturate-150 sm:px-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.35em] text-emerald-300">MELECH SH</p>
+              <p className="mt-1 text-sm text-slate-400">Fast access to your inventory dashboard.</p>
             </div>
             <button
-              onClick={() => setShowAuthModal(true)}
-              className="hidden rounded-full bg-emerald-500 px-6 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 sm:inline-block"
+              type="button"
+              onClick={scrollToAuth}
+              className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 shadow-xl shadow-emerald-500/25 transition hover:bg-emerald-400"
             >
-              {isLogin ? "Sign In" : "Get Started"}
+              Login / Sign up
             </button>
           </div>
         </div>
-      </header>
 
-      <main className="relative">
-        {/* ── HERO + AUTH FORM SECTION ── */}
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
-          <div className="grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-16">
-            {/* LEFT: HERO CONTENT */}
+        <div className="flex flex-col gap-10 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-8 lg:max-w-xl">
+            <div className="flex items-center gap-3 text-sm uppercase tracking-[0.35em] text-emerald-300">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-200">
+                <ShieldCheck size={18} />
+              </span>
+              Inventory made simple for teams
+            </div>
+
             <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              className="space-y-6 lg:order-1"
-            >
-              <div className="space-y-2">
-                <p className="text-sm font-semibold uppercase tracking-widest text-emerald-400">
-                  Inventory Management
-                </p>
-                <h2 className="text-4xl font-bold tracking-tight lg:text-5xl text-white">
-                  Control your stock in real time
-                </h2>
-              </div>
-
-              <p className="text-lg leading-relaxed text-slate-300">
-                MELECH SH is an enterprise-grade inventory dashboard designed for retail, warehouse, and distribution teams. See your entire stock, orders, and supplier relationships at a glance.
-              </p>
-
-              {/* FEATURE LIST */}
-              <div className="space-y-3 pt-4">
-                {[
-                  { icon: TrendingUp, label: "Live KPI tracking", desc: "Real-time products, stock, orders & revenue" },
-                  { icon: CheckCircle2, label: "Stock health monitoring", desc: "Instant alerts for low & out-of-stock items" },
-                  { icon: Lock, label: "Role-based access", desc: "Secure admin, staff & customer workflows" },
-                  { icon: Package, label: "Supplier shortcuts", desc: "Fast reorder & invoice exports" },
-                ].map(({ icon: Icon, label, desc }, i) => (
-                  <div key={i} className="flex gap-3">
-                    <Icon size={20} className="shrink-0 text-emerald-400 mt-1" />
-                    <div className="min-w-0">
-                      <p className="font-semibold text-white">{label}</p>
-                      <p className="text-sm text-slate-400">{desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* CTA ON MOBILE */}
-              <button
-                onClick={() => setShowAuthModal(true)}
-                className="mt-6 w-full rounded-lg bg-emerald-500 px-6 py-3 font-semibold text-slate-950 transition hover:bg-emerald-400 sm:hidden"
-              >
-                Get Started Now
-              </button>
-            </motion.div>
-            {/* RIGHT: AUTH FORM (Desktop Sticky) */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: -18 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="hidden lg:flex lg:order-2"
+              transition={{ duration: 0.5 }}
+              className="space-y-6"
             >
-              <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-900/50 p-8 shadow-2xl shadow-black/30 backdrop-blur-sm">
-                <div className="mb-8">
-                  <h3 className="text-2xl font-bold text-white">{isLogin ? "Welcome back" : "Create account"}</h3>
-                  <p className="mt-2 text-sm text-slate-400">
-                    {isLogin
-                      ? "Sign in to your dashboard"
-                      : "Join your team and manage inventory together"}
-                  </p>
+              <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white">
+                MELECH SH
+              </h1>
+              <p className="text-lg leading-8 text-slate-300 max-w-2xl">
+                A professional inventory dashboard for retail, warehouse and distribution teams.
+                Track stock health, orders, suppliers and invoices in one live workspace.
+              </p>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-lg shadow-black/10">
+                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-200 mb-3">
+                    <BarChart3 size={20} />
+                  </div>
+                  <h3 className="font-semibold text-white">Live stock & KPI tracking</h3>
+                  <p className="mt-2 text-sm text-slate-400">View products, orders and revenue in real time.</p>
                 </div>
-
-                <AuthForm
-                  isLogin={isLogin}
-                  formData={formData}
-                  errors={errors}
-                  loading={loading}
-                  showPassword={showPassword}
-                  handleChange={handleChange}
-                  handleSubmit={handleSubmit}
-                  setShowPassword={setShowPassword}
-                  handleGoogleSuccess={handleGoogleSuccess}
-                  googleButtonVariants={googleButtonVariants}
-                />
-
-                <div className="mt-6 text-center">
-                  <p className="text-sm text-slate-400">
-                    {isLogin ? "Don't have an account? " : "Already have an account? "}
-                    <button
-                      onClick={() => setIsLogin(!isLogin)}
-                      className="font-semibold text-emerald-400 hover:text-emerald-300"
-                    >
-                      {isLogin ? "Sign up" : "Sign in"}
-                    </button>
-                  </p>
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-lg shadow-black/10">
+                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/15 text-indigo-200 mb-3">
+                    <Package size={20} />
+                  </div>
+                  <h3 className="font-semibold text-white">Supplier reorder shortcuts</h3>
+                  <p className="mt-2 text-sm text-slate-400">Quickly restock low inventory from your supplier list.</p>
                 </div>
-
-                {isLogin && (
-                  <button
-                    onClick={() => navigate("/forgot-password")}
-                    className="mt-4 w-full text-center text-xs text-slate-400 hover:text-slate-300"
-                  >
-                    Forgot password?
-                  </button>
-                )}
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-lg shadow-black/10">
+                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/15 text-sky-200 mb-3">
+                    <CheckCircle2 size={20} />
+                  </div>
+                  <h3 className="font-semibold text-white">Role-based access</h3>
+                  <p className="mt-2 text-sm text-slate-400">Admin, staff and customer workflows with secure permissions.</p>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-lg shadow-black/10">
+                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/15 text-rose-200 mb-3">
+                    <Package size={20} />
+                  </div>
+                  <h3 className="font-semibold text-white">Order & invoice exports</h3>
+                  <p className="mt-2 text-sm text-slate-400">Generate receipts and export order summaries in seconds.</p>
+                </div>
               </div>
             </motion.div>
           </div>
-        </div>
 
-        {/* ── TRUST BADGES ── */}
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 hidden lg:block">
-          <div className="grid gap-6 md:grid-cols-3">
-            {[
-              { title: "Enterprise-ready", desc: "Built with React, Node.js and production-grade architecture" },
-              { title: "Secure & compliant", desc: "JWT authentication, encrypted passwords, role-based access control" },
-              { title: "Designed for operations", desc: "Real-time updates, bulk exports, supplier integration" },
-            ].map((item, i) => (
-              <div key={i} className="rounded-xl border border-white/5 bg-white/3 p-6">
-                <h4 className="font-semibold text-white">{item.title}</h4>
-                <p className="mt-2 text-sm text-slate-400">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </main>
-
-      {/* ── AUTH MODAL (Mobile) ── */}
-      {showAuthModal && (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/50 sm:items-center sm:justify-center backdrop-blur-sm">
           <motion.div
-            initial={{ y: "100%", opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: "100%", opacity: 0 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="w-full max-w-md rounded-t-2xl bg-slate-900 p-6 sm:rounded-2xl"
+            ref={formRef}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55 }}
+            className="w-full max-w-xl rounded-[36px] border border-white/10 bg-slate-900/90 p-8 shadow-2xl shadow-black/25 backdrop-blur-xl"
           >
-            <button
-              onClick={() => setShowAuthModal(false)}
-              className="absolute right-4 top-4 text-slate-400 hover:text-white"
-            >
-              ✕
-            </button>
-
-            <div className="mb-6">
-              <h3 className="text-2xl font-bold text-white">{isLogin ? "Sign in" : "Create account"}</h3>
-              <p className="mt-1 text-sm text-slate-400">
-                {isLogin ? "Access your inventory dashboard" : "Start managing your stock"}
+            <div className="mb-8 text-center">
+              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-emerald-300">Access the dashboard</p>
+              <h2 className="mt-4 text-3xl font-semibold text-white">{isLogin ? "Login" : "Sign up"}</h2>
+              <p className="mt-2 text-sm text-slate-400">
+                {isLogin
+                  ? "Enter your credentials to access MELECH SH."
+                  : "Create your account to start managing inventory with your team."}
               </p>
             </div>
 
-            <AuthForm
-              isLogin={isLogin}
-              formData={formData}
-              errors={errors}
-              loading={loading}
-              showPassword={showPassword}
-              handleChange={handleChange}
-              handleSubmit={handleSubmit}
-              setShowPassword={setShowPassword}
-              handleGoogleSuccess={handleGoogleSuccess}
-              googleButtonVariants={googleButtonVariants}
-            />
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {!isLogin && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-300">Full name</label>
+                    <input
+                      type="text"
+                      name="name"
+                      placeholder="John Doe"
+                      autoComplete="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      className="w-full rounded-3xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-emerald-400"
+                    />
+                    {errors.name && <p className="mt-2 text-xs text-rose-400">{errors.name}</p>}
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-300">Phone</label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      placeholder="080 1234 5678"
+                      autoComplete="tel"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      className="w-full rounded-3xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-emerald-400"
+                    />
+                    {errors.phone && <p className="mt-2 text-xs text-rose-400">{errors.phone}</p>}
+                  </div>
+                </div>
+              )}
 
-            <div className="mt-6 text-center">
-              <p className="text-sm text-slate-400">
-                {isLogin ? "New here? " : "Have an account? "}
+              {!isLogin && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-300">Address</label>
+                  <input
+                    type="text"
+                    name="address"
+                    placeholder="123 Market Road"
+                    autoComplete="street-address"
+                    value={formData.address}
+                    onChange={handleChange}
+                    className="w-full rounded-3xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-emerald-400"
+                  />
+                  {errors.address && <p className="mt-2 text-xs text-rose-400">{errors.address}</p>}
+                </div>
+              )}
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-300">Email address</label>
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="w-full rounded-3xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-emerald-400"
+                />
+                {errors.email && <p className="mt-2 text-xs text-rose-400">{errors.email}</p>}
+              </div>
+
+              <div className="relative">
+                <label className="mb-2 block text-sm font-medium text-slate-300">Password</label>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  placeholder="Enter a strong password"
+                  autoComplete={isLogin ? "current-password" : "new-password"}
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="w-full rounded-3xl border border-slate-800 bg-slate-950 px-4 py-3 pr-12 text-sm text-slate-100 outline-none transition focus:border-emerald-400"
+                />
                 <button
-                  onClick={() => setIsLogin(!isLogin)}
-                  className="font-semibold text-emerald-400 hover:text-emerald-300"
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-11 text-slate-400 hover:text-slate-200"
                 >
-                  {isLogin ? "Sign up" : "Sign in"}
+                  {showPassword ? "Hide" : "Show"}
                 </button>
-              </p>
+                {errors.password && <p className="mt-2 text-xs text-rose-400">{errors.password}</p>}
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-3xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? "Processing..." : isLogin ? "Login" : "Create account"}
+              </button>
+            </form>
+
+            <div className="mt-6 flex items-center justify-between text-xs text-slate-500">
+              <span>{isLogin ? "New to MELECH SH?" : "Already have an account?"}</span>
+              <button
+                onClick={() => setIsLogin(!isLogin)}
+                className="font-semibold text-white hover:text-emerald-300"
+              >
+                {isLogin ? "Create an account" : "Sign in instead"}
+              </button>
+            </div>
+
+            {isLogin && (
+              <button
+                onClick={() => navigate("/forgot-password")}
+                className="mt-4 w-full text-center text-sm text-slate-300 hover:text-white"
+              >
+                Forgot your password?
+              </button>
+            )}
+
+            <div className="my-7">
+              <div className="flex items-center gap-3 text-xs uppercase tracking-[0.3em] text-slate-500">
+                <span className="h-px flex-1 bg-slate-700"></span>
+                <span>or continue with</span>
+                <span className="h-px flex-1 bg-slate-700"></span>
+              </div>
+
+              <motion.div
+                variants={googleButtonVariants}
+                initial="initial"
+                whileHover="hover"
+                whileTap="tap"
+                className="mt-5 w-full max-w-[340px]"
+              >
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => {
+                    toast.error("Google sign-in failed. Please try again.");
+                  }}
+                  useOneTap={false}
+                  theme="outline"
+                  size="large"
+                  text={isLogin ? "signin_with" : "signup_with"}
+                  shape="rectangular"
+                  style={{ width: "100%" }}
+                />
+              </motion.div>
             </div>
           </motion.div>
         </div>
-      )}
+
+        <div className="mt-16 grid gap-6 md:grid-cols-3">
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-slate-200 shadow-lg shadow-black/10">
+            <h3 className="font-semibold text-white">Built for real operations</h3>
+            <p className="mt-3 text-sm text-slate-400">Designed for retail stores, warehouses and distribution teams who need fast inventory visibility.</p>
+          </div>
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-slate-200 shadow-lg shadow-black/10">
+            <h3 className="font-semibold text-white">Live alerts, not guesswork</h3>
+            <p className="mt-3 text-sm text-slate-400">Get low-stock warnings, supplier reminders and order summaries without manual spreadsheets.</p>
+          </div>
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-slate-200 shadow-lg shadow-black/10">
+            <h3 className="font-semibold text-white">Simple for every role</h3>
+            <p className="mt-3 text-sm text-slate-400">Admin, staff and customer access paths are clear, secure and easy to use.</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
 
-// ── AUTH FORM COMPONENT ──
-const AuthForm = ({
-  isLogin,
-  formData,
-  errors,
-  loading,
-  showPassword,
-  handleChange,
-  handleSubmit,
-  setShowPassword,
-  handleGoogleSuccess,
-  googleButtonVariants,
-}) => {
-  return (
-    <>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {!isLogin && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FormInput
-              label="Full name"
-              name="name"
-              placeholder="John Doe"
-              value={formData.name}
-              onChange={handleChange}
-              error={errors.name}
-              required
-            />
-            <FormInput
-              label="Phone"
-              name="phone"
-              placeholder="080 1234 5678"
-              value={formData.phone}
-              onChange={handleChange}
-              error={errors.phone}
-              helpText="Include country code if outside local network"
-              required
-            />
-          </div>
-        )}
-
-        {!isLogin && (
-          <FormInput
-            label="Address"
-            name="address"
-            placeholder="123 Market Road"
-            value={formData.address}
-            onChange={handleChange}
-            error={errors.address}
-            required
-          />
-        )}
-
-        <FormInput
-          label="Email"
-          name="email"
-          type="email"
-          placeholder="you@example.com"
-          value={formData.email}
-          onChange={handleChange}
-          error={errors.email}
-          required
-        />
-
-        <div className="relative">
-          <FormInput
-            label="Password"
-            name="password"
-            type={showPassword ? 'text' : 'password'}
-            placeholder="Minimum 6 characters"
-            value={formData.password}
-            onChange={handleChange}
-            error={errors.password}
-            required
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-9 text-xs text-slate-400 hover:text-slate-200"
-          >
-            {showPassword ? "Hide" : "Show"}
-          </button>
-        </div>
-
-        <LoadingButton loading={loading} type="submit" className="w-full">
-          {isLogin ? 'Sign in' : 'Create account'}
-        </LoadingButton>
-      </form>
-
-      <div className="my-5 flex items-center gap-3">
-        <div className="h-px flex-1 bg-slate-700"></div>
-        <span className="text-xs text-slate-500">or continue with</span>
-        <div className="h-px flex-1 bg-slate-700"></div>
-      </div>
-
-      <div className="flex justify-center">
-        <motion.div
-          variants={googleButtonVariants}
-          initial="initial"
-          whileHover="hover"
-          whileTap="tap"
-        >
-          <GoogleLogin
-            onSuccess={handleGoogleSuccess}
-            onError={() => {
-              toast.error("Google sign-in failed. Please try again.");
-            }}
-            useOneTap={false}
-            theme="outline"
-            size="large"
-            text="signin_with"
-            shape="rectangular"
-          />
-        </motion.div>
-      </div>
-    </>
-  );
-};
-
 export default LandingPage;
-
