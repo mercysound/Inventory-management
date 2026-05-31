@@ -34,6 +34,7 @@ import completedOrderHistoryRoutes from "./routes/completedOrderHistoryRoutes.js
 import cloudinary from "./config/cloudinary.js";
 //meant for production only, to serve frontend from same server whe
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -208,15 +209,44 @@ app.use("/api/completed-history", completedOrderHistoryRoutes);
 
 // ── SERVE FRONTEND IN PRODUCTION WHEN DEPLOYING FULLSTACK TOGETHER ──
 if (!isDev) {
-  const frontendDistPath = path.join(__dirname, "../frontend/dist");
-  app.use(express.static(frontendDistPath));
+  // Try a few likely locations for the built frontend to make deployment diagnostics easier.
+  const candidatePaths = [
+    path.join(__dirname, "../frontend/dist"),
+    path.join(process.cwd(), "frontend", "dist"),
+    path.join(__dirname, "dist"),
+  ];
 
-  app.get("/*", (req, res) => {
-    if (req.path.startsWith("/api")) {
-      return res.status(404).json({ success: false, message: "API route not found" });
-    }
-    res.sendFile(path.join(frontendDistPath, "index.html"));
-  });
+  const frontendDistPath = candidatePaths.find((p) => fs.existsSync(p));
+
+  if (!frontendDistPath) {
+    console.error("❌ Frontend 'dist' folder not found. Checked:", candidatePaths);
+    // Keep the server running but return a helpful error for any non-API requests.
+    app.get("/*", (req, res) => {
+      if (req.path.startsWith("/api")) {
+        return res.status(404).json({ success: false, message: "API route not found" });
+      }
+      return res.status(500).send(
+        "Frontend build missing on server. Check deployment logs for the frontend build step."
+      );
+    });
+  } else {
+    console.log("✅ Serving frontend from:", frontendDistPath);
+    app.use(express.static(frontendDistPath));
+
+    app.get("/*", (req, res) => {
+      if (req.path.startsWith("/api")) {
+        return res.status(404).json({ success: false, message: "API route not found" });
+      }
+
+      const indexPath = path.join(frontendDistPath, "index.html");
+      if (!fs.existsSync(indexPath)) {
+        console.error("❌ index.html missing in frontend dist:", indexPath);
+        return res.status(500).send("Frontend index.html missing. Check deployment build output.");
+      }
+
+      return res.sendFile(indexPath);
+    });
+  }
 }
 
 // ── GLOBAL ERROR HANDLER (must be last) ──
