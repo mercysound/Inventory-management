@@ -59,6 +59,26 @@ const allowedOrigins = [
   process.env.FRONTEND_URL || "https://inventory-management-zs8z.onrender.com",
 ].filter(Boolean);
 
+// Dynamic allowlist middleware: if a request includes an Origin that matches
+// the server's Host header (same-origin), add that Origin to the allowlist
+// so the CORS check will accept it. This keeps the allowlist explicit while
+// allowing Render's generated URLs without updating env vars each deploy.
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const reqHost = req.headers.host;
+  if (origin && reqHost) {
+    try {
+      const originHost = new URL(origin).host;
+      if (originHost === reqHost && !allowedOrigins.includes(origin)) {
+        allowedOrigins.push(origin);
+      }
+    } catch (err) {
+      // ignore malformed origin
+    }
+  }
+  next();
+});
+
 app.use(
   cors({
     origin: (origin, callback) => {
