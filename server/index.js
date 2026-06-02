@@ -63,6 +63,15 @@ app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
+      
+      // Allow same-origin requests (frontend served from the same server).
+      const requestHost = origin && new URL(origin).host;
+      const serverHost = process.env.FRONTEND_URL && new URL(process.env.FRONTEND_URL).host;
+      if (requestHost === serverHost) {
+        return callback(null, true);
+      }
+      
+      // Also allow from the explicit allowlist.
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
