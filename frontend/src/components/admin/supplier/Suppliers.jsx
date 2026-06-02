@@ -189,8 +189,8 @@ const fetchSuppliers = async (attempt = 1) => {
       {/* PAGE HEADER */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-xl font-bold text-gray-800">Supplier Management</h1>
-          <p className="text-xs text-gray-400 mt-0.5">
+          <h1 className="text-xl font-bold text-slate-100">Supplier Management</h1>
+          <p className="text-xs text-slate-300 mt-0.5">
             Manage who supplies your products — used for reordering and stock tracking
           </p>
         </div>

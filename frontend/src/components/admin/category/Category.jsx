@@ -124,8 +124,8 @@ const Category = () => {
 
   return (
     <>
-    <div className="py-6 px-4 md:px-6">
-      <h1 className="text-2xl font-bold mb-6 text-gray-800">📂 Category Management</h1>
+      <div className="py-6 px-4 md:px-6">
+        <h1 className="text-2xl font-bold mb-6 text-slate-100">📂 Category Management</h1>
 
       <div className="flex flex-col lg:flex-row gap-6">
         <CategoryForm

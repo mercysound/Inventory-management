@@ -4,7 +4,7 @@ import LoadingButton from "../../share-component/LoadingButton";
 const UsersForm = ({ formData, handleChange, handleSubmit, submitting }) => {
   return (
     <div>
-      <h2 className="text-lg md:text-xl font-semibold mb-4 text-gray-800">Add New User</h2>
+      <h2 className="text-lg md:text-xl font-semibold mb-4 text-slate-100">Add New User</h2>
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <input

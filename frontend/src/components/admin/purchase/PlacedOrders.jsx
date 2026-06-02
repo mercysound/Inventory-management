@@ -268,7 +268,7 @@ const PlacedOrders = () => {
     <div className="p-4">
       {/* ── PAGE HEADER ── */}
       <div className="flex flex-wrap justify-between items-center mb-4 gap-3">
-        <h2 className="text-xl font-bold text-gray-800">📦 Placed Orders</h2>
+        <h2 className="text-xl font-bold text-slate-100">📦 Placed Orders</h2>
         <button
           onClick={handleExport}
           disabled={sorted.length === 0}
