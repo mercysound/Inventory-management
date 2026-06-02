@@ -22,7 +22,7 @@ const Dashboard = () => {
   const toggleSidebar = () => setIsOpen(!isOpen);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-slate-900 via-slate-950 to-black">
+    <div className="dashboard-shell flex h-screen overflow-hidden bg-gradient-to-br from-slate-900 via-slate-950 to-slate-950 text-slate-100">
       {/* Sidebar - Fixed on mobile, relative on desktop */}
       <div className="hidden md:block md:w-64 md:flex-shrink-0">
         <Sidebar isOpen={true} toggleSidebar={toggleSidebar} />
@@ -30,7 +30,7 @@ const Dashboard = () => {
 
       {/* Mobile Sidebar Overlay */}
       {isOpen && (
-        <div className="md:hidden fixed inset-0 z-30 bg-black/60 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
+        <div className="md:hidden fixed inset-0 z-30 bg-slate-950/70 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
       )}
       <div className="md:hidden">
         <Sidebar isOpen={isOpen} toggleSidebar={toggleSidebar} />
@@ -39,15 +39,15 @@ const Dashboard = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Mobile Top Bar */}
-        <div className="md:hidden flex items-center justify-between p-4 bg-slate-950/80 text-white shadow-md border-b border-white/5 backdrop-blur-sm">
-          <button onClick={() => setIsOpen(!isOpen)} className="p-2 rounded hover:bg-slate-800 transition">
+        <div className="md:hidden flex items-center justify-between p-4 bg-slate-800/95 text-slate-100 shadow-md border-b border-slate-700/40 backdrop-blur-sm">
+          <button onClick={() => setIsOpen(!isOpen)} className="p-2 rounded hover:bg-slate-700 transition">
             <FaBars size={20} />
           </button>
           <span className="font-bold">MELECH SH Dashboard</span>
         </div>
 
         {/* Nested Route Outlet */}
-        <main className="flex-1 bg-gradient-to-br from-slate-900 via-slate-950 to-black/80 p-4 md:p-6 overflow-y-auto">
+        <main className="dashboard-main flex-1 bg-slate-950/90 backdrop-blur-sm p-4 md:p-6 overflow-y-auto">
           <Outlet />
         </main>
       </div>

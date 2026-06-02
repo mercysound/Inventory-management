@@ -16,25 +16,26 @@ const Unauthorized = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-100 text-center">
-      <h1 className="text-4xl font-bold text-red-600 mb-4">
-        🚫 Unauthorized Access
-      </h1>
-      <p className="text-gray-700 mb-6 text-lg">
-        You don't have permission to view this page.
-      </p>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-100 text-center">
+      <div className="app-surface rounded-3xl p-10 max-w-xl mx-4 text-center">
+        <h1 className="text-4xl font-bold text-rose-400 mb-4">
+          🚫 Unauthorized Access
+        </h1>
+        <p className="text-slate-300 mb-6 text-lg">
+          You don't have permission to view this page.
+        </p>
 
-      <div className="flex gap-4">
-        <button
-          onClick={() => navigate(-1)}
-          className="px-5 py-2 bg-gray-700 text-white rounded-lg shadow hover:bg-gray-800 transition"
-        >
+        <div className="flex flex-col sm:flex-row justify-center gap-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="px-5 py-2 bg-slate-800 text-slate-100 rounded-lg shadow hover:bg-slate-700 transition"
+          >
           Go Back
         </button>
 
         <button
           onClick={goToDashboard}
-          className="px-5 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700 transition"
+          className="px-5 py-2 bg-emerald-500 text-slate-950 rounded-lg shadow hover:bg-emerald-600 transition"
         >
           Return to Dashboard
         </button>

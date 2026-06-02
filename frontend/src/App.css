@@ -1,8 +1,90 @@
 @import "tailwindcss";
-.input-field {
-  @apply w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-400 transition-all duration-200;
+
+:root {
+  color-scheme: dark;
+  color: #e2e8f0;
+  background-color: #020617;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+html, body, #root {
+  min-height: 100%;
+  background: #020617;
+  color: #e2e8f0;
+}
+
+body {
+  background: radial-gradient(circle at top, rgba(56, 189, 248, 0.08), transparent 25%),
+              radial-gradient(circle at 80% 20%, rgba(34, 197, 94, 0.08), transparent 18%),
+              #020617;
+  color: #e2e8f0;
+}
+
+input, select, textarea, button {
+  font: inherit;
+}
+
+input, select, textarea {
+  color: #e2e8f0;
+  background: #111827;
+  border-color: #334155;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #94a3b8;
+}
+
+button {
+  color: inherit;
+}
+
+.app-surface {
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+}
+
+.app-input {
+  @apply w-full rounded-3xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition duration-200;
+}
+
+.app-input:focus {
+  @apply border-emerald-400 ring-2 ring-emerald-400/30;
+}
+
+.app-text-muted {
+  color: #94a3b8;
+}
+
+.app-text-strong {
+  color: #f8fafc;
+}
+
+.app-button-secondary {
+  @apply bg-slate-800 text-slate-100 hover:bg-slate-700 border border-slate-700;
+}
+
+.app-button-danger {
+  @apply bg-rose-500 text-white hover:bg-rose-600;
+}
+
+.app-shadow-soft {
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.28);
+}
+
+.dashboard-shell {
+  background: linear-gradient(180deg, #020617 0%, #0b1220 85%);
+  color: #e2e8f0;
+}
+
+.dashboard-main {
+  background: rgba(15, 23, 42, 0.96);
+}
+
+.dashboard-shell .dashboard-main {
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.08);
 }
 
 .error-text {
-  @apply text-red-500 text-sm mt-1;
+  @apply text-rose-400 text-sm mt-1;
 }

@@ -54,7 +54,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
           animate={{ x: 0 }}
           exit={{ x: -250 }}
           transition={{ duration: 0.3 }}
-          className="fixed md:static top-0 left-0 h-screen w-64 bg-gradient-to-b from-slate-900 via-slate-950 to-black text-white shadow-xl flex flex-col z-40 border-r border-white/5"
+          className="fixed md:static top-0 left-0 h-screen w-64 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white shadow-xl flex flex-col z-40 border-r border-white/5"
         >
           <div className="h-16 flex items-center justify-between border-b border-white/5 px-4">
             <span className="text-lg md:text-2xl font-bold text-emerald-400">
