@@ -30,17 +30,18 @@ const Unauthorized = () => {
             onClick={() => navigate(-1)}
             className="px-5 py-2 bg-slate-800 text-slate-100 rounded-lg shadow hover:bg-slate-700 transition"
           >
-          Go Back
-        </button>
+            Go Back
+          </button>
 
-        <button
-          onClick={goToDashboard}
-          className="px-5 py-2 bg-emerald-500 text-slate-950 rounded-lg shadow hover:bg-emerald-600 transition"
-        >
-          Return to Dashboard
-        </button>
-      </div>
+          <button
+            onClick={goToDashboard}
+            className="px-5 py-2 bg-emerald-500 text-slate-950 rounded-lg shadow hover:bg-emerald-600 transition"
+          >
+            Return to Dashboard
+          </button>
+        </div>
     </div>
+  </div>
   );
 };
 
