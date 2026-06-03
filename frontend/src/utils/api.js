@@ -15,7 +15,16 @@ const axiosInstance = axios.create({
 const AUTH_ROUTES = ["/auth/login", "/auth/refresh", "/users/register", "/auth/google-login"];
 
 // Routes that get a longer timeout (heavy queries / cold starts)
-const SLOW_ROUTES = ["/dashboard", "/supplier", "/auth/reset-password", "/placed-orders"];
+const SLOW_ROUTES = [
+  "/dashboard",
+  "/supplier",
+  "/auth/reset-password",
+  "/placed-orders",
+  "/orders",
+  "/orders/invoice",
+  "/orders/complete",
+];
+
 // Email operations need even longer timeout (includes SMTP connection + retries)
 const EMAIL_ROUTES = ["/auth/forgot-password"];
 
