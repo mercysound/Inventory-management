@@ -10,7 +10,7 @@ import PaystackButton from "./PaystackButton";
 import { useAuth } from "../../../context/AuthContext";
 import PendingOrdersModal from "./PendingOrdersModal";
 import ReceiptModal from "../../share-component/receipt/ReceiptModal";
-import CartSkeleton from "./Cartskeleton";
+import CartSkeleton from "./CartSkeleton";
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 const StatCard = ({ icon: Icon, label, value, color }) => (
