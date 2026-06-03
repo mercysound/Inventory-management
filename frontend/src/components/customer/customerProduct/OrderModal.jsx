@@ -47,8 +47,8 @@ const StepBtn = ({ onClick, disabled, children }) => (
     transition={{ duration: 0.08 }}
     className={`w-9 h-9 flex items-center justify-center rounded-lg border transition
       ${disabled
-        ? "bg-gray-100 border-gray-100 text-gray-300 cursor-not-allowed"
-        : "bg-white border-gray-300 text-gray-700 hover:border-green-400 hover:text-green-600 active:bg-green-50"
+        ? "bg-slate-800 border-slate-700 text-slate-500 cursor-not-allowed"
+        : "bg-slate-900 border-slate-700 text-slate-100 hover:border-green-400 hover:text-green-300 active:bg-slate-900"
       }`}
   >
     {children}
@@ -199,7 +199,7 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
           No delay — duration values are kept ≤ 150ms so it feels instant.
         */}
         <motion.div
-          className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
+          className="bg-slate-950 text-slate-100 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
           initial={{ y: "100%", opacity: 0 }}
           animate={{ y: 0,      opacity: 1 }}
           exit={{   y: "100%", opacity: 0 }}
@@ -207,19 +207,19 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
           onClick={(e) => e.stopPropagation()}
         >
           {/* ── Header ──────────────────────────────────────────────── */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-                <ShoppingCart size={16} className="text-green-600" />
+              <div className="w-8 h-8 rounded-lg bg-emerald-900/80 flex items-center justify-center">
+                <ShoppingCart size={16} className="text-emerald-300" />
               </div>
-              <h2 className="font-bold text-gray-900 text-base">
+              <h2 className="font-bold text-slate-100 text-base">
                 {isUpdate ? "Update Order" : "Place Order"}
               </h2>
             </div>
             <button
               onClick={closeModal}
               className="w-8 h-8 flex items-center justify-center rounded-full
-                text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"
+                text-slate-400 hover:text-white hover:bg-slate-900 transition"
               aria-label="Close"
             >
               <X size={18} />
@@ -228,8 +228,8 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
 
           {/* ── Product card ─────────────────────────────────────────── */}
           <div className="px-5 pt-5">
-            <div className="flex gap-4 bg-gray-50 rounded-xl p-4 border border-gray-100">
-              <div className="w-20 h-20 rounded-xl overflow-hidden border border-gray-200 bg-white flex-shrink-0 shadow-sm">
+            <div className="flex gap-4 bg-slate-900 rounded-xl p-4 border border-slate-800">
+              <div className="w-20 h-20 rounded-xl overflow-hidden border border-slate-700 bg-slate-800 flex-shrink-0 shadow-sm">
                 {orderData.productImage ? (
                   <img
                     src={orderData.productImage}
@@ -237,25 +237,25 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-300">
+                  <div className="w-full h-full flex items-center justify-center text-slate-500">
                     <Package size={24} />
                   </div>
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-gray-900 text-base leading-tight truncate">
+                <h3 className="font-semibold text-white text-base leading-tight truncate">
                   {orderData.productName}
                 </h3>
                 <div className="flex items-center gap-1.5 mt-0.5 mb-2">
-                  <Tag size={11} className="text-gray-400" />
-                  <span className="text-xs text-gray-500">{orderData.productCategory}</span>
+                  <Tag size={11} className="text-slate-400" />
+                  <span className="text-xs text-slate-400">{orderData.productCategory}</span>
                 </div>
                 <StockBadge stock={orderData.stock} showStock={showStock} />
               </div>
             </div>
 
             {orderData.productDescription && (
-              <p className="text-xs text-gray-500 mt-3 line-clamp-2 leading-relaxed">
+              <p className="text-sm text-slate-300 mt-3 line-clamp-2 leading-relaxed">
                 {orderData.productDescription}
               </p>
             )}
@@ -263,9 +263,9 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
 
           {/* ── Price row ────────────────────────────────────────────── */}
           <div className="px-5 mt-4">
-            <div className="flex items-center justify-between py-3 border-t border-b border-gray-100">
-              <span className="text-sm text-gray-500">Unit price</span>
-              <span className="font-semibold text-gray-800">
+            <div className="flex items-center justify-between py-3 border-t border-b border-slate-800">
+              <span className="text-sm text-slate-400">Unit price</span>
+              <span className="font-semibold text-slate-100">
                 ₦{Number(orderData.price || 0).toLocaleString()}
               </span>
             </div>
@@ -275,7 +275,7 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
           <form onSubmit={handleSubmit} className="px-5 py-5 space-y-5">
             {/* Quantity stepper */}
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
                 Quantity
               </label>
               <div className="flex items-center gap-3">
@@ -291,13 +291,13 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
                   onChange={handleInputChange}
                   min={0}
                   max={orderData.stock}
-                  className={`flex-1 text-center border rounded-lg py-2 font-semibold text-lg
+                  className={`flex-1 text-center border rounded-lg py-2 font-semibold text-lg bg-slate-950
                     focus:outline-none focus:ring-2 focus:border-transparent transition
                     [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none
                     [&::-webkit-inner-spin-button]:appearance-none
                     ${isUpdate && qty === 0
-                      ? "border-red-300 text-red-500 focus:ring-red-300"
-                      : "border-gray-300 text-gray-800 focus:ring-green-400"
+                      ? "border-red-500 text-red-300 focus:ring-red-300"
+                      : "border-slate-700 text-slate-100 focus:ring-green-400"
                     }`}
                 />
 
@@ -309,19 +309,19 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
               {/* Stock progress bar */}
               {orderData.stock > 0 && (
                 <div className="mt-2">
-                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
                     <motion.div
                       className={`h-full rounded-full ${
                         qty / orderData.stock > 0.8 ? "bg-red-400"
                         : qty / orderData.stock > 0.5 ? "bg-amber-400"
-                        : "bg-green-400"
+                        : "bg-emerald-400"
                       }`}
                       animate={{ width: `${Math.min((qty / orderData.stock) * 100, 100)}%` }}
                       transition={{ duration: 0.15 }}
                     />
                   </div>
                   {showStockText && (
-                    <p className="text-xs text-gray-400 mt-1 text-right">
+                    <p className="text-xs text-slate-400 mt-1 text-right">
                       {qty} of {orderData.stock} available
                     </p>
                   )}
@@ -338,12 +338,12 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -4 }}
                   transition={{ duration: 0.1 }}
-                  className="flex items-center justify-between bg-red-50 rounded-xl px-4 py-3 border border-red-100"
+                  className="flex items-center justify-between bg-red-900/40 rounded-xl px-4 py-3 border border-red-700"
                 >
-                  <span className="text-sm font-medium text-red-600 flex items-center gap-1.5">
+                  <span className="text-sm font-medium text-red-300 flex items-center gap-1.5">
                     <Trash2 size={14} /> Remove from cart
                   </span>
-                  <span className="text-sm font-semibold text-red-400">Item will be deleted</span>
+                  <span className="text-sm font-semibold text-red-200">Item will be deleted</span>
                 </motion.div>
               ) : (
                 <motion.div
@@ -352,15 +352,15 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -4 }}
                   transition={{ duration: 0.1 }}
-                  className="flex items-center justify-between bg-green-50 rounded-xl px-4 py-3 border border-green-100"
+                  className="flex items-center justify-between bg-emerald-900/40 rounded-xl px-4 py-3 border border-emerald-700"
                 >
-                  <span className="text-sm font-medium text-green-700">Total</span>
+                  <span className="text-sm font-medium text-emerald-200">Total</span>
                   <motion.span
                     key={total}
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1,   opacity: 1 }}
                     transition={{ duration: 0.1 }}
-                    className="text-xl font-bold text-green-700"
+                    className="text-xl font-bold text-emerald-100"
                   >
                     ₦{Number(total || 0).toLocaleString()}
                   </motion.span>
@@ -373,8 +373,8 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
               <button
                 type="button"
                 onClick={closeModal}
-                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600
-                  text-sm font-semibold hover:bg-gray-50 transition"
+                className="flex-1 py-2.5 rounded-xl border border-slate-700 text-slate-200
+                  text-sm font-semibold hover:bg-slate-900 transition"
               >
                 Cancel
               </button>
@@ -387,7 +387,7 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
                   flex items-center justify-center gap-2 transition shadow-sm
                   ${
                     orderData.stock === 0 || (!isUpdate && qty < 1)
-                      ? "bg-gray-300 cursor-not-allowed"
+                      ? "bg-slate-700 cursor-not-allowed"
                       : isUpdate && qty === 0
                       ? "bg-red-500 hover:bg-red-600 shadow-red-200"
                       : "bg-green-600 hover:bg-green-700 shadow-green-200"

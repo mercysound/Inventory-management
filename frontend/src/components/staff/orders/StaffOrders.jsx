@@ -291,14 +291,14 @@ const StaffOrders = () => {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-6xl mx-auto bg-white/80 backdrop-blur-md border border-gray-200 shadow-xl rounded-2xl p-6 mt-8"
+        className="max-w-6xl mx-auto bg-slate-950/95 backdrop-blur-md border border-slate-800 shadow-xl rounded-2xl p-6 mt-8 text-slate-100"
       >
         <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">
           🧾 Customer Orders Summary
         </h2>
 
         {/* Controls */}
-        <div className="bg-white/70 backdrop-blur-sm border border-gray-100 rounded-xl p-4 mb-6 shadow-sm">
+        <div className="bg-slate-900/90 backdrop-blur-sm border border-slate-800 rounded-xl p-4 mb-6 shadow-sm">
           <div className="flex flex-col lg:flex-row justify-between items-center gap-4">
             <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
               <input
@@ -306,12 +306,12 @@ const StaffOrders = () => {
                 placeholder="Enter customer name"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                className="w-full sm:w-64 px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 transition-all"
+                className="w-full sm:w-64 px-4 py-2 border border-slate-700 rounded-lg bg-slate-950 text-slate-100 shadow-sm focus:ring-2 focus:ring-indigo-500 transition-all"
               />
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
-                className="w-full sm:w-56 px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 transition-all"
+                className="w-full sm:w-56 px-4 py-2 border border-slate-700 rounded-lg bg-slate-950 text-slate-100 shadow-sm focus:ring-2 focus:ring-indigo-500 transition-all"
               >
                 <option value="">-- Select Payment Method --</option>
                 {PAYMENT_OPTIONS.map((opt) => (
@@ -324,7 +324,7 @@ const StaffOrders = () => {
               <button
                 onClick={previewInvoice}
                 disabled={processing}
-                className="px-5 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg shadow-md transition-all disabled:opacity-60"
+                className="px-5 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg shadow-md transition-all disabled:opacity-60"
               >
                 Preview Invoice
               </button>
@@ -363,7 +363,7 @@ const StaffOrders = () => {
           </div>
         )}
 
-        <div className="mt-4 text-right font-semibold text-lg">
+        <div className="mt-4 text-right font-semibold text-lg text-slate-100">
           Grand Total: ₦{grandTotal.toLocaleString()}
         </div>
       </motion.div>

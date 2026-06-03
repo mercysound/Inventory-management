@@ -18,13 +18,13 @@ import CartSkeleton from "./CartSkeleton";
 
 // ─── tiny stat card ────────────────────────────────────────────────────────
 const StatCard = ({ icon: Icon, label, value, color }) => (
-  <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+  <div className="flex items-center gap-3 bg-slate-900 rounded-xl border border-slate-800 shadow-sm px-4 py-3">
     <div className={`p-2 rounded-lg ${color}`}>
       <Icon size={18} className="text-white" />
     </div>
     <div>
-      <p className="text-xs text-gray-500 font-medium">{label}</p>
-      <p className="text-base font-bold text-gray-800">{value}</p>
+      <p className="text-xs text-slate-400 font-medium">{label}</p>
+      <p className="text-base font-bold text-white">{value}</p>
     </div>
   </div>
 );
@@ -36,12 +36,12 @@ const EmptyCart = () => (
     animate={{ opacity: 1, y: 0 }}
     className="flex flex-col items-center justify-center py-20 gap-4"
   >
-    <div className="w-20 h-20 rounded-full bg-indigo-50 flex items-center justify-center">
+    <div className="w-20 h-20 rounded-full bg-slate-900 flex items-center justify-center">
       <PackageOpen size={36} className="text-indigo-300" />
     </div>
     <div className="text-center">
-      <p className="text-lg font-semibold text-gray-600">Your cart is empty</p>
-      <p className="text-sm text-gray-400 mt-1">
+      <p className="text-lg font-semibold text-white">Your cart is empty</p>
+      <p className="text-sm text-slate-400 mt-1">
         Browse the catalogue and add items to get started.
       </p>
     </div>
@@ -394,16 +394,16 @@ const CustomerOrderPortal = () => {
 
   // ── Render ──────────────────────────────────────────────────────────────
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6 text-slate-100">
 
       {/* ── Page header ──────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <ShoppingCart size={24} className="text-indigo-600" />
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+            <ShoppingCart size={24} className="text-indigo-300" />
             My Cart
           </h2>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="text-sm text-slate-400 mt-0.5">
             Review your items before checkout
           </p>
         </div>
@@ -414,7 +414,7 @@ const CustomerOrderPortal = () => {
             onClick={() => fetchOrders(true)}
             disabled={refreshing}
             whileTap={{ scale: 0.94 }}
-            className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition disabled:opacity-40"
+            className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-slate-700 text-slate-200 hover:bg-slate-900 transition disabled:opacity-40"
           >
             <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
             Refresh
@@ -429,7 +429,7 @@ const CustomerOrderPortal = () => {
             <Clock size={14} />
             Pending Orders
             {pendingOrders.length > 0 && (
-              <span className="bg-white text-indigo-700 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+              <span className="bg-slate-800 text-indigo-300 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                 {pendingOrders.length}
               </span>
             )}
@@ -465,18 +465,18 @@ const CustomerOrderPortal = () => {
             />
 
             {/* ── Checkout footer ───────────────────────────────────── */}
-            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
+            <div className="bg-slate-950 border border-slate-800 rounded-2xl shadow-sm p-5">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
 
                 {/* Grand total */}
                 <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-0.5">
+                  <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-0.5">
                     Grand Total
                   </p>
-                  <p className="text-3xl font-bold text-gray-900">
+                  <p className="text-3xl font-bold text-white">
                     ₦{grandTotal.toLocaleString()}
                   </p>
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-xs text-slate-400 mt-0.5">
                     {totalItems} unit{totalItems !== 1 ? "s" : ""} across{" "}
                     {orders.length} item{orders.length !== 1 ? "s" : ""}
                   </p>
@@ -490,8 +490,8 @@ const CustomerOrderPortal = () => {
                     disabled={previewLoading}
                     whileTap={{ scale: 0.96 }}
                     className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl
-                      border border-indigo-200 text-indigo-600 bg-indigo-50
-                      hover:bg-indigo-100 transition text-sm font-semibold
+                      border border-indigo-600 text-white bg-indigo-600/10
+                      hover:bg-indigo-600/20 transition text-sm font-semibold
                       disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <FileText size={15} />
@@ -514,7 +514,7 @@ const CustomerOrderPortal = () => {
               </div>
 
               {/* Disclaimer */}
-              <p className="text-xs text-gray-400 mt-4 border-t border-gray-50 pt-3">
+              <p className="text-xs text-slate-400 mt-4 border-t border-slate-800 pt-3">
                 By proceeding, your cart will be cleared upon successful payment
                 and a receipt will be generated automatically.
               </p>
@@ -552,21 +552,21 @@ const CustomerOrderPortal = () => {
             onClick={handleClosePreview}
           >
             <motion.div
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
+              className="bg-slate-950 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-800"
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
                 <div className="flex items-center gap-2">
-                  <FileText size={18} className="text-indigo-600" />
-                  <h3 className="font-semibold text-gray-800">Invoice Preview</h3>
+                  <FileText size={18} className="text-indigo-300" />
+                  <h3 className="font-semibold text-white">Invoice Preview</h3>
                 </div>
                 <button
                   onClick={handleClosePreview}
-                  className="text-gray-400 hover:text-gray-600 text-xl leading-none transition"
+                  className="text-slate-400 hover:text-white text-xl leading-none transition"
                 >
                   ×
                 </button>
@@ -581,17 +581,17 @@ const CustomerOrderPortal = () => {
                     className="w-full h-full border-0"
                   />
                 ) : (
-                  <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+                  <div className="flex items-center justify-center h-full text-slate-400 text-sm">
                     Loading preview…
                   </div>
                 )}
               </div>
 
               {/* Footer */}
-              <div className="flex justify-end gap-3 px-5 py-4 border-t border-gray-100 bg-gray-50">
+              <div className="flex justify-end gap-3 px-5 py-4 border-t border-slate-800 bg-slate-900">
                 <button
                   onClick={handleClosePreview}
-                  className="px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 transition"
+                  className="px-4 py-2 text-sm rounded-lg border border-slate-700 text-slate-200 hover:bg-slate-800 transition"
                 >
                   Close
                 </button>
