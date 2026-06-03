@@ -1,5 +1,4 @@
-// import nodemailer from "nodemailer";
-
+import nodemailer from "nodemailer";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ⚙️  NODEMAILER CONFIGURATION - DEV vs PRODUCTION
@@ -18,27 +17,27 @@
 // Use this for Render deployment with real Gmail
 // ───────────────────────────────────────────────────────────────────────────────
 
-// // ✅ PRODUCTION - Active for Render deployment
-// export const transporter = nodemailer.createTransport({
-//   service: "gmail",
-//   auth: {
-//     user: process.env.MAIL_USER,
-//     pass: process.env.MAIL_PASS,
-//   },
-//   connectionTimeout: 10000,
-//   socketTimeout: 10000,
-//   secure: true,
-//   requireTLS: true,
-// });
+// ✅ PRODUCTION - Active for Render deployment
+export const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.MAIL_USER,
+    pass: process.env.MAIL_PASS,
+  },
+  connectionTimeout: 10000,
+  socketTimeout: 10000,
+  secure: true,
+  requireTLS: true,
+});
 
-// transporter.verify((err) => {
-//   if (err) {
-//     console.error("❌ SMTP error:", err.message);
-//     console.error("⚠️  Check MAIL_USER and MAIL_PASS env variables.");
-//   } else {
-//     console.log("✅ SMTP is ready");
-//   }
-// });
+transporter.verify((err) => {
+  if (err) {
+    console.error("❌ SMTP error:", err.message);
+    console.error("⚠️  Check MAIL_USER and MAIL_PASS env variables.");
+  } else {
+    console.log("✅ SMTP is ready");
+  }
+});
 
 // ─────────────────────────────────────────────────────
 // 🧪 DEV Option A: Ethereal (uncomment to use locally)
