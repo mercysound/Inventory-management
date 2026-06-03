@@ -31,6 +31,9 @@ import orderRouter from "./routes/orderRoute.js";
 import dashboardRouter from "./routes/dashboardRoute.js";
 import allOrdersPlacedRoutes from "./routes/allOrdersPlacedRoutes.js";
 import completedOrderHistoryRoutes from "./routes/completedOrderHistoryRoutes.js";
+import settingsRoutes from "./routes/settingsRoutes.js";
+import expiringOrdersRoutes from "./routes/expiringOrdersRoutes.js";
+import { startOrderExpiryCron } from "./jobs/orderExpiryCron.js";
 import cloudinary from "./config/cloudinary.js";
 //meant for production only, to serve frontend from same server whe
 import path from "path";
@@ -205,6 +208,8 @@ app.use("/api/orders", orderRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/placed-orders", allOrdersPlacedRoutes);
 app.use("/api/completed-history", completedOrderHistoryRoutes);
+app.use("/api/settings", settingsRoutes);
+app.use("/api/expiring-orders", expiringOrdersRoutes);
 
 // ── SERVE FRONTEND IN PRODUCTION WHEN DEPLOYING FULLSTACK TOGETHER ──
 if (!isDev) {
@@ -228,6 +233,8 @@ const IP = process.env.LOCAL_IP || "localhost";
 app.listen(port, "0.0.0.0", async () => {
   try {
     await connectDB();
+    // Start the cron job for order expiry notifications
+    startOrderExpiryCron();
     console.log(`✅ Server running on http://${IP}:${port}`);
   } catch (error) {
     console.error("❌ Server startup failed:", error);

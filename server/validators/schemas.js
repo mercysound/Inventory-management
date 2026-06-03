@@ -8,7 +8,7 @@ export const userSchema = Joi.object({
   password: Joi.string().min(6).required(),
   phone: Joi.string().required().trim().min(5).max(20),
   address: Joi.string().required().trim().min(3).max(500),
-  role: Joi.string().valid("admin", "staff", "customer").default("customer"),
+  role: Joi.string().valid("admin", "staff", "customer", "wholesale").default("customer"),
 });
 
 export const loginSchema = Joi.object({
@@ -103,7 +103,7 @@ export const updateOrderSchema = Joi.object({
 
 export const deliveryStatusSchema = Joi.object({
   deliveryStatus: Joi.string()
-    .valid("pending", "processing", "shipped", "delivered")
+    .valid("pending", "processing", "shipped", "delivered", "cancelled")
     .required(),
 });
 

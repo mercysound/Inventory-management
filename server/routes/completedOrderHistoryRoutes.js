@@ -1,17 +1,24 @@
 import express from "express";
 import {
   getCompletedHistory,
+  getCancelledPendingRefund,
+  markRefundMade,
   deleteCompletedOrder,
-  clearCompletedOrders,
 } from "../controllers/completedOrderHistoryController.js";
 import { authMiddleware, authorizeRoles } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// router.get("/", authMiddleware, adminOnly, getCompletedOrders);
+// GET all completed history (role-filtered inside controller)
 router.get("/", authMiddleware, getCompletedHistory);
+
+// GET cancelled orders pending refund — used by buyer's PendingOrdersModal
+router.get("/cancelled-pending", authMiddleware, getCancelledPendingRefund);
+
+// POST mark refund as done — admin only, one-time irreversible
+router.post("/:id/refund", authMiddleware, authorizeRoles("admin"), markRefundMade);
+
+// DELETE single order (soft delete / hide)
 router.delete("/:id", authMiddleware, deleteCompletedOrder);
-// router.delete("/:id", authMiddleware, adminOnly, deleteCompletedOrder);
-router.delete("/clear/all", authMiddleware, clearCompletedOrders);
 
 export default router;
