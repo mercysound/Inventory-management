@@ -113,16 +113,16 @@ const ProductForm = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white p-6 rounded-xl shadow-xl w-full sm:w-3/4 md:w-[520px] max-h-[90vh] overflow-y-auto relative">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-slate-950 p-6 rounded-xl shadow-2xl w-full sm:w-3/4 md:w-[520px] max-h-[90vh] overflow-y-auto relative border border-slate-800">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h2 className="text-base font-semibold text-gray-900">
+            <h2 className="text-base font-semibold text-slate-100">
               {editProduct ? "Edit product" : "Add product"}
             </h2>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-slate-400 mt-0.5">
               {editProduct
                 ? "Update the product details below"
                 : "Fill in the details for the new product"}
@@ -130,7 +130,7 @@ const ProductForm = ({
           </div>
           {/* Draft auto-save indicator — only visible in add mode */}
           {!editProduct && (
-            <span className={`text-[10px] mr-2 transition-opacity duration-300 ${saving ? "opacity-100 text-blue-400" : "opacity-0"}`}>
+            <span className={`text-[10px] mr-2 transition-opacity duration-300 ${saving ? "opacity-100 text-emerald-400" : "opacity-0"}`}>
               Saving draft…
             </span>
           )}
@@ -138,7 +138,7 @@ const ProductForm = ({
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 disabled:opacity-40 disabled:cursor-not-allowed transition"
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition"
           >
             ✕
           </button>
@@ -179,7 +179,7 @@ const ProductForm = ({
 
             {/* NAME */}
             <div className="col-span-2">
-              <label className="block text-[11px] font-medium text-gray-500 uppercase tracking-wide mb-1">
+              <label className="block text-[11px] font-medium text-slate-300 uppercase tracking-wide mb-1">
                 Product name
               </label>
               <input
@@ -187,14 +187,14 @@ const ProductForm = ({
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="e.g. Wireless Headset"
-                className="border border-gray-200 p-2.5 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                className="border border-slate-700 bg-slate-900 p-2.5 rounded-lg w-full text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 required
               />
             </div>
 
             {/* DESCRIPTION */}
             <div className="col-span-2">
-              <label className="block text-[11px] font-medium text-gray-500 uppercase tracking-wide mb-1">
+              <label className="block text-[11px] font-medium text-slate-300 uppercase tracking-wide mb-1">
                 Description
               </label>
               <textarea
@@ -203,14 +203,14 @@ const ProductForm = ({
                 onChange={handleChange}
                 placeholder="Brief product description"
                 rows={2}
-                className="border border-gray-200 p-2.5 rounded-lg w-full text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                className="border border-slate-700 bg-slate-900 p-2.5 rounded-lg w-full text-sm text-slate-100 resize-none placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 required
               />
             </div>
 
             {/* PRICE */}
             <div>
-              <label className="block text-[11px] font-medium text-gray-500 uppercase tracking-wide mb-1">
+              <label className="block text-[11px] font-medium text-slate-300 uppercase tracking-wide mb-1">
                 Price (₦)
               </label>
               <input
@@ -226,14 +226,14 @@ const ProductForm = ({
                 }}
                 placeholder="0"
                 min="0"
-                className="border border-gray-200 p-2.5 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                className="border border-slate-700 bg-slate-900 p-2.5 rounded-lg w-full text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 required
               />
             </div>
 
             {/* STOCK */}
             <div>
-              <label className="block text-[11px] font-medium text-gray-500 uppercase tracking-wide mb-1">
+              <label className="block text-[11px] font-medium text-slate-300 uppercase tracking-wide mb-1">
                 Stock
               </label>
               <input
@@ -249,21 +249,21 @@ const ProductForm = ({
                 }}
                 placeholder="0"
                 min="0"
-                className="border border-gray-200 p-2.5 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                className="border border-slate-700 bg-slate-900 p-2.5 rounded-lg w-full text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 required
               />
             </div>
 
             {/* CATEGORY */}
             <div>
-              <label className="block text-[11px] font-medium text-gray-500 uppercase tracking-wide mb-1">
+              <label className="block text-[11px] font-medium text-slate-300 uppercase tracking-wide mb-1">
                 Category
               </label>
               <select
                 name="categoryId"
                 value={formData.categoryId}
                 onChange={handleChange}
-                className="border border-gray-200 p-2.5 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                className="border border-slate-700 bg-slate-900 p-2.5 rounded-lg w-full text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 required
               >
                 <option value="">Select category</option>
@@ -282,7 +282,7 @@ const ProductForm = ({
                 name="supplierId"
                 value={formData.supplierId || ""}
                 onChange={handleChange}
-                className="border border-gray-200 p-2.5 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                className="border border-slate-700 bg-slate-900 p-2.5 rounded-lg w-full text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               >
                 <option value="">No supplier</option>
                 {suppliers?.map((sup) => (
@@ -307,13 +307,13 @@ const ProductForm = ({
                 >✕</button>
               </div>
             ) : (
-              <label className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-gray-200 rounded-lg p-6 text-center cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition">
-                <svg className="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <label className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-slate-700 rounded-lg p-6 text-center cursor-pointer hover:border-emerald-400 hover:bg-slate-900 transition">
+                <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 5v10M7 10l5-5 5 5" />
                   <rect x="3" y="18" width="18" height="2" rx="1" fill="currentColor" opacity="0.2" />
                 </svg>
-                <span className="text-xs text-gray-400">Click to upload or drag & drop</span>
-                <span className="text-[11px] text-gray-300">PNG, JPG, WEBP up to 5MB</span>
+                <span className="text-xs text-slate-400">Click to upload or drag & drop</span>
+                <span className="text-[11px] text-slate-500">PNG, JPG, WEBP up to 5MB</span>
                 <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
               </label>
             )}
@@ -336,7 +336,7 @@ const ProductForm = ({
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+              className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition"
             >
               Cancel
             </button>

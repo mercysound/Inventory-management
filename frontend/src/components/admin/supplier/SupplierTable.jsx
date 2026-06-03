@@ -29,7 +29,7 @@ const CopyButton = ({ text }) => {
     <button
       onClick={handleCopy}
       title={copied ? "Copied!" : `Copy ${text}`}
-      className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition flex-shrink-0"
+      className="w-5 h-5 flex items-center justify-center rounded text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition flex-shrink-0"
     >
       {copied
         ? <Check size={9} className="text-green-500" />
@@ -80,12 +80,12 @@ const SupplierTable = ({
 }) => {
   if (suppliers.length === 0)
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-xl border border-gray-100">
-        <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
-          <User size={20} className="text-gray-400" />
+      <div className="flex flex-col items-center justify-center py-16 text-center bg-slate-900 rounded-xl border border-slate-800">
+        <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mb-3">
+          <User size={20} className="text-slate-400" />
         </div>
-        <p className="text-sm font-medium text-gray-600">No suppliers yet</p>
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-sm font-medium text-slate-100">No suppliers yet</p>
+        <p className="text-xs text-slate-400 mt-1">
           Add your first supplier using the button above
         </p>
       </div>
@@ -97,21 +97,21 @@ const SupplierTable = ({
   const activeSuppliers = suppliers.filter((s) => s.productCount > 0).length;
 
   return (
-    <div className="w-full bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="w-full bg-slate-950 rounded-xl border border-slate-800 shadow-2xl overflow-hidden">
 
       {/* SUMMARY BAR */}
-      <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 flex flex-wrap gap-3 text-xs items-center">
-        <span className="font-medium text-gray-700">
+      <div className="px-5 py-3 bg-slate-900 border-b border-slate-800 flex flex-wrap gap-3 text-xs items-center">
+        <span className="font-medium text-slate-100">
           {suppliers.length} supplier{suppliers.length !== 1 ? "s" : ""}
         </span>
-        <span className="text-gray-300">·</span>
-        <span className="text-indigo-600 font-medium">{activeSuppliers} actively supplying</span>
-        <span className="text-gray-300">·</span>
-        <span className="text-gray-500">{totalProducts} products total</span>
+        <span className="text-slate-500">·</span>
+        <span className="text-slate-200 font-medium">{activeSuppliers} actively supplying</span>
+        <span className="text-slate-500">·</span>
+        <span className="text-slate-400">{totalProducts} products total</span>
         {totalLowStock > 0 && (
           <>
-            <span className="text-gray-300">·</span>
-            <span className="text-amber-600 font-medium flex items-center gap-1">
+            <span className="text-slate-500">·</span>
+            <span className="text-amber-300 font-medium flex items-center gap-1">
               <AlertTriangle size={10} />
               {totalLowStock} low stock
             </span>
@@ -119,8 +119,8 @@ const SupplierTable = ({
         )}
         {totalOutOfStock > 0 && (
           <>
-            <span className="text-gray-300">·</span>
-            <span className="text-red-500 font-medium flex items-center gap-1">
+            <span className="text-slate-500">·</span>
+            <span className="text-red-300 font-medium flex items-center gap-1">
               <AlertTriangle size={10} />
               {totalOutOfStock} out of stock
             </span>
@@ -132,11 +132,11 @@ const SupplierTable = ({
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="border-b border-gray-100">
-              {["#", "Supplier", "Contact", "Email", "Phone", "Address", "Products", "Stock status", ""].map((h) => (
+            <tr className="border-b border-slate-800">
+              {['#', 'Supplier', 'Contact', 'Email', 'Phone', 'Address', 'Products', 'Stock status', ''].map((h) => (
                 <th
                   key={h}
-                  className="text-left px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide text-gray-500 bg-gray-50 whitespace-nowrap"
+                  className="text-left px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide text-slate-400 bg-slate-900 whitespace-nowrap"
                 >
                   {h}
                 </th>
@@ -151,30 +151,28 @@ const SupplierTable = ({
               ) : (
                 <tr
                   key={supplier._id}
-                  className="border-b border-gray-50 last:border-none hover:bg-gray-50 transition-colors align-middle"
-                >
-                  <td className="px-4 py-3 text-gray-400 text-xs">{index + 1}</td>
-
-                  {/* Supplier name */}
+                    className="border-b border-slate-800 last:border-none hover:bg-slate-900/70 transition-colors align-middle"
+                  >
+                    <td className="px-4 py-3 text-slate-400 text-xs">{index + 1}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
-                        <span className="text-xs font-semibold text-blue-600">
+                      <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-semibold text-slate-100">
                           {supplier.name.charAt(0).toUpperCase()}
                         </span>
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-800 whitespace-nowrap">{supplier.name}</p>
+                        <p className="font-semibold text-slate-100 whitespace-nowrap">{supplier.name}</p>
                         {supplier.notes && (
-                          <p className="text-[10px] text-gray-400 max-w-[140px] truncate">{supplier.notes}</p>
+                          <p className="text-[10px] text-slate-400 max-w-[140px] truncate">{supplier.notes}</p>
                         )}
                       </div>
                     </div>
                   </td>
 
                   {/* Contact person */}
-                  <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
-                    {supplier.contactPerson || <span className="text-gray-300">—</span>}
+                  <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">
+                    {supplier.contactPerson || <span className="text-slate-500">—</span>}
                   </td>
 
                   {/* Email with copy */}
@@ -185,7 +183,7 @@ const SupplierTable = ({
                         <a  href={`https://mail.google.com/mail/?view=cm&to=${supplier.email}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-blue-500 hover:underline text-xs whitespace-nowrap"
+                          className="flex items-center gap-1 text-slate-100 hover:text-slate-200 hover:underline text-xs whitespace-nowrap"
                         >
                           <Mail size={11} />
                           {supplier.email}
@@ -193,7 +191,7 @@ const SupplierTable = ({
                         <CopyButton text={supplier.email} />
                       </div>
                     ) : (
-                      <span className="text-gray-300 text-xs">—</span>
+                      <span className="text-slate-500 text-xs">—</span>
                     )}
                   </td>
 
@@ -203,7 +201,7 @@ const SupplierTable = ({
                       <div className="flex items-center gap-1.5">
                         
                         <a  href={`tel:${supplier.phone}`}
-                          className="flex items-center gap-1 text-gray-600 hover:text-blue-500 text-xs whitespace-nowrap"
+                          className="flex items-center gap-1 text-slate-100 hover:text-slate-200 text-xs whitespace-nowrap"
                         >
                           <Phone size={11} />
                           {supplier.phone}
@@ -211,19 +209,19 @@ const SupplierTable = ({
                         <CopyButton text={supplier.phone} />
                       </div>
                     ) : (
-                      <span className="text-gray-300 text-xs">—</span>
+                      <span className="text-slate-500 text-xs">—</span>
                     )}
                   </td>
 
                   {/* Address */}
-                  <td className="px-4 py-3 text-gray-500 text-xs max-w-[140px]">
+                  <td className="px-4 py-3 text-slate-400 text-xs max-w-[140px]">
                     {supplier.address ? (
                       <span className="flex items-start gap-1">
-                        <MapPin size={11} className="mt-0.5 flex-shrink-0 text-gray-400" />
+                        <MapPin size={11} className="mt-0.5 flex-shrink-0 text-slate-500" />
                         <span className="line-clamp-2">{supplier.address}</span>
                       </span>
                     ) : (
-                      <span className="text-gray-300">—</span>
+                      <span className="text-slate-500">—</span>
                     )}
                   </td>
 
@@ -235,7 +233,7 @@ const SupplierTable = ({
                         {supplier.productCount} product{supplier.productCount !== 1 ? "s" : ""}
                       </span>
                     ) : (
-                      <span className="text-[11px] text-gray-300">No products</span>
+                      <span className="text-[11px] text-slate-400">No products</span>
                     )}
                   </td>
 
@@ -261,7 +259,7 @@ const SupplierTable = ({
                         </span>
                       )}
                       {supplier.productCount === 0 && (
-                        <span className="text-[10px] text-gray-300">—</span>
+                        <span className="text-[10px] text-slate-400">—</span>
                       )}
                     </div>
                   </td>
@@ -271,14 +269,14 @@ const SupplierTable = ({
                     <div className="flex items-center justify-center gap-1">
                       <button
                         onClick={() => handleEdit(supplier)}
-                        className="w-7 h-7 flex items-center justify-center rounded-md text-blue-500 hover:bg-blue-50 transition"
+                        className="w-7 h-7 flex items-center justify-center rounded-md bg-slate-800 text-slate-100 hover:bg-slate-700 transition"
                         title="Edit supplier"
                       >
                         <Pencil size={13} />
                       </button>
                       <button
                         onClick={() => handleDelete(supplier._id)}
-                        className="w-7 h-7 flex items-center justify-center rounded-md text-red-400 hover:bg-red-50 transition"
+                        className="w-7 h-7 flex items-center justify-center rounded-md bg-slate-800 text-slate-100 hover:bg-slate-700 transition"
                         title={supplier.productCount > 0 ? "Cannot delete — has linked products" : "Delete supplier"}
                       >
                         <Trash2 size={13} />
@@ -299,33 +297,33 @@ const SupplierTable = ({
           updatingSupplierId === supplier._id ? (
             <UpdatingCardSkeleton key={supplier._id} />
           ) : (
-            <div key={supplier._id} className="p-4">
+            <div key={supplier._id} className="p-4 bg-slate-900 border-b border-slate-800">
 
               {/* Card header */}
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-sm font-semibold text-blue-600">
+                  <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-semibold text-slate-100">
                       {supplier.name.charAt(0).toUpperCase()}
                     </span>
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-800 text-sm">{supplier.name}</p>
+                    <p className="font-semibold text-slate-100 text-sm">{supplier.name}</p>
                     {supplier.contactPerson && (
-                      <p className="text-xs text-gray-400">{supplier.contactPerson}</p>
+                      <p className="text-xs text-slate-400">{supplier.contactPerson}</p>
                     )}
                   </div>
                 </div>
                 <div className="flex gap-1">
                   <button
                     onClick={() => handleEdit(supplier)}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg text-blue-500 hover:bg-blue-50 transition"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 text-slate-100 hover:bg-slate-700 transition"
                   >
                     <Pencil size={14} />
                   </button>
                   <button
                     onClick={() => handleDelete(supplier._id)}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-50 transition"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 text-slate-100 hover:bg-slate-700 transition"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -340,7 +338,7 @@ const SupplierTable = ({
                     {supplier.productCount} product{supplier.productCount !== 1 ? "s" : ""}
                   </span>
                 ) : (
-                  <span className="text-[11px] text-gray-300">No products linked</span>
+                  <span className="text-[11px] text-slate-400">No products linked</span>
                 )}
                 {supplier.outOfStockCount > 0 && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-50 text-red-500 border border-red-100">
@@ -370,7 +368,7 @@ const SupplierTable = ({
                     <a  href={`https://mail.google.com/mail/?view=cm&to=${supplier.email}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-xs text-blue-500 hover:underline"
+                      className="flex items-center gap-1 text-xs text-slate-100 hover:text-slate-200 hover:underline"
                     >
                       <Mail size={11} /> {supplier.email}
                     </a>
@@ -381,7 +379,7 @@ const SupplierTable = ({
                   <div className="flex items-center gap-1.5">
                     
                     <a  href={`tel:${supplier.phone}`}
-                      className="flex items-center gap-1 text-xs text-gray-600"
+                      className="flex items-center gap-1 text-xs text-slate-100 hover:text-slate-200"
                     >
                       <Phone size={11} /> {supplier.phone}
                     </a>
@@ -389,18 +387,18 @@ const SupplierTable = ({
                   </div>
                 )}
                 {supplier.address && (
-                  <p className="flex items-start gap-2 text-xs text-gray-500">
-                    <MapPin size={11} className="mt-0.5 flex-shrink-0" />
+                  <p className="flex items-start gap-2 text-xs text-slate-400">
+                    <MapPin size={11} className="mt-0.5 flex-shrink-0 text-slate-500" />
                     {supplier.address}
                   </p>
                 )}
                 {supplier.notes && (
-                  <p className="text-xs text-gray-400 italic pt-1.5 border-t border-gray-50 mt-1">
+                  <p className="text-xs text-slate-400 italic pt-1.5 border-t border-slate-800 mt-1">
                     {supplier.notes}
                   </p>
                 )}
                 {!supplier.email && !supplier.phone && !supplier.address && !supplier.notes && (
-                  <p className="text-xs text-gray-300 italic">No contact details added</p>
+                  <p className="text-xs text-slate-400 italic">No contact details added</p>
                 )}
               </div>
 
@@ -409,7 +407,7 @@ const SupplierTable = ({
                 <div className="mt-3 pl-11">
                   
                   <a  href={`tel:${supplier.phone}`}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs font-medium hover:bg-amber-100 transition"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-700 border border-amber-600 text-white text-xs font-medium hover:bg-amber-600 transition"
                   >
                     <Phone size={11} />
                     Call to reorder

@@ -274,20 +274,20 @@ const ProductTable = ({
       </div>
 
       {/* ── MAIN CARD ── */}
-      <div className="w-full bg-white shadow-sm rounded-xl overflow-hidden border border-gray-100">
+      <div className="w-full bg-slate-950 shadow-2xl rounded-xl overflow-hidden border border-slate-800">
 
         {/* TOOLBAR */}
-        <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-gray-100">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-slate-800">
           <div>
-            <h2 className="text-sm font-semibold text-gray-800">Product list</h2>
-            <p className="text-[11px] text-gray-400 mt-0.5">
+            <h2 className="text-sm font-semibold text-slate-100">Product list</h2>
+            <p className="text-[11px] text-slate-400 mt-0.5">
               Showing {visibleProducts.length} of {products.length}
             </p>
           </div>
           <div className="flex gap-2">
             <button
               onClick={onViewDeleted}
-              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-lg text-xs font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-lg text-xs font-medium border border-slate-700 bg-slate-900 text-slate-100 hover:bg-slate-800 transition"
             >
               <Trash size={13} />
               <span className="hidden sm:inline">View deleted</span>
@@ -318,7 +318,7 @@ const ProductTable = ({
                 {["#", "Product", "Category", "Price", "Stock", "Description", "Actions"].map((h, i) => (
                   <th
                     key={i}
-                    className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wide bg-gray-50 border-b border-gray-100 text-gray-500 whitespace-nowrap"
+                    className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wide bg-slate-900 border-b border-slate-800 text-slate-400 whitespace-nowrap"
                   >
                     {h}
                   </th>
@@ -335,17 +335,17 @@ const ProductTable = ({
                     ) : (
                       <tr
                         key={product._id}
-                        className="group hover:bg-blue-50/30 transition-colors border-b border-gray-50 last:border-none align-top"
+                        className="group hover:bg-slate-900/70 transition-colors border-b border-slate-800 last:border-none align-top"
                       >
                         {/* # */}
-                        <td className="px-4 py-3.5 text-gray-400 text-xs w-8">
+                        <td className="px-4 py-3.5 text-slate-400 text-xs w-8">
                           {index + 1}
                         </td>
 
                         {/* Product — image + name */}
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl border border-gray-100 overflow-hidden bg-gray-50 flex items-center justify-center flex-shrink-0 shadow-sm">
+                            <div className="w-10 h-10 rounded-xl border border-slate-800 overflow-hidden bg-slate-900 flex items-center justify-center flex-shrink-0 shadow-sm">
                               {product.image ? (
                                 <img
                                   src={product.image}
@@ -354,15 +354,15 @@ const ProductTable = ({
                                   loading="lazy"
                                 />
                               ) : (
-                                <Package size={14} className="text-gray-300" />
+                                <Package size={14} className="text-slate-400" />
                               )}
                             </div>
                             <div>
-                              <p className="font-semibold text-gray-800 text-sm leading-tight">
+                              <p className="font-semibold text-slate-100 text-sm leading-tight">
                                 {product.name}
                               </p>
                               {product.supplierId && (
-                                <p className="text-[10px] text-gray-400 mt-0.5">
+                                <p className="text-[10px] text-slate-400 mt-0.5">
                                   {product.supplierId.name}
                                 </p>
                               )}
@@ -372,13 +372,13 @@ const ProductTable = ({
 
                         {/* Category */}
                         <td className="px-4 py-3.5">
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-indigo-50 text-indigo-600 border border-indigo-100 whitespace-nowrap">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-800 text-slate-100 border border-slate-700 whitespace-nowrap">
                             {product.categoryId?.name || "N/A"}
                           </span>
                         </td>
 
                         {/* Price */}
-                        <td className="px-4 py-3.5 font-bold text-gray-800 whitespace-nowrap">
+                        <td className="px-4 py-3.5 font-bold text-slate-100 whitespace-nowrap">
                           ₦{Number(product.price).toLocaleString()}
                         </td>
 
@@ -391,7 +391,7 @@ const ProductTable = ({
                         </td>
 
                         {/* Description */}
-                        <td className="px-4 py-3.5 text-gray-400 text-xs max-w-[200px]">
+                        <td className="px-4 py-3.5 text-slate-400 text-xs max-w-[200px]">
                           <p className="line-clamp-2 leading-relaxed">
                             {product.description || "—"}
                           </p>
@@ -402,14 +402,14 @@ const ProductTable = ({
                           <div className="flex items-center gap-1.5">
                             <button
                               onClick={() => onEdit(product)}
-                              className="w-8 h-8 flex items-center justify-center rounded-lg text-blue-500 hover:bg-blue-100 transition"
+                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 text-slate-100 hover:bg-slate-700 transition"
                               title="Edit product"
                             >
                               <Pencil size={14} />
                             </button>
                             <button
                               onClick={() => onDelete(product._id)}
-                              className="w-8 h-8 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-100 transition"
+                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 text-slate-100 hover:bg-slate-700 transition"
                               title="Delete product"
                             >
                               <Trash2 size={14} />
@@ -456,7 +456,7 @@ const ProductTable = ({
   style={{ maxHeight: "calc(100vh - 340px)" }}
 >
           {visibleProducts.length > 0 ? (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-slate-800">
               {visibleProducts.map((product) =>
                 // ✅ Show skeleton card for the product being updated on mobile
                 updatingProductId === product._id ? (
@@ -464,11 +464,11 @@ const ProductTable = ({
                 ) : (
                   <div
                     key={product._id}
-                    className="p-4 hover:bg-gray-50 transition-colors"
+                    className="p-4 bg-slate-900 hover:bg-slate-800 transition-colors"
                   >
                     <div className="flex gap-3">
                       {/* Image */}
-                      <div className="w-16 h-16 rounded-xl border border-gray-100 overflow-hidden bg-gray-50 flex items-center justify-center flex-shrink-0 shadow-sm">
+                      <div className="w-16 h-16 rounded-xl border border-slate-800 overflow-hidden bg-slate-950 flex items-center justify-center flex-shrink-0 shadow-sm">
                         {product.image ? (
                           <img
                             src={product.image}
@@ -477,7 +477,7 @@ const ProductTable = ({
                             loading="lazy"
                           />
                         ) : (
-                          <Package size={20} className="text-gray-300" />
+                          <Package size={20} className="text-slate-400" />
                         )}
                       </div>
 
@@ -485,11 +485,11 @@ const ProductTable = ({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="font-semibold text-gray-800 text-sm leading-tight truncate">
+                            <p className="font-semibold text-slate-100 text-sm leading-tight truncate">
                               {product.name}
                             </p>
                             {product.supplierId && (
-                              <p className="text-[10px] text-gray-400 mt-0.5">
+                              <p className="text-[10px] text-slate-400 mt-0.5">
                                 {product.supplierId.name}
                               </p>
                             )}
@@ -497,13 +497,13 @@ const ProductTable = ({
                           <div className="flex gap-1 flex-shrink-0">
                             <button
                               onClick={() => onEdit(product)}
-                              className="w-8 h-8 flex items-center justify-center rounded-lg text-blue-500 hover:bg-blue-100 transition"
+                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 text-slate-100 hover:bg-slate-700 transition"
                             >
                               <Pencil size={14} />
                             </button>
                             <button
                               onClick={() => onDelete(product._id)}
-                              className="w-8 h-8 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-100 transition"
+                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 text-slate-100 hover:bg-slate-700 transition"
                             >
                               <Trash2 size={14} />
                             </button>
@@ -511,10 +511,10 @@ const ProductTable = ({
                         </div>
 
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                          <span className="font-bold text-gray-800 text-sm">
+                          <span className="font-bold text-slate-100 text-sm">
                             ₦{Number(product.price).toLocaleString()}
                           </span>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-50 text-indigo-600 border border-indigo-100">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-800 text-slate-100 border border-slate-700">
                             {product.categoryId?.name || "N/A"}
                           </span>
                         </div>
@@ -526,7 +526,7 @@ const ProductTable = ({
                     </div>
 
                     {product.description && (
-                      <p className="mt-2 text-xs text-gray-400 line-clamp-2 leading-relaxed">
+                      <p className="mt-2 text-xs text-slate-400 line-clamp-2 leading-relaxed">
                         {product.description}
                       </p>
                     )}
@@ -549,16 +549,16 @@ const ProductTable = ({
               <div ref={sentinelRef} style={{ height: 1 }} />
 
               {!hasMore && products.length > 0 && (
-                <p className="text-center text-xs text-gray-300 py-4 border-t border-gray-50">
+                <p className="text-center text-xs text-slate-400 py-4 border-t border-slate-800">
                   All {products.length} products loaded
                 </p>
               )}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-20 gap-2">
-              <Package size={40} strokeWidth={1.2} className="text-gray-200" />
-              <p className="text-sm text-gray-400 font-medium">No products found</p>
-              <p className="text-xs text-gray-300">Tap Add to create your first product</p>
+            <div className="flex flex-col items-center justify-center py-20 gap-2 text-center text-slate-300">
+              <Package size={40} strokeWidth={1.2} className="text-slate-400" />
+              <p className="text-sm text-slate-300 font-medium">No products found</p>
+              <p className="text-xs text-slate-400">Tap Add to create your first product</p>
               <button
                 onClick={onAddClick}
                 className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition"

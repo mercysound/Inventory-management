@@ -21,8 +21,8 @@ const CategoryForm = ({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
-      <div className="bg-white shadow-lg rounded-xl p-5 border border-gray-100">
-        <h2 className="text-lg md:text-xl font-semibold mb-4 text-center text-gray-700">
+      <div className="bg-slate-950 shadow-2xl rounded-xl p-5 border border-slate-800">
+        <h2 className="text-lg md:text-xl font-semibold mb-4 text-center text-slate-100">
           {editCategory ? "✏️ Edit Category" : "➕ Add New Category"}
         </h2>
         <form className="space-y-4" onSubmit={onSubmit}>
@@ -58,7 +58,7 @@ const CategoryForm = ({
             {editCategory && (
               <button
                 type="button"
-                className="flex-1 bg-gray-500 text-white p-3 rounded-md hover:bg-gray-600 transition-all duration-200 font-medium"
+                className="flex-1 bg-slate-800 text-slate-100 p-3 rounded-md hover:bg-slate-700 transition-all duration-200 font-medium"
                 onClick={onCancel}
               >
                 Cancel
