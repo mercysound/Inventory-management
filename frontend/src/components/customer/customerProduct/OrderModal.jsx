@@ -13,6 +13,8 @@ import {
   X,
 } from "lucide-react";
 import axiosInstance from "../../../utils/axiosInstance";
+import { useCart } from "../../../context/CartContext";
+
 
 // ─── Stock level badge ───────────────────────────────────────────────────────
 const StockBadge = ({ stock, showStock }) => {
@@ -58,6 +60,8 @@ const StepBtn = ({ onClick, disabled, children }) => (
 const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock, showStockText = true }) => {
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
+  const { incrementCart, decrementCart } = useCart();  // ✅ Get cart context to update count in real-time
+
 
   const isUpdate = !!orderData.orderId;
   const qty      = Number(orderData.quantity) || 0;
@@ -126,12 +130,17 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
     // ── 1. Optimistic UI: update parent cartMap & close modal now ──
     if (isUpdate && q === 0) {
       patchCart(productId, 0);          // remove
+      decrementCart(prevQty);           // ✅ update global cart count in real-time
       toast.success("Item removed from cart");
     } else if (isUpdate) {
+      const qtyDelta = q - prevQty;
       patchCart(productId, q);          // update qty
+      if (qtyDelta > 0) incrementCart(qtyDelta);  // ✅ update global cart count for added items
+      else decrementCart(-qtyDelta);               // ✅ update global cart count for removed items
       toast.success("Cart updated ✓");
     } else {
       patchCart(productId, q);          // new add
+      incrementCart(q);                 // ✅ update global cart count in real-time
       toast.success("Added to cart! 🛒");
     }
     closeModal();                        // closes before API even starts
@@ -159,6 +168,15 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
         if (!res.data.success) {
           // Server rejected — rollback
           patchCart(productId, prevQty);
+          if (isUpdate && prevQty === 0) {
+            decrementCart(q);           // ✅ rollback increment
+          } else if (isUpdate) {
+            const delta = q - prevQty;
+            if (delta > 0) decrementCart(delta);  // ✅ rollback increment
+            else incrementCart(-delta);            // ✅ rollback decrement
+          } else {
+            decrementCart(q);           // ✅ rollback the add
+          }
           toast.error(res.data.message || "Action failed — cart restored");
         }
         // On success: nothing to do, UI is already correct
@@ -166,6 +184,15 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
       .catch((err) => {
         // Network/server error — rollback
         patchCart(productId, prevQty);
+        if (isUpdate && prevQty === 0) {
+          decrementCart(q);             // ✅ rollback increment
+        } else if (isUpdate) {
+          const delta = q - prevQty;
+          if (delta > 0) decrementCart(delta);  // ✅ rollback increment
+          else incrementCart(-delta);            // ✅ rollback decrement
+        } else {
+          decrementCart(q);             // ✅ rollback the add
+        }
         const msg =
           err?.response?.data?.message ||
           err?.response?.data?.error ||
