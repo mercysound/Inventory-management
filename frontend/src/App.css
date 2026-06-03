@@ -1,6 +1,11 @@
 @import "tailwindcss";
 .input-field {
-  @apply w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-400 transition-all duration-200;
+  @apply w-full border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all duration-200 shadow-sm;
+}
+
+.input-field::placeholder {
+  color: #6b7280;
+  opacity: 1;
 }
 
 .error-text {

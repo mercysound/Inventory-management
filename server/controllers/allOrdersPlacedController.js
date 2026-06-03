@@ -91,18 +91,16 @@ export const updateDeliveryStatus = async (req, res) => {
       // 3. Delete from active placed orders
       await AllOrdersPlacedModel.findByIdAndDelete(id);
 
-      // 4. Send cancellation email
-      try {
-        if (order.userOrdering?.email) {
-          await sendCustomerCancelledEmail({
-            customerEmail: order.userOrdering.email,
-            customerName:  order.userOrdering.name || order.buyerName || "Customer",
-            orderId:       order._id,
-            totalPrice:    order.totalPrice,
-          });
-        }
-      } catch (emailErr) {
-        console.error("Cancel email failed:", emailErr.message);
+      // 4. Send cancellation email asynchronously so the admin sees success immediately
+      if (order.userOrdering?.email) {
+        sendCustomerCancelledEmail({
+          customerEmail: order.userOrdering.email,
+          customerName:  order.userOrdering.name || order.buyerName || "Customer",
+          orderId:       order._id,
+          totalPrice:    order.totalPrice,
+        }).catch((emailErr) => {
+          console.error("Cancel email failed:", emailErr.message);
+        });
       }
 
       return sendResponse(
@@ -113,17 +111,15 @@ export const updateDeliveryStatus = async (req, res) => {
 
     // ── DELIVERED flow ────────────────────────────────────────────────────
     if (deliveryStatus.toLowerCase() === "delivered") {
-      // Send email
-      try {
-        if (order.userOrdering?.email) {
-          await sendCustomerDeliveredEmail({
-            customerEmail: order.userOrdering.email,
-            customerName:  order.userOrdering.name || order.buyerName || "Customer",
-            orderId:       order._id,
-          });
-        }
-      } catch (emailErr) {
-        console.error("Delivered email failed:", emailErr.message);
+      // Send email asynchronously so the admin sees success immediately
+      if (order.userOrdering?.email) {
+        sendCustomerDeliveredEmail({
+          customerEmail: order.userOrdering.email,
+          customerName:  order.userOrdering.name || order.buyerName || "Customer",
+          orderId:       order._id,
+        }).catch((emailErr) => {
+          console.error("Delivered email failed:", emailErr.message);
+        });
       }
 
       // Move to history
@@ -148,15 +144,13 @@ export const updateDeliveryStatus = async (req, res) => {
 
     // Send email for processing
     if (previousStatus !== deliveryStatus && emailHandlers[deliveryStatus.toLowerCase()]) {
-      try {
-        await emailHandlers[deliveryStatus.toLowerCase()]({
-          customerEmail: order.userOrdering?.email,
-          customerName:  order.userOrdering?.name || order.buyerName || "Customer",
-          orderId:       order._id,
-        });
-      } catch (emailErr) {
+      emailHandlers[deliveryStatus.toLowerCase()]({
+        customerEmail: order.userOrdering?.email,
+        customerName:  order.userOrdering?.name || order.buyerName || "Customer",
+        orderId:       order._id,
+      }).catch((emailErr) => {
         console.error("Status email failed:", emailErr.message);
-      }
+      });
     }
 
     return sendResponse(res, 200, null, "Delivery status updated successfully.");
