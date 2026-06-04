@@ -11,8 +11,9 @@ const productDraftSchema = new mongoose.Schema({
   draft: {
     name:        { type: String, default: "" },
     description: { type: String, default: "" },
-    price:       { type: String, default: "" }, // String so empty "" is valid
-    stock:       { type: String, default: "" }, // String so empty "" is valid
+    price:          { type: String, default: "" }, // String so empty "" is valid
+    wholesalePrice: { type: String, default: "" }, // String so empty "" is valid
+    stock:          { type: String, default: "" }, // String so empty "" is valid
     categoryId:  { type: String, default: "" }, // stored as raw ObjectId string
     supplierId:  { type: String, default: "" }, // stored as raw ObjectId string
   },
