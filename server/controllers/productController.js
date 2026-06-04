@@ -23,10 +23,24 @@ const getProducts = async (req, res) => {
     const suppliers = await SupplierModel.find();
     const categories = await CategoryModel.find();
 
+    // Prepare role-specific product view
+    const productsForRole = products.map((product) => {
+      const item = product.toObject();
+      // Wholesale users should see the wholesalePrice when available
+      if (req.user?.role === "wholesale") {
+        item.price = item.wholesalePrice ?? item.price;
+      }
+      // Customers should not receive the wholesalePrice field
+      if (req.user?.role === "customer") {
+        delete item.wholesalePrice;
+      }
+      return item;
+    });
+
     const meta = getPaginationMeta(total, limit, page);
 
     return sendResponse(res, 200, {
-      products,
+      products: productsForRole,
       suppliers,
       categories,
     }, "Products retrieved successfully", meta);
@@ -38,7 +52,7 @@ const getProducts = async (req, res) => {
 
 const addProduct = async (req, res) => {
   try {
-    const { name, description, price, stock, categoryId, supplierId } = req.body;
+    const { name, description, price, wholesalePrice, stock, categoryId, supplierId } = req.body;
 
     let imageUrl = null;
     if (req.file) {
@@ -51,8 +65,12 @@ const addProduct = async (req, res) => {
     const product = await ProductModel.create({
       name,
       description,
-      price,
-      stock,
+      price: Number(price),
+      wholesalePrice:
+        wholesalePrice !== undefined && wholesalePrice !== ""
+          ? Number(wholesalePrice)
+          : Number(price),
+      stock: Number(stock),
       categoryId,
       // ✅ empty string, "null", undefined → all become null in DB
       supplierId: supplierId && supplierId.trim() !== "" ? supplierId : null,
@@ -84,6 +102,18 @@ const updateProduct = async (req, res) => {
         sid && typeof sid === "string" && sid.trim().length === 24
           ? sid.trim()
           : null;
+    }
+
+    // Handle wholesalePrice fallback: if admin cleared the field, inherit price
+    if ("wholesalePrice" in updateData) {
+      const wp = updateData.wholesalePrice;
+      const basePrice = updateData.price !== undefined && updateData.price !== ""
+        ? Number(updateData.price)
+        : product.price;
+      updateData.wholesalePrice =
+        wp !== "" && wp !== null && wp !== undefined
+          ? Number(wp)
+          : basePrice;
     }
 
     // Handle image removal

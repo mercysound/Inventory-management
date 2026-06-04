@@ -34,6 +34,11 @@ export const productSchema = Joi.object({
     Joi.string().pattern(/^\d+(\.\d{1,2})?$/)
   ).required(),
  
+  // Optional wholesale price — may be empty or sent as string from FormData
+  wholesalePrice: Joi.alternatives().try(
+    Joi.number().positive().precision(2),
+    Joi.string().pattern(/^\d+(\.\d{1,2})?$/)
+  ).allow(null, "").optional(),
   stock: Joi.alternatives().try(
     Joi.number().integer().min(0),
     Joi.string().pattern(/^\d+$/)
