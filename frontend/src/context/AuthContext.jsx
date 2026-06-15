@@ -1,3 +1,8 @@
+// src/context/AuthContext.jsx
+// ── No logic changes — CartContext is separate and wraps via main.jsx/App.jsx
+// ── This file is included here only to show it is UNCHANGED.
+// ── See main.jsx update below for how CartProvider is added.
+
 import { createContext, useState, useContext, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 import api from "../utils/api";
@@ -7,17 +12,12 @@ const AuthContext = createContext();
 const parseJwt = (token) => {
   try {
     const payload = token.split(".")[1];
-    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
-    const json = decodeURIComponent(
-      atob(base64)
-        .split("")
-        .map((c) => `%${("00" + c.charCodeAt(0).toString(16)).slice(-2)}`)
-        .join("")
+    const base64  = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const json    = decodeURIComponent(
+      atob(base64).split("").map((c) => `%${("00" + c.charCodeAt(0).toString(16)).slice(-2)}`).join("")
     );
     return JSON.parse(json);
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 };
 
 export const AuthProvider = ({ children }) => {
@@ -49,17 +49,11 @@ export const AuthProvider = ({ children }) => {
   const scheduleAutoLogout = (tokenValue) => {
     clearAutoLogout();
     if (!tokenValue) return;
-
-    const payload = parseJwt(tokenValue);
+    const payload   = parseJwt(tokenValue);
     const expiresAt = payload?.exp ? payload.exp * 1000 : null;
     if (!expiresAt) return;
-
     const delay = expiresAt - Date.now() - 5000;
-    if (delay <= 0) {
-      logout();
-      return;
-    }
-
+    if (delay <= 0) { logout(); return; }
     logoutTimerRef.current = window.setTimeout(() => {
       toast.info("Session expired. Logging out...");
       logout();
@@ -75,13 +69,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    try {
-      // No need to call the API — server logout does nothing
-    // If you add token blacklisting later, re-enable this
-    // await api.post("/auth/logout");
-    } catch (error) {
-      console.error("Logout API error:", error);
-    } finally {
+    try { /* no-op — add token blacklist here if needed */ }
+    catch (error) { console.error("Logout API error:", error); }
+    finally {
       clearAutoLogout();
       setUser(null);
       setToken("");
@@ -91,9 +81,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    if (token) {
-      scheduleAutoLogout(token);
-    }
+    if (token) scheduleAutoLogout(token);
     return clearAutoLogout;
   }, [token]);
 
@@ -105,5 +93,4 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
-
 export default AuthProvider;

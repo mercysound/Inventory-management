@@ -1,19 +1,16 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "react-toastify";
 import SharedOrderTable from "./SharedOrderTable";
 import axiosInstance from "../../../utils/axiosInstance";
 import ReceiptModal from "../receipt/ReceiptModal";
 
-
 const StaffCompletedHistory = () => {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [orders,           setOrders]           = useState([]);
+  const [loading,          setLoading]          = useState(true);
+  const [invoiceParams,    setInvoiceParams]    = useState(null);
+  const [showReceiptPrompt,setShowReceiptPrompt]= useState(false);
 
-  // receipt modal
-  const [invoiceParams, setInvoiceParams] = useState(null);
-  const [showReceiptPrompt, setShowReceiptPrompt] = useState(false);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
       const res = await axiosInstance.get("/completed-history");
@@ -23,9 +20,9 @@ const StaffCompletedHistory = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const deleteOrder = async (id) => {
+  const deleteOrder = useCallback(async (id) => {
     if (!window.confirm("Remove this order from your view?")) return;
     try {
       const res = await axiosInstance.delete(`/completed-history/${id}`);
@@ -34,12 +31,12 @@ const StaffCompletedHistory = () => {
         setOrders((prev) => prev.filter((o) => o._id !== id));
       }
     } catch {
-      toast.error("Error deleting order");
+      toast.error("Error removing order");
     }
-  };
+  }, []);
 
-  const clearAllOrders = async () => {
-    if (!window.confirm("Clear all your completed orders?")) return;
+  const clearAllOrders = useCallback(async () => {
+    if (!window.confirm("Clear all your completed orders from view?")) return;
     try {
       const res = await axiosInstance.delete("/completed-history/clear/all");
       if (res.data.success) {
@@ -49,25 +46,23 @@ const StaffCompletedHistory = () => {
     } catch {
       toast.error("Error clearing orders");
     }
-  };
-
-  // ------------------ RECEIPT PREVIEW ------------------
-    const handleViewReceipt = (orderId, order) => {
-    const params = {
-      orderId,
-      mode: "final",
-      customerName: order.buyerName,
-      paymentMethod: order.paymentMethod,
-      orderSource: order.userOrdering.role,
-    };
-
-    setInvoiceParams(params);
-    setShowReceiptPrompt(true);
-  };
-
-  useEffect(() => {
-    fetchOrders();
   }, []);
+
+  const handleViewReceipt = useCallback(async (orderId, order) => {
+    try {
+      setInvoiceParams({
+        orderId,
+        mode:           "final",
+        historyReceipt: "true",
+      });
+      setShowReceiptPrompt(true);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load receipt");
+    }
+  }, []);
+
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
   if (loading) return <p className="text-center py-10">Loading...</p>;
 
@@ -85,7 +80,10 @@ const StaffCompletedHistory = () => {
 
       <ReceiptModal
         open={showReceiptPrompt}
-        onClose={() => setShowReceiptPrompt(false)}
+        onClose={() => {
+          setShowReceiptPrompt(false);
+          setInvoiceParams(null);
+        }}
         invoiceParams={invoiceParams}
         mode="final"
         role="staff"

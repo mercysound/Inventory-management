@@ -61,7 +61,27 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
 
   const isUpdate = !!orderData.orderId;
   const qty      = Number(orderData.quantity) || 0;
-  const total    = qty * orderData.price;
+
+  // ── Calculate current price based on mode ───────────────────────────────────
+  const getCurrentPrice = () => {
+    const storedMode = (() => {
+      try { return localStorage.getItem("melech_staff_price_mode"); } catch { return null; }
+    })();
+    const isWholesale = storedMode === "wholesale";
+    const wholesale = orderData.wholesalePrice;
+    const retail = orderData.retailPrice;
+    return isWholesale ? (wholesale ?? retail) : retail;
+  };
+
+  const currentPrice = getCurrentPrice();
+  const total       = qty * currentPrice;
+
+  // Debug helpers
+  const _dbg_currentMode = (() => {
+    try { return localStorage.getItem("melech_staff_price_mode"); } catch { return null; }
+  })();
+  const _dbg_retail = orderData.retailPrice ?? orderData.price ?? 0;
+  const _dbg_wholesale = orderData.wholesalePrice ?? null;
 
   useEffect(() => {
     // Focus qty input after mount — tiny delay to let the modal paint first
@@ -69,10 +89,101 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
     return () => clearTimeout(t);
   }, []);
 
-  // ── Quantity helpers ─────────────────────────────────────────────────
+  // ── React to wholesale mode changes ────────────────────────────────────────
+  // When mode changes, sync price and total instantly
+  useEffect(() => {
+    const updatePriceFromMode = () => {
+      setOrderData((prev) => {
+        const storedMode = (() => {
+          try { return localStorage.getItem("melech_staff_price_mode"); } catch { return null; }
+        })();
+        const isWholesale = storedMode === "wholesale";
+        const wholesale = prev.wholesalePrice;
+        const retail = prev.retailPrice;
+        const newPrice = isWholesale ? (wholesale ?? retail) : retail;
+        const newMode = isWholesale ? "wholesale" : "retail";
+        const qty = Number(prev.quantity) || 0;
+        const newTotal = qty * newPrice;
+
+        // Only return a new object if something actually changed to avoid extra renders
+        if (prev.price === newPrice && prev.priceMode === newMode && prev.total === newTotal) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          price:     newPrice,
+          priceMode: newMode,
+          total:     newTotal,
+        };
+      });
+    };
+
+    const syncOrderWithCart = (e) => {
+      const cartMap = e?.detail?.cartMap;
+      if (!cartMap) return;
+
+      setOrderData((prev) => {
+        if (!prev.productId) return prev;
+        const cartItem = cartMap[prev.productId];
+        const nextQty = cartItem?.quantity || 0;
+        const currentQty = Number(prev.quantity) || 0;
+        if (nextQty === currentQty && cartItem?.orderId === prev.orderId) return prev;
+
+        const storedMode = (() => {
+          try { return localStorage.getItem("melech_staff_price_mode"); } catch { return null; }
+        })();
+        const isWholesale = storedMode === "wholesale";
+        const retail = prev.retailPrice;
+        const wholesale = prev.wholesalePrice;
+        const price = isWholesale ? (wholesale ?? retail) : retail;
+
+        return {
+          ...prev,
+          orderId: cartItem?.orderId || prev.orderId,
+          quantity: nextQty,
+          price,
+          total: nextQty * price,
+        };
+      });
+    };
+
+    // Listen for custom event from toggle button
+    window.addEventListener("priceModeChanged", updatePriceFromMode);
+    window.addEventListener("storage", updatePriceFromMode);
+    window.addEventListener("ordersUpdated", syncOrderWithCart);
+
+    // Immediately sync once on mount so modal reflects current mode right away
+    try { updatePriceFromMode(); } catch (e) { /* ignore */ }
+
+    return () => {
+      window.removeEventListener("priceModeChanged", updatePriceFromMode);
+      window.removeEventListener("storage", updatePriceFromMode);
+      window.removeEventListener("ordersUpdated", syncOrderWithCart);
+    };
+  }, []);
+
+  // ── Quantity helpers (recalculate based on current mode) ──────────────────
   const setQty = (next) => {
     const n = Math.max(0, Math.min(next, orderData.stock));
-    setOrderData((prev) => ({ ...prev, quantity: n, total: n * prev.price }));
+    const storedMode = (() => {
+      try { return localStorage.getItem("melech_staff_price_mode"); } catch { return null; }
+    })();
+    const isWholesale = storedMode === "wholesale";
+    
+    // Validate prices — ensure wholesale <= retail
+    let wholesale = orderData.wholesalePrice;
+    let retail = orderData.retailPrice;
+    
+    if (wholesale && retail && wholesale > retail) {
+      // Prices are inverted, swap them
+      [wholesale, retail] = [retail, wholesale];
+    }
+    
+    const price = isWholesale
+      ? (wholesale ?? retail)
+      : retail;
+    setOrderData((prev) => ({ ...prev, quantity: n, price, total: n * price }));
   };
 
   const handleInputChange = (e) => {
@@ -138,19 +249,26 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
 
     // ── 2. Fire API in background ─────────────────────────────────
     const doRequest = () => {
+      const storedMode = (() => {
+        try { return localStorage.getItem("melech_staff_price_mode"); } catch { return null; }
+      })();
+      const bodyPriceMode = orderData.priceMode || (storedMode === "wholesale" ? "wholesale" : "retail");
+
       if (isUpdate && q === 0) {
         return axiosInstance.delete(`/orders/remove/${orderData.orderId}`);
       }
       if (isUpdate) {
         return axiosInstance.patch(`/orders/update/${orderData.orderId}`, {
           quantity: q,
-          price: orderData.price,  // server validates this
+          price: currentPrice,     // use current calculated price
+          priceMode: bodyPriceMode,
         });
       }
       return axiosInstance.post("/orders/add", {
         productId,
         quantity: q,
-        price: orderData.price,   // server re-validates against DB price
+        price: currentPrice,      // use current calculated price
+        priceMode: bodyPriceMode,
       });
     };
 
@@ -263,10 +381,19 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
             <div className="flex items-center justify-between py-3 border-t border-b border-gray-100">
               <span className="text-sm text-gray-500">Unit price</span>
               <span className="font-semibold text-gray-800">
-                ₦{Number(orderData.price || 0).toLocaleString()}
+                ₦{Number(currentPrice || 0).toLocaleString()}
               </span>
             </div>
           </div>
+
+          {/* Debug info for staff: shows current stored mode and raw prices */}
+          {showStock && (
+            <div className="px-5 mt-2 text-xs text-gray-500">
+              <div>Mode: {_dbg_currentMode || 'unset'}</div>
+              <div>Retail: ₦{Number(_dbg_retail).toLocaleString()}</div>
+              <div>Wholesale: {_dbg_wholesale != null ? `₦${Number(_dbg_wholesale).toLocaleString()}` : '—'}</div>
+            </div>
+          )}
 
           {/* ── Form ─────────────────────────────────────────────────── */}
           <form onSubmit={handleSubmit} className="px-5 py-5 space-y-5">

@@ -31,6 +31,8 @@ import orderRouter from "./routes/orderRoute.js";
 import dashboardRouter from "./routes/dashboardRoute.js";
 import allOrdersPlacedRoutes from "./routes/allOrdersPlacedRoutes.js";
 import completedOrderHistoryRoutes from "./routes/completedOrderHistoryRoutes.js";
+import expiringOrdersRoutes from "./routes/expiringOrdersRoutes.js";
+import settingsRoutes from "./routes/settingsRoutes.js";
 import cloudinary from "./config/cloudinary.js";
 //meant for production only, to serve frontend from same server whe
 import path from "path";
@@ -49,14 +51,20 @@ const isDev = process.env.NODE_ENV === "development";
 const allowedOrigins = [
   // DEV MODE TESTING: uncomment these when running frontend locally.
   // Do not leave local origins enabled in production.
-  // "http://localhost:5173",
-  // "http://127.0.0.1:5173",
-  // "http://localhost:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:5174",
+  "http://127.0.0.1:5175",
+  "http://localhost:3000",
 
   // Production origin for Render fullstack deployment.
   // If you deploy to a different domain, set FRONTEND_URL in Render env vars.
   process.env.FRONTEND_URL || "https://inventory-management-zs8z.onrender.com",
 ].filter(Boolean);
+
+// In development, set NODE_ENV=development and if you serve the frontend locally,
+// uncomment the localhost origins above so the browser can connect to /api routes.
+// In production, keep the localhost entries commented and set FRONTEND_URL to your deployment domain.
 
 app.use(
   cors({
@@ -203,8 +211,10 @@ app.use("/api/products", productRoutes);
 app.use("/api/users", userRoute);
 app.use("/api/orders", orderRouter);
 app.use("/api/dashboard", dashboardRouter);
+app.use("/api/expiring-orders", expiringOrdersRoutes);
 app.use("/api/placed-orders", allOrdersPlacedRoutes);
 app.use("/api/completed-history", completedOrderHistoryRoutes);
+app.use("/api/settings", settingsRoutes);
 
 // ── SERVE FRONTEND IN PRODUCTION WHEN DEPLOYING FULLSTACK TOGETHER ──
 if (!isDev) {

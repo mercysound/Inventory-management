@@ -4,13 +4,13 @@ import ProductModel from "../models/ProductModel.js";
 import AllOrdersPlacedModel from "../models/AllOrdersPlacedModel.js";
 import CompletedOrderHistoryModel from "../models/CompletedOrderHistoryModel.js";
 import { sendAdminOrderPlacedEmail } from "../utils/email/adminOrderPlaced.js";
-import { sendResponse, sendError } from '../utils/apiResponse.js';
-import { getPaginationParams, getPaginationMeta } from '../utils/pagination.js';
+import { sendResponse, sendError } from "../utils/apiResponse.js";
+import { getPaginationParams, getPaginationMeta } from "../utils/pagination.js";
 import mongoose from "mongoose";
-// import { STORE_ACCOUNT } from "../config/storeAccount.js";
+
 const STORE_ACCOUNT = {
-  bankName: "XYZ Bank",
-  accountName: "MELECH STORE",
+  bankName:      "XYZ Bank",
+  accountName:   "MELECH STORE",
   accountNumber: "1234567890",
 };
 
@@ -20,55 +20,44 @@ const STORE_ACCOUNT = {
  */
 const addOrder = async (req, res) => {
   try {
-    const { productId, quantity, total, price } = req.body;
+    const { productId, quantity, total, price, priceMode } = req.body;
     const userId = req.user._id;
 
     const product = await ProductModel.findById(productId);
-    if (!product) {
-      return sendError(res, 404, "Product not found in order");
-    }
+    if (!product) return sendError(res, 404, "Product not found in order");
+    if (quantity > product.stock) return sendError(res, 400, "Not enough stock");
 
-    if (quantity > product.stock) {
-      return sendError(res, 400, "Not enough stock");
-    }
-
-    const existing = await OrderModel.findOne({
-      userOrdering: userId,
-      product: productId,
-    });
-
+    const existing = await OrderModel.findOne({ userOrdering: userId, product: productId });
     const ONE_HOUR = new Date(Date.now() + 60 * 60 * 1000);
+
+    const finalPriceMode = ["retail", "wholesale"].includes(priceMode) ? priceMode : "retail";
+    const unitPrice = finalPriceMode === "wholesale"
+      ? (product.wholesalePrice ?? product.price)
+      : product.price;
 
     if (existing) {
       const newQty = existing.quantity + quantity;
-
-      if (newQty > product.stock) {
-        return sendError(res, 400, "Not enough stock available");
-      }
-
-      existing.quantity = newQty;
-      existing.totalPrice = newQty * (price || existing.price);
-      existing.price = price || existing.price;
-      existing.cartExpiresAt = ONE_HOUR; // ✅ reset 1hr window on update
-
+      if (newQty > product.stock) return sendError(res, 400, "Not enough stock available");
+      existing.quantity      = newQty;
+      existing.price         = unitPrice;
+      existing.totalPrice    = newQty * unitPrice;
+      existing.priceMode     = finalPriceMode;
+      existing.cartExpiresAt = ONE_HOUR;
       await existing.save();
       return sendResponse(res, 200, existing, "Order updated instead of duplicate");
     }
 
-    // ✅ always calculate totalPrice server-side
-    const unitPrice = price || product.price;
-    const orderObj = new OrderModel({
-      userOrdering: userId,
-      product: productId,
+    const orderObj  = new OrderModel({
+      userOrdering:  userId,
+      product:       productId,
       quantity,
-      price: unitPrice,
-      totalPrice: total || (quantity * unitPrice),
-      cartExpiresAt: ONE_HOUR, // ✅ set 1hr window on new order
+      price:         unitPrice,
+      totalPrice:    total || (quantity * unitPrice),
+      priceMode:     finalPriceMode,
+      cartExpiresAt: ONE_HOUR,
     });
-
     await orderObj.save();
     return sendResponse(res, 200, orderObj, "Order added successfully");
-
   } catch (error) {
     console.error("addOrder error:", error);
     return sendError(res, 500, "Failed to add order");
@@ -81,14 +70,9 @@ const addOrder = async (req, res) => {
  */
 const getOrderByProduct = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId    = req.user._id;
     const { productId } = req.params;
-
-    const order = await OrderModel.findOne({
-      userOrdering: userId,
-      product: productId,
-    });
-
+    const order = await OrderModel.findOne({ userOrdering: userId, product: productId });
     return sendResponse(res, 200, order, "Order fetched successfully");
   } catch (error) {
     console.error("getOrderByProduct error:", error);
@@ -102,37 +86,30 @@ const getOrderByProduct = async (req, res) => {
 const updateOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { quantity, total, price } = req.body;
+    const { quantity, total, price, priceMode } = req.body;
 
     const order = await OrderModel.findById(orderId).populate("product");
-    if (!order) {
-      return sendError(res, 404, "Order not found");
-    }
-
-    if (String(order.userOrdering) !== String(req.user._id)) {
-      return sendError(res, 403, "Unauthorized");
-    }
+    if (!order) return sendError(res, 404, "Order not found");
+    if (String(order.userOrdering) !== String(req.user._id)) return sendError(res, 403, "Unauthorized");
 
     const qty = Number(quantity);
-    if (!qty || qty < 1) {
-      return sendError(res, 400, "Quantity must be at least 1");
-    }
+    if (!qty || qty < 1) return sendError(res, 400, "Quantity must be at least 1");
 
     const product = await ProductModel.findById(order.product._id);
-    if (!product) {
-      return sendError(res, 404, "Product not found");
-    }
+    if (!product) return sendError(res, 404, "Product not found");
+    if (qty > product.stock) return sendError(res, 400, "Not enough stock available");
 
-    if (qty > product.stock) {
-      return sendError(res, 400, "Not enough stock available");
-    }
+    const finalPriceMode = ["retail", "wholesale"].includes(priceMode) ? priceMode : order.priceMode || "retail";
+    const unitPrice = finalPriceMode === "wholesale"
+      ? (product.wholesalePrice ?? product.price)
+      : product.price;
 
-    order.quantity = qty;
-    order.totalPrice = total || (price || order.price) * qty;
-    order.price = price || order.price;
-    order.cartExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // ✅ reset 1hr window on update
+    order.quantity      = qty;
+    order.price         = unitPrice;
+    order.priceMode     = finalPriceMode;
+    order.totalPrice    = total || unitPrice * qty;
+    order.cartExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
     await order.save();
-
     return sendResponse(res, 200, order, "Order updated successfully");
   } catch (error) {
     console.error("updateOrder error:", error);
@@ -147,32 +124,29 @@ const getOrders = async (req, res) => {
   try {
     const userId = req.user._id;
     let query = {};
-
-    if (req.user.role === "staff" || req.user.role === "customer") {
+    if (["staff", "customer", "wholesale"].includes(req.user.role)) {
       query = { userOrdering: userId };
     }
 
     const { skip, limit, page, sort } = getPaginationParams(req);
-    const total = await OrderModel.countDocuments(query);
-
+    const total  = await OrderModel.countDocuments(query);
     const orders = await OrderModel.find(query)
       .populate({
-        path: "product",
-        select: "name description price image categoryId",
+        path:   "product",
+        select: "name description price wholesalePrice image categoryId",
         populate: { path: "categoryId", select: "name" },
       })
-      .sort(sort)
-      .skip(skip)
-      .limit(limit);
+      .sort(sort).skip(skip).limit(limit);
 
     const sanitizedOrders = orders.map((o) => ({
-      _id: o._id,
-      product: o.product,
-      quantity: o.quantity,
-      totalPrice: o.totalPrice ?? 0,
-      orderDate: o.orderDate,
-      price: o.price,
-      userOrdering: o.userOrdering,
+      _id:              o._id,
+      product:          o.product,
+      quantity:         o.quantity,
+      totalPrice:       o.totalPrice ?? 0,
+      orderDate:        o.orderDate,
+      price:            o.price,
+      priceMode:        o.priceMode || 'retail',
+      userOrdering:     o.userOrdering,
     }));
 
     const meta = getPaginationMeta(total, limit, page);
@@ -191,32 +165,23 @@ const verifyStock = async (req, res) => {
   try {
     const userId = req.user._id;
     const orders = await OrderModel.find({ userOrdering: userId }).populate("product");
-
-    if (!orders.length) {
-      return sendError(res, 400, "Your cart is empty");
-    }
+    if (!orders.length) return sendError(res, 400, "Your cart is empty");
 
     const conflicts = [];
-
     for (const o of orders) {
       const product = await ProductModel.findById(o.product._id).select("stock name");
       if (!product || product.stock < o.quantity) {
         conflicts.push({
           productName: product?.name || "Unknown item",
-          requested: o.quantity,
-          available: product?.stock ?? 0,
+          requested:   o.quantity,
+          available:   product?.stock ?? 0,
         });
       }
     }
 
     if (conflicts.length > 0) {
-      return res.status(409).json({
-        success: false,
-        message: "STOCK_CONFLICT",
-        conflicts, // array of { productName, requested, available }
-      });
+      return res.status(409).json({ success: false, message: "STOCK_CONFLICT", conflicts });
     }
-
     return sendResponse(res, 200, null, "Stock verified — safe to proceed with payment");
   } catch (error) {
     console.error("verifyStock error:", error);
@@ -230,12 +195,11 @@ const verifyStock = async (req, res) => {
  * if stock fails AFTER payment has been charged.
  */
 const completeOrder = async (req, res) => {
-  const { paymentMethod, buyerName, paystackReference } = req.body;
+  const { paymentMethod, buyerName, paystackReference, isWholesale } = req.body;
   const userId = req.user._id;
+  const role   = req.user.role;
 
-  if (!paymentMethod) {
-    return sendError(res, 400, "Payment method is required");
-  }
+  if (!paymentMethod) return sendError(res, 400, "Payment method is required");
 
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -245,41 +209,30 @@ const completeOrder = async (req, res) => {
       .populate("product")
       .session(session);
 
-    if (!orders.length) {
-      throw new Error("No active orders");
-    }
+    if (!orders.length) throw new Error("No active orders");
 
+    // ── Atomic stock deduction ────────────────────────────────────────────
     for (const o of orders) {
       const updated = await ProductModel.findOneAndUpdate(
-        {
-          _id: o.product._id,
-          stock: { $gte: o.quantity }
-        },
+        { _id: o.product._id, stock: { $gte: o.quantity } },
         { $inc: { stock: -o.quantity } },
         { new: true, session }
       );
 
       if (!updated) {
         const currentStock = await ProductModel.findById(o.product._id).select("stock").session(session);
-        const remaining = currentStock?.stock ?? 0;
+        const remaining    = currentStock?.stock ?? 0;
 
-        // If Paystack already charged the customer, refund them automatically
+        // Auto-refund Paystack if charged
         if (paystackReference && paymentMethod === "Paystack") {
           try {
             await fetch("https://api.paystack.co/refund", {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                transaction: paystackReference,
-                merchant_note: `Auto-refund: insufficient stock for ${o.product.name}`,
-              }),
+              method:  "POST",
+              headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`, "Content-Type": "application/json" },
+              body:    JSON.stringify({ transaction: paystackReference, merchant_note: `Auto-refund: insufficient stock for ${o.product.name}` }),
             });
             console.log(`✅ Paystack refund initiated for ref: ${paystackReference}`);
           } catch (refundErr) {
-            // Log but don't block — we still return the stock error to the client
             console.error("❌ Paystack refund failed:", refundErr.message);
           }
         }
@@ -288,39 +241,44 @@ const completeOrder = async (req, res) => {
       }
     }
 
-    const totalPrice = orders.reduce((sum, o) => sum + o.quantity * o.price, 0);
+    const totalPrice  = orders.reduce((sum, o) => sum + o.quantity * o.price, 0);
     const allQuantity = orders.reduce((sum, o) => sum + o.quantity, 0);
-
-    const productList = orders.map(o => ({
-      productId: o.product._id,
-      quantity: o.quantity,
-      price: o.price,
+    const productList = orders.map((o) => ({
+      productId:  o.product._id,
+      quantity:   o.quantity,
+      price:      o.price,
       totalPrice: o.quantity * o.price,
+      priceMode:  o.priceMode || "retail",
     }));
 
     let placed;
 
-    if (req.user.role === "customer") {
+    // ── customer OR wholesale → placed orders (admin manages delivery) ────
+    if (role === "customer" || role === "wholesale") {
       placed = await AllOrdersPlacedModel.create([{
-        userOrdering: userId,
-        buyerName: buyerName || "Customer",
+        userOrdering:  userId,
+        buyerName:     buyerName || (role === "wholesale" ? "Wholesale Customer" : "Customer"),
         paymentMethod,
         totalPrice,
         allQuantity,
         productList,
-        paid: true,
-        deliveryStatus: "Pending",
+        paid:          true,
+        deliveryStatus: "pending",
       }], { session });
+
     } else {
+      // ── staff → direct completed history (walk-in sale) ─────────────────
+      // If isWholesale flag is set, prices in productList already reflect
+      // wholesale rates (applied on the frontend before submitting)
       placed = await CompletedOrderHistoryModel.create([{
-        userOrdering: userId,
-        buyerName: buyerName || "Walk-in Customer",
+        userOrdering:  userId,
+        buyerName:     buyerName || "Walk-in Customer",
         paymentMethod,
         totalPrice,
         allQuantity,
         productList,
-        paid: true,
-        deliveryStatus: "Completed",
+        paid:          true,
+        deliveryStatus: "delivered",
       }], { session });
     }
 
@@ -328,7 +286,6 @@ const completeOrder = async (req, res) => {
     await session.commitTransaction();
 
     return sendResponse(res, 200, { orderId: placed[0]._id }, "Order completed successfully");
-
   } catch (error) {
     await session.abortTransaction();
     return sendError(res, 400, error.message || "Failed to complete order");
@@ -352,420 +309,306 @@ const escapeHtml = (value) => {
 const generateInvoice = async (req, res) => {
   try {
     const {
-      customerName = "Guest Customer",
+      customerName  = "Guest Customer",
       paymentMethod = "Not Specified",
-      mode = "preview",
-      orderSource = "online",
+      mode          = "preview",
+      orderSource   = "online",
       orderId,
       historyReceipt,
     } = req.query;
 
-    const safeCustomerName = escapeHtml(customerName);
-    const safePaymentMethod = escapeHtml(paymentMethod);
-    const safeOrderSource = escapeHtml(orderSource);
-
     const paymentStatus = mode === "final" ? "Paid" : "Unpaid";
     let orders = [];
     let receiptOrderId = orderId || null;
+    let buyerInfo = { name: customerName, email: "", phone: "", role: "" };
+    let hasPriceModes = false;
 
-    /* ======================================================
-       1  PREVIEW -> FROM CART
-    ====================================================== */
+    // ── Preview → from active cart ───────────────────────────────────────
     if (mode === "preview") {
-      const activeOrders = await OrderModel.find({
-        userOrdering: req.user._id,
-      }).populate({
-        path: "product",
-        select: "name description categoryId",
-        populate: { path: "categoryId", select: "name" },
-      });
+      const activeOrders = await OrderModel.find({ userOrdering: req.user._id })
+        .populate({
+          path:     "product",
+          select:   "name description categoryId",
+          populate: { path: "categoryId", select: "name" },
+        });
 
-      if (!activeOrders.length)
+      if (!activeOrders.length) {
         return res.status(404).json({ message: "No active orders to preview" });
+      }
 
-      orders = activeOrders.map((o) => ({
-        product: {
-          name: o.product?.name,
-          desc: o.product?.description || "",
-          categoryName: o.product?.categoryId?.name,
-        },
-        quantity: o.quantity,
-        price: o.price,
-        totalPrice: o.quantity * o.price,
-      }));
+      // Get user details for buyer info
+      const user = await OrderModel.findOne({ userOrdering: req.user._id }).session(null);
+      if (req.user) {
+        buyerInfo = {
+          name: req.user.name || customerName,
+          email: req.user.email || "",
+          phone: req.user.phone || "",
+          role: req.user.role || "",
+        };
+      }
+
+      orders = activeOrders.map((o) => {
+        const priceMode = o.priceMode || "retail";
+        hasPriceModes = true;
+        return {
+          product: {
+            name:         o.product?.name,
+            desc:         o.product?.description || "",
+            categoryName: o.product?.categoryId?.name,
+          },
+          quantity:   o.quantity,
+          price:      o.price,
+          totalPrice: o.quantity * o.price,
+          priceMode:  priceMode,
+          priceTag:   priceMode === "wholesale" ? "WSP" : "RTP",
+        };
+      });
     }
 
-    /* ======================================================
-       2  FINAL -> FROM HISTORY MODEL
-    ====================================================== */
+    // ── Final → from history model ────────────────────────────────────────
     if (mode === "final") {
       let HistoryModel;
       if (historyReceipt) {
         HistoryModel = CompletedOrderHistoryModel;
       } else {
-        HistoryModel =
-          orderSource === "staff"
-            ? CompletedOrderHistoryModel
-            : AllOrdersPlacedModel;
+        HistoryModel = orderSource === "staff" ? CompletedOrderHistoryModel : AllOrdersPlacedModel;
       }
 
       const query = orderId ? { _id: orderId } : { userOrdering: req.user._id };
       let order;
 
       if (historyReceipt) {
-        order = await HistoryModel.findOne(query).populate({
-          path: "productList.productId",
-          select: "name description categoryId",
-          populate: { path: "categoryId", select: "name" },
-        });
+        order = await HistoryModel.findOne(query)
+          .populate({
+            path:     "productList.productId",
+            select:   "name description categoryId",
+            populate: { path: "categoryId", select: "name" },
+          })
+          .populate({ path: "userOrdering", select: "name email phone role" });
       } else {
         order = await HistoryModel.findOne(query)
           .populate({
-            path: "productList.productId",
-            select: "name description categoryId",
+            path:     "productList.productId",
+            select:   "name description categoryId",
             populate: { path: "categoryId", select: "name" },
           })
+          .populate({ path: "userOrdering", select: "name email phone role" })
           .sort({ createdAt: -1 });
       }
 
       if (!order) return res.status(404).json({ message: "Order not found" });
 
       receiptOrderId = order._id;
-      orders = order.productList.map((i) => ({
-        product: {
-          name: i.productId?.name,
-          desc: i.productId?.description || "",
-          categoryName: i.productId?.categoryId?.name,
-        },
-        quantity: i.quantity,
-        price: i.price,
-        totalPrice: i.totalPrice,
-      }));
+      
+      // Extract buyer info from order or user
+      if (order.userOrdering) {
+        buyerInfo = {
+          name: order.userOrdering.name || order.buyerName || customerName,
+          email: order.userOrdering.email || "",
+          phone: order.userOrdering.phone || "",
+          role: order.userOrdering.role || "",
+        };
+      } else {
+        buyerInfo = {
+          name: order.buyerName || customerName,
+          email: "",
+          phone: "",
+          role: orderSource === "staff" ? "staff" : "",
+        };
+      }
+
+      orders = order.productList.map((i) => {
+        const priceMode = i.priceMode || "retail";
+        hasPriceModes = true;
+        return {
+          product: {
+            name:         i.productId?.name,
+            desc:         i.productId?.description || "",
+            categoryName: i.productId?.categoryId?.name,
+          },
+          quantity:   i.quantity,
+          price:      i.price,
+          totalPrice: i.totalPrice,
+          priceMode:  priceMode,
+          priceTag:   priceMode === "wholesale" ? "WSP" : "RTP",
+        };
+      });
     }
 
-    if (!orders.length)
-      return res.status(404).json({ message: "No orders found" });
+    if (!orders.length) return res.status(404).json({ message: "No orders found" });
 
-    /* ======================================================
-       3  TOTALS
-    ====================================================== */
-    const totalAmount  = orders.reduce((sum, o) => sum + o.totalPrice, 0);
-    const orderIdShort = receiptOrderId
-      ? String(receiptOrderId).slice(-10).toUpperCase()
-      : "N/A";
-    const dateStr = new Date().toLocaleString("en-NG", {
-      dateStyle: "medium",
-      timeStyle: "short",
+    const totalAmount   = orders.reduce((sum, o) => sum + o.totalPrice, 0);
+    const receiptWidth  = 300;
+    const margin        = 20;
+    const contentWidth  = receiptWidth - margin * 2;
+
+    const doc = new PDFDocument({ margin, size: [receiptWidth, 850] });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "inline; filename=receipt.pdf");
+    doc.pipe(res);
+
+    // Store name
+    doc.fontSize(14).font("Helvetica-Bold").fillColor("#1E3A8A")
+      .text("MELECH STORE", margin, 20, { align: "center", width: contentWidth });
+    doc.fontSize(8).font("Helvetica").fillColor("#555")
+      .text("Official Sales Receipt", margin, doc.y + 2, { align: "center", width: contentWidth });
+
+    const divider = () => {
+      doc.moveTo(margin, doc.y + 5).lineTo(receiptWidth - margin, doc.y + 5)
+        .dash(2, { space: 2 }).strokeColor("#aaa").stroke().undash();
+    };
+
+    divider();
+    doc.moveDown(0.8);
+    doc.fontSize(7.5).font("Helvetica").fillColor("#000");
+
+    // ── BUYER INFORMATION SECTION ──
+    doc.fontSize(7).font("Helvetica-Bold").fillColor("#1E3A8A")
+      .text("BUYER INFORMATION", margin, doc.y, { align: "left", width: contentWidth });
+    doc.moveDown(0.4);
+    doc.fontSize(7).font("Helvetica").fillColor("#000");
+    
+    // Format buyer name with role if available
+    const buyerDisplay = buyerInfo.role 
+      ? `${buyerInfo.name} (${buyerInfo.role.toUpperCase()})`
+      : buyerInfo.name;
+    
+    const buyerLines = [
+      ["Name:",      buyerDisplay],
+      ...(buyerInfo.email ? [["Email:",     buyerInfo.email]] : []),
+      ...(buyerInfo.phone ? [["Phone:",     buyerInfo.phone]] : []),
+    ];
+
+    const infoLines = [
+      ["Order ID:",   receiptOrderId ? String(receiptOrderId).slice(-10).toUpperCase() : "N/A"],
+      ["Date:",       new Date().toLocaleString()],
+      ["Payment:",    paymentMethod],
+      ["Status:",     paymentStatus],
+    ];
+
+    // Display buyer info
+    buyerLines.forEach(([label, value]) => {
+      const lineY = doc.y;
+      doc.font("Helvetica-Bold").text(label, margin, lineY, { width: 50 });
+      doc.font("Helvetica").text(value, margin + 52, lineY, { width: contentWidth - 52 });
+      doc.moveDown(0.3);
     });
 
-    /* ======================================================
-       4  RAW PDF DOWNLOAD - only when ?download=true
-          React modal Download button hits this with ?download=true
-    ====================================================== */
-    const wantRaw = req.query.download === "true";
+    divider();
+    doc.moveDown(0.3);
 
-    if (wantRaw) {
-      const receiptWidth = 300;
-      const margin       = 20;
-      const contentWidth = receiptWidth - margin * 2;
-      const doc          = new PDFDocument({ margin, size: [receiptWidth, 800] });
-      const chunks       = [];
-      doc.on("data", (c) => chunks.push(c));
+    // Display transaction info
+    infoLines.forEach(([label, value]) => {
+      const lineY = doc.y;
+      doc.font("Helvetica-Bold").text(label, margin, lineY, { width: 50 });
+      doc.font("Helvetica").text(value, margin + 52, lineY, { width: contentWidth - 52 });
+      doc.moveDown(0.3);
+    });
 
-      await new Promise((resolve, reject) => {
-        doc.on("end", resolve);
-        doc.on("error", reject);
+    divider();
+    doc.moveDown(0.5);
 
-        doc.fontSize(14).font("Helvetica-Bold").fillColor("#1E3A8A")
-          .text("MELECH STORE", margin, 20, { align: "center", width: contentWidth });
-        doc.fontSize(8).font("Helvetica").fillColor("#555")
-          .text("Official Sales Receipt", margin, doc.y + 2, {
-            align: "center", width: contentWidth });
+    // ── ITEMS TABLE ──
+    const col = { num: margin, name: margin + 14, qty: margin + 90, price: margin + 130, tag: margin + 175, total: margin + 210 };
 
-        const divider = () =>
-          doc.moveTo(margin, doc.y + 5)
-            .lineTo(receiptWidth - margin, doc.y + 5)
-            .dash(2, { space: 2 }).strokeColor("#aaa").stroke().undash();
+    doc.fontSize(7).font("Helvetica-Bold").fillColor("#fff")
+      .rect(margin, doc.y, contentWidth, 14).fill("#1E3A8A").stroke();
 
-        divider();
-        doc.moveDown(0.8).fontSize(7.5).font("Helvetica").fillColor("#000");
+    const headerY = doc.y - 14;
+    doc.fillColor("#fff");
+    doc.text("#",     col.num,   headerY + 3, { width: 12 });
+    doc.text("Item",  col.name,  headerY + 3, { width: 74 });
+    doc.text("Qty",   col.qty,   headerY + 3, { width: 38 });
+    doc.text("Price", col.price, headerY + 3, { width: 42 });
+    if (hasPriceModes) {
+      doc.text("Type", col.tag, headerY + 3, { width: 30 });
+    }
+    doc.text("Total", col.total, headerY + 3, { width: 42 });
 
-        [
-          ["Order ID:", orderIdShort],
-          ["Date:", dateStr],
-          ["Customer:", customerName],
-          ["Payment:", paymentMethod],
-          ["Status:", paymentStatus],
-        ].forEach(([label, value]) => {
-          const ly = doc.y;
-          doc.font("Helvetica-Bold").text(label, margin, ly, { continued: false, width: 70 });
-          doc.font("Helvetica").text(value, margin + 72, ly, { width: contentWidth - 72 });
-          doc.moveDown(0.3);
-        });
+    doc.fillColor("#000").font("Helvetica").fontSize(7);
+    let y = doc.y + 4;
 
-        divider();
-        doc.moveDown(0.5);
+    orders.forEach((o, index) => {
+      const name       = o.product.name || "—";
+      const category   = o.product.categoryName ? `[${o.product.categoryName}]` : "";
+      const rawDesc    = o.product.desc || "";
+      const shortDesc  = rawDesc.length > 35 ? rawDesc.slice(0, 35) + "…" : rawDesc;
+      const nameText   = `${name} ${category}`.trim();
+      const nameHeight = doc.heightOfString(nameText, { width: 74 });
+      const descHeight = shortDesc ? doc.heightOfString(shortDesc, { width: 74 }) : 0;
+      const rowHeight  = Math.max(20, nameHeight + descHeight + 8);
 
-        const col = {
-          num: margin, name: margin + 14, qty: margin + 100,
-          price: margin + 126, total: margin + 182,
-        };
+      doc.rect(margin, y, contentWidth, rowHeight)
+        .fill(index % 2 === 0 ? "#F3F4F6" : "#FFFFFF").stroke();
 
-        doc.fontSize(7.5).font("Helvetica-Bold").fillColor("#fff")
-          .rect(margin, doc.y, contentWidth, 22).fill("#1E3A8A").stroke();
-        const hy = doc.y - 22;
-        doc.fillColor("#fff").fontSize(7);
-        doc.font("Helvetica-Bold").text("#",        col.num,   hy + 3, { width: 12 });
-        doc.font("Helvetica-Bold").text("Item",     col.name,  hy + 3, { width: 82 });
-        doc.font("Helvetica-Bold").text("Qty",      col.qty,   hy + 3, { width: 26 });
-        doc.font("Helvetica-Bold").text("Unit",     col.price, hy + 3, { width: 52 });
-        doc.font("Helvetica-Bold").text("Subtotal", col.total, hy + 3, { width: 52 });
-        doc.font("Helvetica").fontSize(6).fillColor("#cce0ff")
-          .text("Name / Desc / Cat.", col.name,  hy + 13, { width: 82 })
-          .text("Price",              col.price, hy + 13, { width: 52 })
-          .text("(Qty x Price)",      col.total, hy + 13, { width: 52 });
+      doc.fillColor("#000");
+      doc.font("Helvetica-Bold").fontSize(6.5).text(String(index + 1), col.num, y + 3, { width: 12 });
+      doc.font("Helvetica-Bold").fontSize(7).text(nameText, col.name, y + 3, { width: 74 });
 
-        doc.fillColor("#000").font("Helvetica").fontSize(7.5);
-        let y = doc.y + 4;
+      if (shortDesc) {
+        doc.font("Helvetica").fontSize(6).fillColor("#555")
+          .text(shortDesc, col.name, y + 3 + nameHeight, { width: 74 });
+      }
 
-        orders.forEach((o, idx) => {
-          const name = o.product.name || "-";
-          const cat  = o.product.categoryName ? "[" + o.product.categoryName + "]" : "";
-          const raw  = o.product.desc || "";
-          const desc = raw.length > 40 ? raw.slice(0, 40) + "..." : raw;
-          const nh   = doc.heightOfString(name, { width: 82 });
-          const ch   = cat  ? doc.heightOfString(cat,  { width: 82 }) : 0;
-          const dh   = desc ? doc.heightOfString(desc, { width: 82 }) : 0;
-          const rh   = Math.max(24, nh + ch + dh + 10);
+      const midY = y + rowHeight / 2 - 4;
+      doc.fillColor("#000").font("Helvetica").fontSize(6.5);
+      doc.text(String(o.quantity), col.qty, midY, { width: 38 });
+      doc.text(`₦${o.price.toLocaleString()}`, col.price, midY, { width: 42 });
+      
+      if (hasPriceModes) {
+        const tagColor = o.priceTag === "WSP" ? "#d97706" : "#059669";
+        doc.fillColor(tagColor).font("Helvetica-Bold").fontSize(6)
+          .text(o.priceTag, col.tag, midY + 1, { width: 30 });
+        doc.fillColor("#000");
+      }
+      
+      doc.font("Helvetica").fontSize(6.5)
+        .text(`₦${o.totalPrice.toLocaleString()}`, col.total, midY, { width: 42 });
 
-          doc.rect(margin, y, contentWidth, rh)
-            .fill(idx % 2 === 0 ? "#F3F4F6" : "#FFF").stroke();
-          doc.fillColor("#000");
-          doc.font("Helvetica-Bold").fontSize(7)
-            .text(String(idx + 1), col.num, y + 4, { width: 12 });
-          doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#000")
-            .text(name, col.name, y + 4, { width: 82 });
+      y += rowHeight;
+    });
 
-          let ty = y + 4 + nh;
-          if (cat) {
-            doc.font("Helvetica").fontSize(6.5).fillColor("#1E3A8A")
-              .text(cat, col.name, ty, { width: 82 });
-            ty += ch;
-          }
-          if (desc)
-            doc.font("Helvetica").fontSize(6.5).fillColor("#555")
-              .text(desc, col.name, ty, { width: 82 });
+    y += 6;
+    doc.moveTo(margin, y).lineTo(receiptWidth - margin, y).strokeColor("#000").stroke();
+    y += 6;
+    doc.fontSize(8).font("Helvetica-Bold").fillColor("#000")
+      .text(`TOTAL:`, col.num, y, { width: 90 })
+      .text(`₦${totalAmount.toLocaleString()}`, col.total, y, { width: 60 });
+    y += 18;
 
-          const mid = y + rh / 2 - 4;
-          doc.fillColor("#000").font("Helvetica").fontSize(7.5);
-          doc.text(String(o.quantity),                  col.qty,   mid, { width: 26 });
-          doc.text("N" + o.price.toLocaleString(),      col.price, mid, { width: 52 });
-          doc.text("N" + o.totalPrice.toLocaleString(), col.total, mid, { width: 52 });
-          y += rh;
-        });
-
-        y += 6;
-        doc.moveTo(margin, y).lineTo(receiptWidth - margin, y)
-          .strokeColor("#000").stroke();
-        y += 6;
-        doc.fontSize(9).font("Helvetica-Bold").fillColor("#000")
-          .text(
-            "TOTAL (" + orders.length + " item" + (orders.length > 1 ? "s" : "") + "):",
-            col.num, y, { width: 155 }
-          )
-          .text("N" + totalAmount.toLocaleString(), col.total, y, { width: 52 });
-        y += 20;
-
-        if (paymentStatus === "Unpaid") {
-          divider();
-          doc.moveDown(0.5);
-          doc.fontSize(7.5).font("Helvetica-Bold").fillColor("#b91c1c")
-            .text("PAYMENT INSTRUCTIONS", margin, doc.y, {
-              align: "center", width: contentWidth });
-          doc.font("Helvetica").fillColor("#000").moveDown(0.3);
-          [
-            ["Bank:", STORE_ACCOUNT.bankName],
-            ["Account Name:", STORE_ACCOUNT.accountName],
-            ["Account No:", STORE_ACCOUNT.accountNumber],
-          ].forEach(([label, value]) => {
-            const ly = doc.y;
-            doc.font("Helvetica-Bold").text(label, margin, ly, { width: 75 });
-            doc.font("Helvetica").text(value, margin + 77, ly, { width: contentWidth - 77 });
-            doc.moveDown(0.3);
-          });
-        }
-
-        divider();
-        doc.moveDown(0.5);
-        doc.fontSize(7).font("Helvetica").fillColor("gray")
-          .text("Thank you for shopping with MELECH STORE!", margin, doc.y, {
-            align: "center", width: contentWidth })
-          .text("No signature required - auto-generated receipt", margin, doc.y + 4, {
-            align: "center", width: contentWidth });
-
-        doc.end();
-      });
-
-      const pdfBuffer = Buffer.concat(chunks);
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader(
-        "Content-Disposition",
-        "attachment; filename=receipt-" + orderIdShort + ".pdf"
-      );
-      return res.send(pdfBuffer);
+    // ── PRICE MODE LEGEND ──
+    if (hasPriceModes) {
+      doc.fontSize(6.5).font("Helvetica").fillColor("#555");
+      doc.text("RTP = Retail Price", margin, y);
+      doc.text("WSP = Wholesale Price", margin, doc.y + 3);
+      y = doc.y + 8;
     }
 
-    /* ======================================================
-       5  HTML RECEIPT - pure display, no scripts at all.
-          CSP blocks inline scripts and external CDNs inside
-          the iframe, so we serve clean HTML only.
-          All action buttons (Download, Print) live in the
-          React ReceiptModal component outside the iframe.
-    ====================================================== */
+    if (paymentStatus === "Unpaid") {
+      divider();
+      doc.moveDown(0.5);
+      doc.fontSize(7.5).font("Helvetica-Bold").fillColor("#b91c1c")
+        .text("PAYMENT INSTRUCTIONS", margin, doc.y, { align: "center", width: contentWidth });
+      doc.font("Helvetica").fillColor("#000").moveDown(0.3);
+      [
+        ["Bank:",           STORE_ACCOUNT.bankName],
+        ["Account Name:",   STORE_ACCOUNT.accountName],
+        ["Account No:",     STORE_ACCOUNT.accountNumber],
+      ].forEach(([label, value]) => {
+        const lineY = doc.y;
+        doc.font("Helvetica-Bold").text(label, margin, lineY, { width: 75 });
+        doc.font("Helvetica").text(value, margin + 77, lineY, { width: contentWidth - 77 });
+        doc.moveDown(0.3);
+      });
+    }
 
-    const statusColor  = paymentStatus === "Paid" ? "#15803d" : "#b91c1c";
-    const statusBg     = paymentStatus === "Paid" ? "#f0fdf4" : "#fef2f2";
-    const statusBorder = paymentStatus === "Paid" ? "#bbf7d0" : "#fecaca";
+    divider();
+    doc.moveDown(0.5);
+    doc.fontSize(7).font("Helvetica").fillColor("gray")
+      .text("Thank you for shopping with MELECH STORE!", margin, doc.y, { align: "center", width: contentWidth });
+    doc.text("No signature required — auto-generated receipt", margin, doc.y + 4, { align: "center", width: contentWidth });
 
-    const itemRows = orders.map((o, idx) => {
-      const name = escapeHtml(o.product.name || "-");
-      const cat  = escapeHtml(o.product.categoryName || "");
-      const raw  = escapeHtml(o.product.desc || "");
-      const desc = raw.length > 60 ? raw.slice(0, 60) + "..." : raw;
-      return (
-        '<tr class="' + (idx % 2 === 0 ? "r-even" : "r-odd") + '">' +
-        '<td class="td-num">' + (idx + 1) + "</td>" +
-        '<td class="td-item">' +
-          '<span class="i-name">' + name + "</span>" +
-          (cat  ? '<span class="i-cat">'  + cat  + "</span>" : "") +
-          (desc ? '<span class="i-desc">' + desc + "</span>" : "") +
-        "</td>" +
-        '<td class="td-c">' + o.quantity + "</td>" +
-        '<td class="td-r">&#8358;' + o.price.toLocaleString() + "</td>" +
-        '<td class="td-r td-bold">&#8358;' + o.totalPrice.toLocaleString() + "</td>" +
-        "</tr>"
-      );
-    }).join("");
-
-    const payBlock = paymentStatus === "Unpaid"
-      ? (
-        '<div class="pay-box">' +
-        '<div class="pay-title">Payment instructions</div>' +
-        '<div class="pay-row"><span class="pay-lbl">Bank</span><span>' + escapeHtml(STORE_ACCOUNT.bankName) + "</span></div>" +
-        '<div class="pay-row"><span class="pay-lbl">Account name</span><span>' + escapeHtml(STORE_ACCOUNT.accountName) + "</span></div>" +
-        '<div class="pay-row"><span class="pay-lbl">Account no.</span><span>' + escapeHtml(STORE_ACCOUNT.accountNumber) + "</span></div>" +
-        "</div>"
-      )
-      : "";
-
-    // Pure HTML — zero JavaScript, zero external scripts.
-    // CSP compliance guaranteed.
-    const html = [
-      '<!DOCTYPE html>',
-      '<html lang="en">',
-      '<head>',
-      '<meta charset="UTF-8"/>',
-      '<meta name="viewport" content="width=device-width,initial-scale=1"/>',
-      '<title>Receipt - MELECH STORE</title>',
-      '<style>',
-      '*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}',
-      'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f0f2f5;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:16px 12px 32px;color:#111827}',
-      '.card{background:#fff;width:100%;max-width:480px;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.10)}',
-      '.store-hd{background:#1E3A8A;color:#fff;text-align:center;padding:22px 16px 16px}',
-      '.store-logo{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.18);display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;margin-bottom:8px;letter-spacing:.05em}',
-      '.store-name{font-size:1.1rem;font-weight:700;letter-spacing:.1em}',
-      '.store-sub{font-size:.7rem;opacity:.7;margin-top:3px;letter-spacing:.06em}',
-      '.dash{border:none;border-top:1.5px dashed #e5e7eb;margin:0 16px}',
-      '.meta{padding:14px 18px;display:flex;flex-direction:column;gap:5px}',
-      '.meta-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.78rem;line-height:1.4}',
-      '.meta-lbl{font-weight:600;color:#6b7280;flex-shrink:0}',
-      '.meta-val{color:#111827;text-align:right;word-break:break-all}',
-      '.status-badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.72rem;font-weight:700;background:' + statusBg + ';color:' + statusColor + ';border:1px solid ' + statusBorder + '}',
-      'table{width:100%;border-collapse:collapse;font-size:.75rem}',
-      'thead tr{background:#1E3A8A;color:#fff}',
-      'thead th{padding:9px 6px;font-weight:700;font-size:.68rem;letter-spacing:.04em;text-align:left;line-height:1.3}',
-      'thead th small{display:block;font-weight:400;opacity:.65;font-size:.6rem;letter-spacing:0}',
-      '.td-num{text-align:center;color:#9ca3af;font-size:.68rem;padding:8px 4px;width:22px;vertical-align:top}',
-      '.td-item{padding:8px 6px;vertical-align:top;width:42%}',
-      '.td-c{text-align:center;padding:8px 4px;vertical-align:middle;width:14%}',
-      '.td-r{text-align:right;padding:8px 6px;vertical-align:middle;width:20%}',
-      '.td-bold{font-weight:700;color:#111827}',
-      '.r-even{background:#f9fafb}',
-      '.r-odd{background:#fff}',
-      '.i-name{display:block;font-weight:700;font-size:.76rem;color:#1f2937}',
-      '.i-cat{display:block;font-size:.65rem;color:#1E3A8A;font-weight:600;margin-top:2px}',
-      '.i-desc{display:block;font-size:.65rem;color:#6b7280;margin-top:2px}',
-      '.total-bar{display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border-top:2px solid #111827;margin-top:2px}',
-      '.total-lbl{font-size:.85rem;font-weight:700}',
-      '.total-amount{font-size:1.1rem;font-weight:800;color:#1E3A8A}',
-      '.pay-box{margin:0 16px 16px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 14px;font-size:.75rem}',
-      '.pay-title{font-weight:700;color:#b91c1c;font-size:.74rem;text-align:center;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em}',
-      '.pay-row{display:flex;justify-content:space-between;gap:8px;padding:3px 0;color:#374151}',
-      '.pay-lbl{font-weight:600;color:#6b7280;flex-shrink:0}',
-      '.pay-acct{font-weight:700;color:#111827;letter-spacing:.04em}',
-      '.footer{text-align:center;padding:12px 16px 18px;font-size:.68rem;color:#9ca3af;line-height:1.7;border-top:1.5px dashed #e5e7eb}',
-      '@media print{body{background:#fff;padding:0}.card{box-shadow:none;border-radius:0;max-width:100%}}',
-      '</style>',
-      '</head>',
-      '<body>',
-      '<div class="card">',
-
-      // Store header
-      '<div class="store-hd">',
-      '<div class="store-logo">MS</div>',
-      '<div class="store-name">MELECH STORE</div>',
-      '<div class="store-sub">Official Sales Receipt</div>',
-      '</div>',
-
-      '<hr class="dash"/>',
-
-      // Order meta
-      '<div class="meta">',
-      '<div class="meta-row"><span class="meta-lbl">Order ID</span><span class="meta-val">#' + orderIdShort + '</span></div>',
-      '<div class="meta-row"><span class="meta-lbl">Date</span><span class="meta-val">' + dateStr + '</span></div>',
-      '<div class="meta-row"><span class="meta-lbl">Customer</span><span class="meta-val">' + safeCustomerName + '</span></div>',
-      '<div class="meta-row"><span class="meta-lbl">Payment method</span><span class="meta-val">' + safePaymentMethod + '</span></div>',
-      '<div class="meta-row"><span class="meta-lbl">Status</span><span class="meta-val"><span class="status-badge">' + paymentStatus + '</span></span></div>',
-      '</div>',
-
-      '<hr class="dash"/>',
-
-      // Items table
-      '<table>',
-      '<thead><tr>',
-      '<th style="width:22px;text-align:center">#</th>',
-      '<th>Item <small>Name / desc / category</small></th>',
-      '<th style="text-align:center">Qty</th>',
-      '<th style="text-align:right">Unit <small>price</small></th>',
-      '<th style="text-align:right">Subtotal <small>Qty x price</small></th>',
-      '</tr></thead>',
-      '<tbody>' + itemRows + '</tbody>',
-      '</table>',
-
-      // Total
-      '<div class="total-bar">',
-      '<span class="total-lbl">Total &nbsp;<span style="font-weight:400;font-size:.78rem;color:#6b7280">(' + orders.length + ' item' + (orders.length > 1 ? 's' : '') + ')</span></span>',
-      '<span class="total-amount">&#8358;' + totalAmount.toLocaleString() + '</span>',
-      '</div>',
-
-      '<hr class="dash"/>',
-
-      payBlock,
-
-      // Footer
-      '<div class="footer">',
-      'Thank you for shopping with MELECH STORE<br/>',
-      'No signature required &middot; Auto-generated receipt',
-      '</div>',
-
-      '</div>', // end .card
-      '</body>',
-      '</html>',
-    ].join("\n");
-
-    res.setHeader("Content-Type", "text/html");
-    return res.send(html);
-
+    doc.end();
   } catch (error) {
     console.error("generateInvoice error:", error);
     res.status(500).json({ success: false, message: error.message });
@@ -783,14 +626,14 @@ const reduceOrder = async (req, res) => {
 
     if (order.quantity <= 1) {
       await OrderModel.findByIdAndDelete(orderId);
-    } else {
-      order.quantity -= 1;
-      order.totalPrice = order.price * order.quantity;
-      order.cartExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // ✅ reset on activity
-      await order.save();
+      return sendResponse(res, 200, { deleted: true }, "Order removed successfully");
     }
-    return sendResponse(res, 200, order, "Order reduced successfully");
 
+    order.quantity     -= 1;
+    order.totalPrice    = order.price * order.quantity;
+    order.cartExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    await order.save();
+    return sendResponse(res, 200, order, "Order reduced successfully");
   } catch (error) {
     console.error("reduceOrder error:", error);
     return sendError(res, 500, "Error reducing order");
@@ -800,24 +643,20 @@ const reduceOrder = async (req, res) => {
 const increaseOrderQuantity = async (req, res) => {
   try {
     const { orderId } = req.params;
-
     const order = await OrderModel.findById(orderId).populate("product");
     if (!order) return sendError(res, 404, "Order not found");
 
     const product = await ProductModel.findById(order.product._id);
     if (!product) return sendError(res, 404, "Product not found");
-
     if (order.quantity >= product.stock) {
       return sendError(res, 400, "Cannot increase quantity beyond available stock.");
     }
 
-    order.quantity += 1;
-    order.totalPrice = order.price * order.quantity;
-    order.cartExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // ✅ reset on activity
-
+    order.quantity     += 1;
+    order.totalPrice    = order.price * order.quantity;
+    order.cartExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
     await order.save();
     return sendResponse(res, 200, order, "Quantity increased successfully");
-
   } catch (error) {
     console.error("Error increasing order quantity:", error);
     return sendError(res, 500, "Failed to increase order quantity");
@@ -838,7 +677,6 @@ const deleteOrderItem = async (req, res) => {
     return sendError(res, 500, "Failed to delete order item");
   }
 };
-
 /**
  * clearUserOrders - remove all current user's orders
  */
@@ -849,6 +687,52 @@ const clearUserOrders = async (req, res) => {
   } catch (error) {
     console.error("clearUserOrders error:", error);
     return sendError(res, 500, "Failed to clear user orders");
+  }
+};
+
+/**
+ * setPriceMode - toggle all cart items between wholesale and retail pricing
+ * When toggled, recalculates prices based on the product's configured rates
+ */
+const setPriceMode = async (req, res) => {
+  try {
+    const { mode } = req.params;
+    const userId = req.user._id;
+
+    if (!["retail", "wholesale"].includes(mode)) {
+      return sendError(res, 400, "Invalid price mode. Must be 'retail' or 'wholesale'");
+    }
+
+    // Fetch all user's cart orders
+    const orders = await OrderModel.find({ userOrdering: userId }).populate("product");
+    if (!orders.length) {
+      return sendError(res, 400, "Your cart is empty");
+    }
+
+    // Update each order with the new price tier
+    for (const order of orders) {
+      const product = order.product;
+      let newPrice;
+
+      if (mode === "wholesale") {
+        // Use wholesale price if available; fallback to retail
+        newPrice = product.wholesalePrice ?? product.price;
+      } else {
+        // mode === "retail"
+        newPrice = product.price;
+      }
+
+      order.price = newPrice;
+      order.totalPrice = newPrice * order.quantity;
+      order.priceMode = mode;
+      order.cartExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
+      await order.save();
+    }
+
+    return sendResponse(res, 200, { mode, updated: orders.length }, `Cart pricing switched to ${mode}`);
+  } catch (error) {
+    console.error("setPriceMode error:", error);
+    return sendError(res, 500, "Failed to set price mode");
   }
 };
 
@@ -863,5 +747,6 @@ export {
   increaseOrderQuantity,
   getOrderByProduct,
   updateOrder,
-  generateInvoice
+  generateInvoice,
+  setPriceMode
 };

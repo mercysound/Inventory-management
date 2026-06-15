@@ -13,6 +13,7 @@ const orderSchema = new mongoose.Schema({
   paymentStatus: { type: String, enum: ["Unpaid", "Paid"], default: "Unpaid" },
   paid: { type: Boolean, default: false },
   buyerName: { type: String },
+  priceMode: { type: String, enum: ["retail", "wholesale"], default: "retail" },
 
   // ✅ TTL field — MongoDB auto-deletes the document 1 hour after this date
   // Every time a user adds/updates items, reset this field to extend the window
@@ -23,6 +24,8 @@ const orderSchema = new mongoose.Schema({
   },
 
 }, { timestamps: true });
+
+orderSchema.index({ userOrdering: 1 });
 
 const OrderModel = mongoose.model("Order", orderSchema);
 export default OrderModel;

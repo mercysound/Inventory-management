@@ -5,32 +5,40 @@ import ProductForm from "./ProductForm";
 import ProductSkeleton from "./ProductSkeleton";
 import axiosInstance from "../../../utils/axiosInstance";
 import DeletedProductsPopup from "./DeletedProductsPopup";
+import { parseApiError } from "../../../../../server/utils/parseApiError";
 
-const emptyForm = {
-  name: "", description: "", price: "", stock: "",
-  categoryId: "", supplierId: "", image: "", removeImage: false,
+const EMPTY_FORM = {
+  name:           "",
+  description:    "",
+  price:          "",
+  wholesalePrice: "",
+  stock:          "",
+  categoryId:     "",
+  supplierId:     "",
+  image:          "",
+  removeImage:    false,
 };
 
 const Product = () => {
-  const [openModal, setOpenModal]               = useState(false);
-  const [editProduct, setEditProduct]           = useState(null);
-  const [categories, setCategories]             = useState([]);
-  const [suppliers, setSuppliers]               = useState([]);
-  const [products, setProducts]                 = useState([]);
-  const [filteredProducts, setFilteredProducts] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [searchValue, setSearchValue]           = useState(""); // ✅ track search
-  const [loading, setLoading]                   = useState(false);
-  const [image, setImage]                       = useState(null);
-  const [showDeletedPopup, setShowDeletedPopup] = useState(false);
-  const [deletedProducts, setDeletedProducts]   = useState([]);
-  const [loadingDeleted, setLoadingDeleted]     = useState(false);
+  const [openModal,         setOpenModal]         = useState(false);
+  const [editProduct,       setEditProduct]       = useState(null);
+  const [categories,        setCategories]        = useState([]);
+  const [suppliers,         setSuppliers]         = useState([]);
+  const [products,          setProducts]          = useState([]);
+  const [filteredProducts,  setFilteredProducts]  = useState([]);
+  const [selectedCategory,  setSelectedCategory]  = useState("");
+  const [searchValue,       setSearchValue]       = useState("");
+  const [loading,           setLoading]           = useState(false);
+  const [image,             setImage]             = useState(null);
+  const [showDeletedPopup,  setShowDeletedPopup]  = useState(false);
+  const [deletedProducts,   setDeletedProducts]   = useState([]);
+  const [loadingDeleted,    setLoadingDeleted]    = useState(false);
   const [updatingProductId, setUpdatingProductId] = useState(null);
-  const [formData, setFormData]                 = useState(emptyForm);
-  const [draftRestored, setDraftRestored]       = useState(false);
-
   const scrollRef = useRef(null);
 
+  const [formData, setFormData] = useState(EMPTY_FORM);
+
+  // ── Fetch all products ────────────────────────────────────────────────────
   const fetchProducts = async () => {
     setLoading(true);
     try {
@@ -40,6 +48,9 @@ const Product = () => {
         setSuppliers(response.data.suppliers);
         setProducts(response.data.products);
         setFilteredProducts(response.data.products);
+        // Reset filters on fresh fetch
+        setSelectedCategory("");
+        setSearchValue("");
       } else {
         toast.error("Error fetching products. Please try again");
       }
@@ -53,121 +64,56 @@ const Product = () => {
 
   useEffect(() => { fetchProducts(); }, []);
 
-  // ── Load draft when add modal opens ──
-  useEffect(() => {
-    if (!openModal || editProduct) return;
+  // ── Central filter — always applies both search + category together ───────
+  const applyFilters = (search, category, source) => {
+    const base = source || products;
+    const s    = search   !== undefined ? search   : searchValue;
+    const c    = category !== undefined ? category : selectedCategory;
 
-    const loadDraft = async () => {
-      try {
-        const res = await axiosInstance.get("/products/draft");
-        if (res.data.success && res.data.draft) {
-          const d = res.data.draft;
-          const hasSomething =
-            d.name || d.description || d.price !== "" || d.stock !== "";
-
-          if (hasSomething) {
-            setFormData((prev) => ({
-              ...prev,
-              name:        d.name        || "",
-              description: d.description || "",
-              price:       d.price       ?? "",
-              stock:       d.stock       ?? "",
-              categoryId:  d.categoryId  || "",
-              supplierId:  d.supplierId  || "",
-            }));
-            setDraftRestored(true);
-          }
-        }
-      } catch {
-        // non-critical
-      }
-    };
-
-    loadDraft();
-  }, [openModal, editProduct]);
-
-  const handleClearDraft = async () => {
-    try {
-      await axiosInstance.delete("/products/draft");
-    } catch {
-      // non-critical
-    }
-    setDraftRestored(false);
-    setFormData(emptyForm);
-    setImage(null);
+    const result = base.filter((p) => {
+      const matchesSearch   = s ? p.name.toLowerCase().includes(s.toLowerCase()) : true;
+      const matchesCategory = c ? p.categoryId?._id === c : true; // "" = all
+      return matchesSearch && matchesCategory;
+    });
+    setFilteredProducts(result);
   };
-
-  // ✅ FIXED: both filters always pass each other's current value
-  const filterProducts = (search, category) => {
-    const normalizedSearch = String(search || "").toLowerCase();
-
-    setFilteredProducts(
-      products.filter((p) => {
-        const matchesSearch = p.name.toLowerCase().includes(normalizedSearch);
-        const productCategoryId =
-          p.categoryId?._id || (typeof p.categoryId === "string" ? p.categoryId : "");
-        const matchesCategory = category ? productCategoryId === category : true;
-        return matchesSearch && matchesCategory;
-      })
-    );
-  };
-
-  useEffect(() => {
-    const normalizedSearch = String(searchValue || "").toLowerCase();
-    setFilteredProducts(
-      products.filter((p) => {
-        const matchesSearch = p.name.toLowerCase().includes(normalizedSearch);
-        const productCategoryId =
-          p.categoryId?._id || (typeof p.categoryId === "string" ? p.categoryId : "");
-        const matchesCategory = selectedCategory ? productCategoryId === selectedCategory : true;
-        return matchesSearch && matchesCategory;
-      })
-    );
-  }, [products, searchValue, selectedCategory]);
 
   const handleSearch = (e) => {
-    const value = e.target.value.toLowerCase();
+    const value = e.target.value;
     setSearchValue(value);
-    filterProducts(value, selectedCategory);
+    applyFilters(value, selectedCategory);
   };
 
-  // ✅ FIXED: passes current searchValue alongside new category value
   const handleCategoryChange = (e) => {
-    const category = e.target.value;
+    const category = e.target.value;       // "" means All Categories
     setSelectedCategory(category);
-    if (category === "") {
-      // "All Categories" selected — refresh from server to ensure latest products
-      fetchProducts();
-    } else {
-      filterProducts(searchValue, category);
-    }
+    applyFilters(searchValue, category);   // ✅ "" correctly resets to all
   };
 
+  // ── Edit ─────────────────────────────────────────────────────────────────
   const handleEdit = (product) => {
     setEditProduct(product._id);
     setFormData({
-      name:        product.name,
-      description: product.description,
-      price:       product.price,
-      stock:       product.stock,
-      categoryId:  product.categoryId?._id || "",
-      supplierId:  product.supplierId?._id  || "",
-      image:       product.image || "",
-      removeImage: false,
+      name:           product.name,
+      description:    product.description,
+      price:          product.price,
+      wholesalePrice: product.wholesalePrice ?? "",
+      stock:          product.stock,
+      categoryId:     product.categoryId?._id || "",
+      supplierId:     product.supplierId?._id || "",
+      image:          product.image || "",
+      removeImage:    false,
     });
     setOpenModal(true);
   };
 
+  // ── Optimistic delete ─────────────────────────────────────────────────────
   const handleDelete = async (id) => {
-    const confirmDelete = confirm("Are you sure you want to delete this product?");
-    if (!confirmDelete) return;
-
+    if (!confirm("Are you sure you want to delete this product?")) return;
     const previousProducts = products;
     const previousFiltered = filteredProducts;
-
     setProducts((prev) => prev.filter((p) => p._id !== id));
     setFilteredProducts((prev) => prev.filter((p) => p._id !== id));
-
     try {
       const response = await axiosInstance.delete(`/products/${id}`);
       if (response.data.success) {
@@ -184,6 +130,7 @@ const Product = () => {
     }
   };
 
+  // ── Submit (add or edit) ──────────────────────────────────────────────────
   const handleSubmit = async () => {
     const isEditing      = Boolean(editProduct);
     const targetId       = editProduct;
@@ -192,50 +139,38 @@ const Product = () => {
     try {
       const data = new FormData();
       Object.keys(formData).forEach((key) => {
-        if (key === "image" || key === "removeImage") return;
-        data.append(key, formData[key]);
+        if (key === "image" || key === "removeImage" || key === "_imageName") return;
+        data.append(key, formData[key] === "" ? "" : formData[key]);
       });
-      if (image) data.append("image", image);
+      if (image)               data.append("image", image);
       if (formData.removeImage) data.append("removeImage", "true");
 
       const url = isEditing ? `/products/${targetId}` : "/products/add";
       if (isEditing) setUpdatingProductId(targetId);
 
-      // ✅ Close modal immediately so user sees table with skeleton
-      closeModal();
-
       const response = await axiosInstance({
-        method: isEditing ? "put" : "post",
+        method:  isEditing ? "put" : "post",
         url,
         data,
         headers: { "Content-Type": "multipart/form-data" },
       });
 
       if (response.data.success) {
-        if (!isEditing) {
-          try {
-            await axiosInstance.delete("/products/draft");
-          } catch (e) {
-            console.debug("Failed to clear product draft:", e);
-          }
-        }
-
+        closeModal();
         toast.success(isEditing ? "Product updated successfully!" : "Product added successfully!");
 
         if (isEditing) {
           const refreshed = await axiosInstance.get("/products");
           if (refreshed.data.success) {
-            const updated = refreshed.data.products.find((p) => p._id === targetId);
-            if (updated) {
-              setProducts((prev) =>
-                prev.map((p) => (p._id === targetId ? updated : p))
-              );
-              setFilteredProducts((prev) =>
-                prev.map((p) => (p._id === targetId ? updated : p))
-              );
+            const updatedProduct = refreshed.data.products.find((p) => p._id === targetId);
+            if (updatedProduct) {
+              const newProducts = products.map((p) => p._id === targetId ? updatedProduct : p);
+              setProducts(newProducts);
+              applyFilters(searchValue, selectedCategory, newProducts);
             }
           }
         } else {
+          // For add mode, ProductForm handles clearing the server draft itself
           fetchProducts();
         }
       } else {
@@ -243,15 +178,12 @@ const Product = () => {
         if (isEditing) fetchProducts();
       }
     } catch (error) {
-      console.error("Error saving product:", error);
-      toast.error(error.response?.data?.message || "Error saving product.");
+      toast.error(parseApiError(error));
       if (isEditing) fetchProducts();
     } finally {
       setUpdatingProductId(null);
       if (isEditing && scrollRef.current) {
-        requestAnimationFrame(() => {
-          scrollRef.current.scrollTop = savedScrollTop;
-        });
+        requestAnimationFrame(() => { scrollRef.current.scrollTop = savedScrollTop; });
       }
     }
   };
@@ -260,27 +192,20 @@ const Product = () => {
     setOpenModal(false);
     setEditProduct(null);
     setImage(null);
-    setDraftRestored(false);
-    setFormData(emptyForm);
+    setFormData(EMPTY_FORM);
   };
 
+  // ── Deleted products ──────────────────────────────────────────────────────
   const fetchDeletedProducts = async () => {
     setLoadingDeleted(true);
     try {
       const res = await axiosInstance.get("/products/deleted");
       if (res.data.success) setDeletedProducts(res.data.products);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to fetch deleted products");
-    } finally {
-      setLoadingDeleted(false);
-    }
+    } catch { toast.error("Failed to fetch deleted products"); }
+    finally { setLoadingDeleted(false); }
   };
 
-  const handleViewDeleted = () => {
-    fetchDeletedProducts();
-    setShowDeletedPopup(true);
-  };
+  const handleViewDeleted = () => { fetchDeletedProducts(); setShowDeletedPopup(true); };
 
   const handleRestore = async (id) => {
     try {
@@ -290,35 +215,30 @@ const Product = () => {
         fetchProducts();
         fetchDeletedProducts();
       }
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to restore product");
-    }
+    } catch { toast.error("Failed to restore product"); }
   };
 
   const handlePermanentDelete = async (id) => {
-    const confirmDelete = confirm("Are you sure? This cannot be undone.");
-    if (!confirmDelete) return;
+    if (!confirm("Are you sure? This cannot be undone.")) return;
     try {
       const response = await axiosInstance.delete(`/products/permanent/${id}`);
       if (response.data.success) {
         toast.success("Product permanently deleted!");
         fetchDeletedProducts();
       }
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to delete product permanently");
-    }
+    } catch { toast.error("Failed to delete product permanently"); }
   };
 
   return (
     <div className="w-full h-full flex flex-col gap-4 p-4">
       <h1 className="text-2xl font-bold mb-2">Product Management</h1>
 
+      {/* Search + Category filter */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <input
           type="text"
           placeholder="Search product..."
+          value={searchValue}
           onChange={handleSearch}
           className="border border-gray-300 rounded-md px-3 py-2 w-full sm:w-1/2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
@@ -361,8 +281,6 @@ const Product = () => {
           onSubmit={handleSubmit}
           onClose={closeModal}
           setImage={setImage}
-          draftRestored={draftRestored}
-          onClearDraft={handleClearDraft}
         />
       )}
 
@@ -378,6 +296,5 @@ const Product = () => {
     </div>
   );
 };
-
 
 export default Product;

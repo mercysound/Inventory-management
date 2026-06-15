@@ -4,7 +4,10 @@
   "version": "1.0.0",
   "scripts": {
     "build": "cd frontend && npm ci && npm run build && cd ../server && npm ci",
-    "start": "cd server && node index.js"
+    "start": "cd server && npm run dev",
+    "start:prod": "cd server && npm start",
+    "dev:frontend": "cd frontend && npm run dev",
+    "install:all": "npm install && cd frontend && npm install && cd ../server && npm install"
   },
   "engines": {
     "node": ">=18.0.0",

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "react-toastify";
 import SharedOrderTable from "./SharedOrderTable";
 import axiosInstance from "../../../utils/axiosInstance";
@@ -7,12 +7,13 @@ import ReceiptModal from "../receipt/ReceiptModal";
 const AdminCompletedHistory = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refundingId, setRefundingId] = useState(null);
 
   // receipt modal
   const [invoiceParams, setInvoiceParams] = useState(null);
   const [showReceiptPrompt, setShowReceiptPrompt] = useState(false);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
       const res = await axiosInstance.get("/completed-history");
@@ -22,9 +23,41 @@ const AdminCompletedHistory = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const deleteOrder = async (id) => {
+  // ── REFUND — one-time, irreversible ──────────────────────────────────────
+  const handleMarkRefund = useCallback(async (orderId) => {
+    const confirmed = window.confirm(
+      "⚠️ Are you sure you want to mark this refund as completed?\n\n" +
+      "This action CANNOT be undone. The order will be excluded from revenue " +
+      "and the buyer will see it as REFUNDED in their history."
+    );
+    if (!confirmed) return;
+
+    setRefundingId(orderId);
+    try {
+      const res = await axiosInstance.post(`/completed-history/${orderId}/refund`);
+      if (res.data.success) {
+        toast.success("Refund marked successfully. This order is now excluded from revenue.");
+        // Update locally — no full re-fetch needed
+        setOrders((prev) =>
+          prev.map((o) =>
+            o._id === orderId
+              ? { ...o, refundMade: true, refundMadeAt: new Date().toISOString(), deliveryStatus: "refunded" }
+              : o
+          )
+        );
+      } else {
+        toast.error(res.data.message || "Failed to mark refund");
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Error marking refund");
+    } finally {
+      setRefundingId(null);
+    }
+  }, []);
+
+  const deleteOrder = useCallback(async (id) => {
     if (!window.confirm("Delete this order from admin view?")) return;
     try {
       const res = await axiosInstance.delete(`/completed-history/${id}`);
@@ -35,10 +68,10 @@ const AdminCompletedHistory = () => {
     } catch {
       toast.error("Error deleting order");
     }
-  };
+  }, []);
 
-  const clearAllOrders = async () => {
-    if (!window.confirm("Clear all completed orders?")) return;
+  const clearAllOrders = useCallback(async () => {
+    if (!window.confirm("Clear all completed orders from admin view?")) return;
     try {
       const res = await axiosInstance.delete("/completed-history/clear/all");
       if (res.data.success) {
@@ -48,26 +81,23 @@ const AdminCompletedHistory = () => {
     } catch {
       toast.error("Error clearing orders");
     }
-  };
-
-  // ------------------ RECEIPT PREVIEW ------------------
-      const handleViewReceipt = (orderId, order) => {
-    const params = {
-      orderId,
-      mode: "final",
-      customerName: order.buyerName,
-      paymentMethod: order.paymentMethod,
-      orderSource: order.userOrdering.role,
-      historyReceipt: true,
-    };
-
-    setInvoiceParams(params);
-    setShowReceiptPrompt(true);
-  };
-
-  useEffect(() => {
-    fetchOrders();
   }, []);
+
+  const handleViewReceipt = useCallback(async (orderId, order) => {
+    try {
+      setInvoiceParams({
+        orderId,
+        mode: "final",
+        historyReceipt: "true",
+      });
+      setShowReceiptPrompt(true);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load receipt");
+    }
+  }, []);
+
+  useEffect(() => { fetchOrders(); }, []);
 
   if (loading) return <p className="text-center py-10">Loading...</p>;
 
@@ -80,12 +110,17 @@ const AdminCompletedHistory = () => {
         role="admin"
         onDelete={deleteOrder}
         onClearAll={clearAllOrders}
-        onViewReceipt={handleViewReceipt} // ✅ add receipt button
+        onViewReceipt={handleViewReceipt}
+        onMarkRefund={handleMarkRefund}   // ✅ pass refund handler
+        refundingId={refundingId}         // ✅ pass loading state
       />
 
       <ReceiptModal
         open={showReceiptPrompt}
-        onClose={() => setShowReceiptPrompt(false)}
+        onClose={() => {
+          setShowReceiptPrompt(false);
+          setInvoiceParams(null);
+        }}
         invoiceParams={invoiceParams}
         mode="final"
         role="admin"

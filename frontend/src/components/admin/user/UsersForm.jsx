@@ -64,6 +64,8 @@ const UsersForm = ({ formData, handleChange, handleSubmit }) => {
           <option value="">Select Role</option>
           <option value="admin">Admin</option>
           <option value="staff">Staff</option>
+          <option value="customer">Customer</option>
+          <option value="wholesale">🏪 Wholesale</option>
         </select>
 
         <button

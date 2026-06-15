@@ -1,12 +1,9 @@
 import "./App.css";
-import "react-toastify/dist/ReactToastify.css";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./utils/ProtectedRoute.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Categories from "./components/admin/category/Category.jsx";
-// import Users from "./components/admin/user/Users.js";
 import Summary from "./components/admin/dashboard/Summary.jsx";
-// import PlacedOrders from "./components/purchase/PlacedOrders.jsx";
 import { ToastContainer } from "react-toastify";
 import LandingPage from "./pages/LandingPage.jsx";
 import Unauthorized from "./pages/unauthorized/Unauthorized.jsx";
@@ -26,6 +23,14 @@ import StaffOrders from "./components/staff/orders/StaffOrders.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
 
+// ✅ New pages
+import SettingsPage from "./components/admin/settings/SettingsPage.jsx";
+import ExpiringOrders from "./components/admin/expiring/ExpiringOrders.jsx";
+
+// ✅ Wholesale pages — reuse customer components with wholesale pricing applied at API level
+// The product page and cart page are the same components; pricing is controlled server-side
+// based on the logged-in user's role.
+// We import CustomerCompletedHistory for wholesale history too (same UI, role-filtered data)
 
 export const BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -35,15 +40,13 @@ function App() {
       <ToastContainer />
       <Router>
         <Routes>
-          {/* Landing/Login Page */}
-          <Route path="/" element={<LandingPage />} />
-          {/* Complete Profile Page */}
-          <Route path="/complete-profile" element={<CompleteProfile />} />
-          {/* Forgot Password Page */}
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          {/* Reset Password Page */}
-          <Route path="/reset-password" element={<ResetPassword />} />
-          {/* Admin Dashboard */}
+          {/* ── Public ── */}
+          <Route path="/"                  element={<LandingPage />} />
+          <Route path="/complete-profile"  element={<CompleteProfile />} />
+          <Route path="/forgot-password"   element={<ForgotPassword />} />
+          <Route path="/reset-password"    element={<ResetPassword />} />
+
+          {/* ── Admin Dashboard ── */}
           <Route
             path="/admin-dashboard/*"
             element={
@@ -52,18 +55,21 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<Summary />} />
-            <Route path="categories" element={<Categories />} />
-            <Route path="products" element={<Product />} />
-            <Route path="suppliers" element={<Suppliers/>} />
-            <Route path="placed-orders" element={<PlacedOrders />} />
+            <Route index                    element={<Summary />} />
+            <Route path="categories"        element={<Categories />} />
+            <Route path="products"          element={<Product />} />
+            <Route path="suppliers"         element={<Suppliers />} />
+            <Route path="placed-orders"     element={<PlacedOrders />} />
             <Route path="completed-history" element={<AdminCompletedHistory />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="users" element={<Users />} />
-            <Route path="logout" element={<Logout />} />
+            <Route path="profile"           element={<Profile />} />
+            <Route path="users"             element={<Users />} />
+            {/* ✅ New admin routes */}
+            <Route path="expiring-orders"   element={<ExpiringOrders />} />
+            <Route path="settings"          element={<SettingsPage />} />
+            <Route path="logout"            element={<Logout />} />
           </Route>
 
-          {/* Staff Dashboard */}
+          {/* ── Staff Dashboard ── */}
           <Route
             path="/customer-dashboard/*"
             element={
@@ -72,14 +78,14 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<CustomerProducts />} />
-            <Route path="orders" element={<StaffOrders />} />
+            <Route index                    element={<CustomerProducts />} />
+            <Route path="orders"            element={<StaffOrders />} />
             <Route path="completed-history" element={<StaffCompletedHistory />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="logout" element={<Logout />} />
+            <Route path="profile"           element={<Profile />} />
+            <Route path="logout"            element={<Logout />} />
           </Route>
 
-          {/* Customer Dashboard */}
+          {/* ── Customer Dashboard ── */}
           <Route
             path="/user-dashboard/*"
             element={
@@ -88,23 +94,32 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<CustomerProducts/>} />
-            <Route path="orders" element={<CustomerOrderPortal/>} />
+            <Route index                    element={<CustomerProducts />} />
+            <Route path="orders"            element={<CustomerOrderPortal />} />
             <Route path="completed-history" element={<CustomerCompletedHistory />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="logout" element={<Logout />} />
+            <Route path="profile"           element={<Profile />} />
+            <Route path="logout"            element={<Logout />} />
           </Route>
 
-          {/* Unauthorized */}
+          {/* ── Wholesale Dashboard ── */}
+          {/* Uses the same components as customer — pricing is role-filtered server-side */}
           <Route
-            path="/unauthorized"
+            path="/wholesale-dashboard/*"
             element={
-              // <p className="font-bold text-3xl mt-20 ml-20 text-red-600">
-              //   Unauthorized Access
-              // </p>
-              <Unauthorized/>
+              <ProtectedRoute requireRole={["wholesale"]}>
+                <Dashboard />
+              </ProtectedRoute>
             }
-          />
+          >
+            <Route index                    element={<CustomerProducts />} />
+            <Route path="orders"            element={<CustomerOrderPortal />} />
+            <Route path="completed-history" element={<CustomerCompletedHistory />} />
+            <Route path="profile"           element={<Profile />} />
+            <Route path="logout"            element={<Logout />} />
+          </Route>
+
+          {/* ── Unauthorized ── */}
+          <Route path="/unauthorized" element={<Unauthorized />} />
         </Routes>
       </Router>
     </>

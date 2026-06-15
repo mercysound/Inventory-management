@@ -7,22 +7,19 @@ import {
   deletePlacedOrder,
 } from "../controllers/allOrdersPlacedController.js";
 import { authMiddleware, authorizeRoles } from "../middleware/authMiddleware.js";
-import { validate } from '../middleware/validate.js';
-import { deliveryStatusSchema } from '../validators/schemas.js';
 
 const router = express.Router();
 
+// GET all placed orders (admin sees all; others see their own)
 router.get("/", authMiddleware, getAllPlacedOrders);
-router.put(
-  "/:id/status",
-  authMiddleware,
-  authorizeRoles("admin"),
-  validate(deliveryStatusSchema),
-  updateDeliveryStatus
-);
-router.delete("/clear", authMiddleware, authorizeRoles("admin"), clearAllPlacedOrders);
 
-// ✅ Delete single order
+// PUT update delivery status for a placed order
+router.put("/:id/status", authMiddleware, authorizeRoles("admin"), updateDeliveryStatus);
+
+// DELETE clear all placed orders
+router.delete("/clear/all", authMiddleware, authorizeRoles("admin"), clearAllPlacedOrders);
+
+// DELETE single placed order
 router.delete("/:id", authMiddleware, authorizeRoles("admin"), deletePlacedOrder);
 
 export default router;

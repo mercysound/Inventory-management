@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import {
-  FaBox, FaCog, FaHome, FaShoppingCart, FaSignOutAlt, FaTable, FaTruck,FaUsers, FaTimes, FaHistory 
+  FaBox, FaCog, FaHome, FaShoppingCart, FaSignOutAlt,
+  FaTable, FaTruck, FaUsers, FaTimes, FaHistory,
 } from "react-icons/fa";
+import { Clock } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../../context/AuthContext";
@@ -11,39 +13,53 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   const navigate = useNavigate();
 
   const adminMenu = [
-    { name: "Dashboard", path: "/admin-dashboard", icon: <FaHome /> },
-    { name: "Categories", path: "/admin-dashboard/categories", icon: <FaTable /> },
-    { name: "Products", path: "/admin-dashboard/products", icon: <FaBox /> },
-    { name: "Suppliers", path: "/admin-dashboard/suppliers", icon: <FaTruck /> },
-    { name: "Placed Orders", path: "/admin-dashboard/placed-orders", icon: <FaShoppingCart /> },
-    { name: "History", path: "/admin-dashboard/completed-history", icon: <FaHistory /> },
-    { name: "Users", path: "/admin-dashboard/users", icon: <FaUsers /> },
-    { name: "Profile", path: "/admin-dashboard/profile", icon: <FaCog /> },
-    { name: "Logout", path: "/logout", icon: <FaSignOutAlt /> },
+    { name: "Dashboard",       path: "/admin-dashboard",                    icon: <FaHome /> },
+    { name: "Categories",      path: "/admin-dashboard/categories",         icon: <FaTable /> },
+    { name: "Products",        path: "/admin-dashboard/products",           icon: <FaBox /> },
+    { name: "Suppliers",       path: "/admin-dashboard/suppliers",          icon: <FaTruck /> },
+    { name: "Placed Orders",   path: "/admin-dashboard/placed-orders",      icon: <FaShoppingCart /> },
+    { name: "History",         path: "/admin-dashboard/completed-history",  icon: <FaHistory /> },
+    { name: "Users",           path: "/admin-dashboard/users",              icon: <FaUsers /> },
+    // ✅ Expiring Orders — amber clock icon to draw attention
+    { name: "Expiring Orders", path: "/admin-dashboard/expiring-orders",    icon: <Clock size={16} className="text-amber-400" />, highlight: true },
+    // ✅ Settings page
+    { name: "Settings",        path: "/admin-dashboard/settings",           icon: <FaCog /> },
+    { name: "Profile",         path: "/admin-dashboard/profile",            icon: <FaCog /> },
+    { name: "Logout",          path: "/logout",                             icon: <FaSignOutAlt /> },
+  ];
+
+  const staffMenu = [
+    { name: "Products", path: "/customer-dashboard",                   icon: <FaBox /> },
+    { name: "Cart",     path: "/customer-dashboard/orders",            icon: <FaShoppingCart /> },
+    { name: "History",  path: "/customer-dashboard/completed-history", icon: <FaHistory /> },
+    { name: "Profile",  path: "/customer-dashboard/profile",           icon: <FaCog /> },
+    { name: "Logout",   path: "/logout",                               icon: <FaSignOutAlt /> },
   ];
 
   const customerMenu = [
-    { name: "Products", path: "/customer-dashboard", icon: <FaBox /> },
-    { name: "Cart", path: "/customer-dashboard/orders", icon: <FaShoppingCart /> },
-    { name: "History", path: "/customer-dashboard/completed-history", icon: <FaHistory  /> }, //
-    { name: "Profile", path: "/customer-dashboard/profile", icon: <FaCog /> },
-    { name: "Logout", path: "/logout", icon: <FaSignOutAlt /> },
+    { name: "Products", path: "/user-dashboard",                   icon: <FaBox /> },
+    { name: "Cart",     path: "/user-dashboard/orders",            icon: <FaShoppingCart /> },
+    { name: "History",  path: "/user-dashboard/completed-history", icon: <FaHistory /> },
+    { name: "Profile",  path: "/user-dashboard/profile",           icon: <FaCog /> },
+    { name: "Logout",   path: "/logout",                           icon: <FaSignOutAlt /> },
   ];
 
-  const customerUserMenu = [
-    { name: "Products", path: "/user-dashboard", icon: <FaBox /> },
-    { name: "Cart", path: "/user-dashboard/orders", icon: <FaShoppingCart /> },
-    { name: "History", path: "/user-dashboard/completed-history", icon: <FaHistory  /> },
-    { name: "Profile", path: "/user-dashboard/profile", icon: <FaCog /> },
-    { name: "Logout", path: "/logout", icon: <FaSignOutAlt /> },
+  // ✅ Wholesale menu — same structure as customer but uses /wholesale-dashboard
+  const wholesaleMenu = [
+    { name: "Products", path: "/wholesale-dashboard",                   icon: <FaBox /> },
+    { name: "Cart",     path: "/wholesale-dashboard/orders",            icon: <FaShoppingCart /> },
+    { name: "History",  path: "/wholesale-dashboard/completed-history", icon: <FaHistory /> },
+    { name: "Profile",  path: "/wholesale-dashboard/profile",           icon: <FaCog /> },
+    { name: "Logout",   path: "/logout",                                icon: <FaSignOutAlt /> },
   ];
 
-  const [menuLinks, setMenuLinks] = useState(customerMenu);
+  const [menuLinks, setMenuLinks] = useState([]);
 
   useEffect(() => {
-    if (user?.role === "admin") setMenuLinks(adminMenu);
-    else if (user?.role === "staff") setMenuLinks(customerMenu);
-    else if (user?.role === "customer") setMenuLinks(customerUserMenu);
+    if (user?.role === "admin")     setMenuLinks(adminMenu);
+    else if (user?.role === "staff")     setMenuLinks(staffMenu);
+    else if (user?.role === "customer")  setMenuLinks(customerMenu);
+    else if (user?.role === "wholesale") setMenuLinks(wholesaleMenu);
   }, [user]);
 
   return (
@@ -56,10 +72,18 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
           transition={{ duration: 0.3 }}
           className="fixed md:static top-0 left-0 h-screen w-64 bg-gradient-to-b from-gray-900 to-gray-800 text-white shadow-lg flex flex-col z-40"
         >
+          {/* Header */}
           <div className="h-16 flex items-center justify-between border-b border-gray-700 px-4">
-            <span className="text-lg md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-pink-400">
-              MELECH SH
-            </span>
+            <div>
+              <span className="text-lg md:text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-pink-400">
+                MELECH SH
+              </span>
+              {user?.role === "wholesale" && (
+                <span className="ml-2 text-[10px] bg-amber-500 text-white rounded-full px-2 py-0.5 font-semibold uppercase tracking-wide">
+                  Wholesale
+                </span>
+              )}
+            </div>
             <button
               onClick={toggleSidebar}
               className="md:hidden p-1 rounded hover:bg-gray-700 transition"
@@ -68,15 +92,16 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             </button>
           </div>
 
-          <ul className="flex-1 overflow-y-auto p-4 space-y-2">
+          {/* Nav links */}
+          <ul className="flex-1 overflow-y-auto p-4 space-y-1">
             {menuLinks.map((item) => (
               <li key={item.name}>
                 {item.name === "Logout" ? (
                   <button
-                    onClick={async () => {
-                      await logout();
+                    onClick={() => {
+                      logout();
                       toggleSidebar();
-                      navigate("/", { replace: true });
+                      navigate("/");
                     }}
                     className="flex items-center w-full p-3 rounded-lg hover:bg-gray-700 transition-all duration-200 text-left"
                   >
@@ -92,6 +117,8 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                       `flex items-center p-3 rounded-lg transition-all duration-200 ${
                         isActive
                           ? "bg-gradient-to-r from-indigo-500 to-pink-500 shadow-md"
+                          : item.highlight
+                          ? "hover:bg-amber-900/40 text-amber-300"
                           : "hover:bg-gray-700"
                       }`
                     }

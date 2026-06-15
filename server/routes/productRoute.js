@@ -9,20 +9,11 @@ import {
   getDeletedProducts,
   restoreProduct,
   deleteProductPermanent,
-  getProductDraft,
-  saveProductDraft,
-  clearProductDraft,
 } from "../controllers/productController.js";
 import { upload } from "../config/multer.js";
 import { productSchema, productUpdateSchema } from "../validators/schemas.js";
 
 const router = express.Router();
-
-// ── Draft routes ──────────────────────────────────────────────────────────────
-// ⚠️ MUST be above /:id routes — otherwise Express matches "draft" as a product ID
-router.get("/draft",    authMiddleware, getProductDraft);
-router.put("/draft",    authMiddleware, saveProductDraft);
-router.delete("/draft", authMiddleware, clearProductDraft);
 
 // ── Product routes ────────────────────────────────────────────────────────────
 router.get("/",               authMiddleware, getProducts);

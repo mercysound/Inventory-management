@@ -7,8 +7,6 @@ import SupplierSkeleton from "./SupplierSkeleton";
 import { FaUserPlus, FaSearch } from "react-icons/fa";
 import { AlertTriangle, Phone, Mail } from "lucide-react";
 import axiosInstance from "../../../utils/axiosInstance";
-import { parseApiError } from "../../../../../server/utils/parseApiError";
-
 
 const Suppliers = () => {
   const [suppliers, setSuppliers] = useState([]);
@@ -16,7 +14,6 @@ const Suppliers = () => {
   const [editSupplier, setEditSupplier] = useState(null);
   const [openModal, setOpenModal] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [updatingSupplierId, setUpdatingSupplierId] = useState(null); // ✅ tracks which row
 
   const emptyForm = {
     name: "",
@@ -29,25 +26,19 @@ const Suppliers = () => {
 
   const [formData, setFormData] = useState(emptyForm);
 
-  // Suppliers.jsx
-const fetchSuppliers = async (attempt = 1) => {
-  try {
-    if (attempt === 1) setLoading(true);
-    const response = await axiosInstance.get("/supplier");
-    setSuppliers(response.data.suppliers);
-    setFilterSupplier(response.data.suppliers);
-    setLoading(false);
-  } catch (err) {
-    const isTimeout = err.code === "ECONNABORTED" || err.message?.includes("timeout");
-    if (isTimeout && attempt === 1) {
-      console.warn("Suppliers timeout — retrying in 3s...");
-      setTimeout(() => fetchSuppliers(2), 3000);
-      return;
+  const fetchSuppliers = async () => {
+    try {
+      setLoading(true);
+      const response = await axiosInstance.get("/supplier");
+      setSuppliers(response.data.suppliers);
+      setFilterSupplier(response.data.suppliers);
+    } catch (error) {
+      console.error("Error fetching suppliers", error);
+      toast.error("Failed to load suppliers");
+    } finally {
+      setLoading(false);
     }
-    toast.error("Failed to load suppliers");
-    setLoading(false);
-  }
-};
+  };
 
   useEffect(() => {
     fetchSuppliers();
@@ -79,82 +70,42 @@ const fetchSuppliers = async (attempt = 1) => {
     setFormData(emptyForm);
   };
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
-  const isEditing = Boolean(editSupplier);
-  const targetId = editSupplier;
-
-  // ❌ Remove closeModal() from here — don't close before we know it succeeded
-
-  if (isEditing) {
-    setUpdatingSupplierId(targetId);
-  }
-
-  try {
-    let response;
-    if (isEditing) {
-      response = await axiosInstance.put(`/supplier/${targetId}`, formData);
-    } else {
-      response = await axiosInstance.post("/supplier/add", formData);
-    }
-
-    if (response.data.success) {
-      closeModal(); // ✅ Only close on success
-      toast.success(isEditing ? "Supplier updated!" : "Supplier added!");
-
-      if (isEditing) {
-        const refreshed = await axiosInstance.get("/supplier");
-        if (refreshed.data.success) {
-          const updatedSupplier = refreshed.data.suppliers.find(
-            (s) => s._id === targetId
-          );
-          if (updatedSupplier) {
-            setSuppliers((prev) =>
-              prev.map((s) => (s._id === targetId ? updatedSupplier : s))
-            );
-            setFilterSupplier((prev) =>
-              prev.map((s) => (s._id === targetId ? updatedSupplier : s))
-            );
-          }
-        }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      let response;
+      if (editSupplier) {
+        response = await axiosInstance.put(`/supplier/${editSupplier}`, formData);
       } else {
-        fetchSuppliers();
+        response = await axiosInstance.post("/supplier/add", formData);
       }
-    } else {
-      toast.error("Something went wrong. Try again.");
-      if (isEditing) fetchSuppliers();
+      if (response.data.success) {
+        toast.success(editSupplier ? "Supplier updated!" : "Supplier added!");
+        fetchSuppliers();
+        closeModal();
+      } else {
+        toast.error("Something went wrong. Try again.");
+      }
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.message ||
+        error.response?.data?.errors?.[0]?.message ||
+        "Something went wrong";
+      toast.error(errorMessage);
     }
-} catch (error) {
-  toast.error(parseApiError(error));
-} finally {
-    setUpdatingSupplierId(null);
-  }
-};
+  };
 
-  // ✅ Optimistic delete — row disappears instantly
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this supplier?")) return;
-
-    const previousSuppliers = suppliers;
-    const previousFiltered = filterSupplier;
-
-    setSuppliers((prev) => prev.filter((s) => s._id !== id));
-    setFilterSupplier((prev) => prev.filter((s) => s._id !== id));
-
     try {
       const response = await axiosInstance.delete(`/supplier/${id}`);
       if (response.data.success) {
         toast.success("Supplier deleted!");
+        fetchSuppliers();
       } else {
-        // rollback
-        setSuppliers(previousSuppliers);
-        setFilterSupplier(previousFiltered);
         toast.error("Failed to delete supplier");
       }
     } catch (error) {
-      // rollback
-      setSuppliers(previousSuppliers);
-      setFilterSupplier(previousFiltered);
       const msg = error.response?.data?.message || "Error deleting supplier";
       toast.error(msg);
     }
@@ -223,18 +174,16 @@ const fetchSuppliers = async (attempt = 1) => {
                   </span>
                 )}
                 {s.phone && (
-                  
-                  <a  href={`tel:${s.phone}`}
+                  <a
+                    href={`tel:${s.phone}`}
                     className="inline-flex items-center gap-1 text-blue-500 hover:underline"
                   >
                     <Phone size={10} /> Call
                   </a>
                 )}
                 {s.email && (
-                  
-                   <a href={`https://mail.google.com/mail/?view=cm&to=${s.email}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <a
+                    href={`mailto:${s.email}`}
                     className="inline-flex items-center gap-1 text-blue-500 hover:underline"
                   >
                     <Mail size={10} /> Email
@@ -259,7 +208,6 @@ const fetchSuppliers = async (attempt = 1) => {
             suppliers={filterSupplier}
             handleEdit={handleEdit}
             handleDelete={handleDelete}
-            updatingSupplierId={updatingSupplierId} // ✅ passed down
           />
         </motion.div>
       )}

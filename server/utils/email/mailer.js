@@ -89,28 +89,64 @@ transporter.verify((err) => {
 // export { resend };
 
 
-// for brevo used for sending mail on render
-// import nodemailer from "nodemailer";
+import nodemailer from "nodemailer";
 
-// export const transporter = nodemailer.createTransport({
-//   host: "smtp-relay.brevo.com",
-//   port: 587,
-//   secure: false,
-//   auth: {
-//     user: process.env.BREVO_USER,
-//     pass: process.env.BREVO_PASS,
-//   },
-// });
+// SMTP transport fallback for local development or when env vars are not configured.
+// If MAIL_USER / MAIL_PASS are available, use Gmail SMTP.
+// Otherwise, use JSON transport so email calls resolve without blocking startup.
+const createTransporter = () => {
+  if (process.env.MAIL_USER && process.env.MAIL_PASS) {
+    const transport = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
+      },
+      connectionTimeout: 10000,
+      socketTimeout: 10000,
+      secure: true,
+      requireTLS: true,
+    });
+    transport.verify((err) => {
+      if (err) {
+        console.error("❌ SMTP error:", err.message);
+        console.error("⚠️  Check MAIL_USER and MAIL_PASS env variables.");
+      } else {
+        console.log("✅ SMTP is ready");
+      }
+    });
+    return transport;
+  }
 
-// transporter.verify((err) => {
-//   if (err) {
-//     console.error("❌ Brevo SMTP error:", err.message);
-//     console.error("⚠️  Check BREVO_USER and BREVO_PASS env variables.");
-//   } else {
-//     console.log("✅ Brevo SMTP ready");
-//   }
-// });
+  if (process.env.BREVO_USER && process.env.BREVO_PASS) {
+    const transport = nodemailer.createTransport({
+      host: "smtp-relay.brevo.com",
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.BREVO_USER,
+        pass: process.env.BREVO_PASS,
+      },
+      connectionTimeout: 10000,
+      socketTimeout: 10000,
+    });
+    transport.verify((err) => {
+      if (err) {
+        console.error("❌ Brevo SMTP error:", err.message);
+        console.error("⚠️  Check BREVO_USER and BREVO_PASS env variables.");
+      } else {
+        console.log("✅ Brevo SMTP ready");
+      }
+    });
+    return transport;
+  }
 
+  const transport = nodemailer.createTransport({ jsonTransport: true });
+  console.warn("⚠️ No SMTP credentials found; using JSON transport for email delivery.");
+  return transport;
+};
+
+export const transporter = createTransporter();
 
 // Brevo also has an HTTP API (like Resend) that works over port 443 which Render doesn't block. Let's use that instead of their SMTP.
 // Brevo HTTP API - works on Render free tier
