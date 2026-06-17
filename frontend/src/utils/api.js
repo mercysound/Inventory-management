@@ -23,6 +23,23 @@ const isAuthRoute = (url = "") => AUTH_ROUTES.some((route) => url.includes(route
 const isSlowRoute = (url = "") => SLOW_ROUTES.some((route) => url.includes(route));
 const isEmailRoute = (url = "") => EMAIL_ROUTES.some((route) => url.includes(route));
 
+const NETWORK_ERROR_TOAST_ID = "network-error";
+const isNetworkError = (error) =>
+  !error.response &&
+  (error.message === "Network Error" || error.code === "ECONNABORTED" || error.message?.toLowerCase().includes("timeout"));
+
+const getApiErrorMessage = (error) => {
+  if (!error.response) {
+    return "Network issue. Please check your internet connection.";
+  }
+
+  if (error.response.status >= 500) {
+    return "Server unavailable. Please try again later.";
+  }
+
+  return error.response.data?.message || error.message || "Something went wrong. Please try again.";
+};
+
 // ─── Request Interceptor ───────────────────────────────────────────────────────
 axiosInstance.interceptors.request.use(
   (config) => {
@@ -96,9 +113,18 @@ axiosInstance.interceptors.response.use(
 
     // ─── Let 400 and 401 errors propagate to the caller (e.g. LandingPage handleSubmit)
     // so toast.error("Invalid credentials") fires correctly there
-    const message = error.response?.data?.message || error.message;
-    if (status !== 400 && status !== 401) {
-      toast.error(message);
+    const message = getApiErrorMessage(error);
+
+    if (!isAuthRoute(requestUrl)) {
+      if (isNetworkError(error)) {
+        toast.error(message, {
+          toastId: NETWORK_ERROR_TOAST_ID,
+          autoClose: 6000,
+          pauseOnHover: true,
+        });
+      } else if (status !== 400 && status !== 401) {
+        toast.error(message);
+      }
     }
 
     return Promise.reject(error);

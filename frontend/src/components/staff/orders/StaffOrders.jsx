@@ -192,6 +192,7 @@ const StaffOrders = () => {
         customerName: customerName || "Walk-in Customer",
         paymentMethod: paymentMethod || "Not Specified",
         isWholesale: String(isWholesale),
+        orderSource: "staff",
       }).toString();
       const res = await axiosInstance.get(`/orders/invoice?${query}`, { responseType: "blob" });
       setReceiptBlob(res.data);
@@ -220,6 +221,7 @@ const StaffOrders = () => {
           customerName: customerName || "Walk-in Customer",
           paymentMethod,
           isWholesale: String(isWholesale),
+          historyReceipt: "true",
         }).toString();
         const invoiceRes = await axiosInstance.get(`/orders/invoice?${query}`, { responseType: "blob" });
         setReceiptBlob(invoiceRes.data);
@@ -238,22 +240,22 @@ const StaffOrders = () => {
   const handleDownloadReceipt = () => {
     if (!receiptBlob) return;
     const link = document.createElement("a");
-    link.href = URL.createObjectURL(receiptBlob);
+    const url = URL.createObjectURL(receiptBlob);
+    link.href = url;
     link.download = receiptMode === "preview"
       ? `Invoice_UNPAID_${customerName || "Walk-in"}.pdf`
       : `Receipt_PAID_${customerName || "Walk-in"}.pdf`;
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
     handleCloseReceiptModal();
   };
 
   const handleCloseReceiptModal = () => {
     setShowReceiptModal(false);
-    if (receiptBlob) { URL.revokeObjectURL(URL.createObjectURL(receiptBlob)); setReceiptBlob(null); }
+    setReceiptBlob(null);
   };
-
-  useEffect(() => {
-    return () => { if (receiptBlob) URL.revokeObjectURL(URL.createObjectURL(receiptBlob)); };
-  }, [receiptBlob]);
 
   return (
     <>

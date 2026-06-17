@@ -54,6 +54,7 @@ const StaffCompletedHistory = () => {
         orderId,
         mode:           "final",
         historyReceipt: "true",
+        orderSource:    "staff",
       });
       setShowReceiptPrompt(true);
     } catch (err) {

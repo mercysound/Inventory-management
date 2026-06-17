@@ -89,12 +89,10 @@ const CustomerOrderPortal = () => {
   // Receipt states
   const [showReceiptPrompt, setShowReceiptPrompt] = useState(false);
   const [receiptBlob,       setReceiptBlob]       = useState(null);
-  const [receiptPreviewUrl, setReceiptPreviewUrl] = useState("");
 
   // Preview invoice states
   const [previewLoading,   setPreviewLoading]   = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [previewUrl,       setPreviewUrl]       = useState("");
 
   // ── Fetch orders + pending history ───────────────────────────────────────
   const fetchOrders = useCallback(async (silent = false) => {
@@ -143,12 +141,6 @@ const CustomerOrderPortal = () => {
   }, [fetchOrders]);
 
   // Cleanup blob URLs on unmount
-  useEffect(() => {
-    return () => {
-      if (receiptPreviewUrl) URL.revokeObjectURL(receiptPreviewUrl);
-      if (previewUrl)        URL.revokeObjectURL(previewUrl);
-    };
-  }, [receiptPreviewUrl, previewUrl]);
 
   // ── Cart actions ─────────────────────────────────────────────────────────
   const handleIncreaseQty = async (orderId) => {
@@ -292,11 +284,11 @@ const CustomerOrderPortal = () => {
         customerName:  user?.name || "Customer",
         paymentMethod: "Paystack",
         mode:          "final",
+        orderSource:   "online",
+        orderId:       completeRes.data.orderId,
       }).toString();
       const res = await axiosInstance.get(`/orders/invoice?${query}`, { responseType: "blob" });
       setReceiptBlob(res.data);
-      const blobUrl = URL.createObjectURL(res.data);
-      setReceiptPreviewUrl(blobUrl);
       setShowReceiptPrompt(true);
       setOrders([]);
       fetchOrders(true);
@@ -354,20 +346,21 @@ const CustomerOrderPortal = () => {
     }
   };
 
-  // ── Download receipt ──────────────────────────────────────────────────────
   const handleDownloadFinalReceipt = () => {
     if (!receiptBlob) { toast.error("Receipt not ready"); return; }
-    const link    = document.createElement("a");
-    link.href     = URL.createObjectURL(receiptBlob);
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(receiptBlob);
+    link.href = url;
     link.download = `Receipt_${user?.name || "Customer"}_${Date.now()}.pdf`;
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
     handleCloseReceiptModal();
   };
 
   const handleCloseReceiptModal = () => {
     setShowReceiptPrompt(false);
-    if (receiptPreviewUrl) URL.revokeObjectURL(receiptPreviewUrl);
-    setReceiptPreviewUrl("");
     setReceiptBlob(null);
   };
 
@@ -513,7 +506,8 @@ const CustomerOrderPortal = () => {
       <ReceiptModal
         open={showReceiptPrompt}
         onClose={handleCloseReceiptModal}
-        invoiceParams={{ mode: "final" }}
+        blob={receiptBlob}
+        mode="final"
         role="customer"
       />
 

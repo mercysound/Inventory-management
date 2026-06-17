@@ -37,7 +37,18 @@ export const BASE_URL = import.meta.env.VITE_API_URL;
 function App() {
   return (
     <>
-      <ToastContainer />
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick={true}
+        pauseOnFocusLoss={true}
+        draggable={true}
+        pauseOnHover={true}
+        limit={3}
+        theme="colored"
+      />
       <Router>
         <Routes>
           {/* ── Public ── */}
