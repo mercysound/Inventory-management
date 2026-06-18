@@ -431,7 +431,16 @@ const SharedOrderTable = memo(({
                     )}
                   </td>
                   <td className="p-3">{order.paymentMethod}</td>
-                  <td className="p-3"><StatusBadge status={order.deliveryStatus} /></td>
+                  <td className="p-3"><StatusBadge status={order.deliveryStatus} />
+                    {order.isDelegatedAction && (
+                      <span className="ml-1 inline-flex items-center gap-0.5 bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-full px-1.5 py-0.5 text-[10px] font-semibold">
+                        🛡️ Delegated
+                      </span>
+                    )}
+                    {order.isDelegatedAction && order.changedByName && (
+                      <div className="text-[10px] text-indigo-500 mt-0.5">by {order.changedByName}</div>
+                    )}
+                  </td>
                   <td className="p-3 text-gray-600 text-xs">
                     <div>{new Date(order.createdAt).toLocaleDateString()}</div>
                     <div className="text-gray-400">
@@ -450,7 +459,7 @@ const SharedOrderTable = memo(({
                   </td>
                   <td className="p-3" onClick={(e) => e.stopPropagation()}>
                     <div className="flex flex-col gap-2">
-                      {/* Refund button — cancelled orders, admin only */}
+                      {/* Refund button — admin always; delegated staff if they cancelled this order */}
                       {role === "admin" && order.cancelled && !order.refundMade && (
                         <button
                           onClick={() => onMarkRefund?.(order._id)}
@@ -461,7 +470,17 @@ const SharedOrderTable = memo(({
                           {refundingId === order._id ? "..." : "💳 Mark Refund"}
                         </button>
                       )}
-                      {role === "admin" && order.cancelled && order.refundMade && (
+                      {role === "staff" && order.isDelegatedAction && order.cancelled && !order.refundMade && (
+                        <button
+                          onClick={() => onMarkRefund?.(order._id)}
+                          disabled={refundingId === order._id}
+                          className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-2 py-1 rounded text-xs font-semibold"
+                          title="You cancelled this order — you can mark the refund"
+                        >
+                          {refundingId === order._id ? "..." : "💳 Mark Refund"}
+                        </button>
+                      )}
+                      {order.cancelled && order.refundMade && (
                         <span className="text-[11px] bg-purple-100 text-purple-700 border border-purple-200 rounded-full px-2 py-0.5 font-semibold">
                           ✅ Refund done
                         </span>
@@ -581,6 +600,18 @@ const SharedOrderTable = memo(({
               <StatusBadge status={order.deliveryStatus} />
             </div>
 
+            {/* Delegation badge — mobile */}
+            {order.isDelegatedAction && (
+              <div className="mb-2 flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-0.5 bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-full px-2 py-0.5 text-[10px] font-semibold">
+                  🛡️ Delegated Action
+                </span>
+                {order.changedByName && (
+                  <span className="text-[10px] text-indigo-500">by {order.changedByName}</span>
+                )}
+              </div>
+            )}
+
             {showUser && (
               <p className="text-sm mb-2">
                 <span className="font-semibold">User: </span>
@@ -644,7 +675,13 @@ const SharedOrderTable = memo(({
                   {refundingId === order._id ? "Processing..." : "💳 Mark Refund as Done"}
                 </button>
               )}
-              {role === "admin" && order.cancelled && order.refundMade && (
+              {role === "staff" && order.isDelegatedAction && order.cancelled && !order.refundMade && (
+                <button onClick={() => onMarkRefund?.(order._id)} disabled={refundingId === order._id}
+                  className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-3 py-2 rounded-lg font-semibold text-sm w-full">
+                  {refundingId === order._id ? "Processing..." : "💳 Mark Refund as Done"}
+                </button>
+              )}
+              {order.cancelled && order.refundMade && (
                 <span className="text-center text-sm bg-purple-100 text-purple-700 border border-purple-200 rounded-lg px-3 py-1.5 font-semibold">
                   ✅ Refund Completed
                 </span>

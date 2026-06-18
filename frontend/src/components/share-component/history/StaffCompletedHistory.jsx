@@ -4,11 +4,34 @@ import SharedOrderTable from "./SharedOrderTable";
 import axiosInstance from "../../../utils/axiosInstance";
 import ReceiptModal from "../receipt/ReceiptModal";
 
+// ── Delegation action info banner ─────────────────────────────────────────────
+// Shown above the table when the current staff has delegated-action history
+const DelegationInfoBanner = ({ delegatedCount }) => {
+  if (!delegatedCount) return null;
+  return (
+    <div className="mb-4 flex items-start gap-3 bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3">
+      <span className="text-xl">🛡️</span>
+      <div className="text-xs text-indigo-800 leading-relaxed">
+        <p className="font-semibold mb-0.5">Delegated Actions Included</p>
+        <p>
+          {delegatedCount} order status change{delegatedCount !== 1 ? "s" : ""} you made
+          as a delegated staff member {delegatedCount !== 1 ? "are" : "is"} shown in this history
+          with a <span className="font-semibold">🛡️ Delegated</span> badge.
+        </p>
+      </div>
+    </div>
+  );
+};
+
 const StaffCompletedHistory = () => {
   const [orders,           setOrders]           = useState([]);
   const [loading,          setLoading]          = useState(true);
   const [invoiceParams,    setInvoiceParams]    = useState(null);
   const [showReceiptPrompt,setShowReceiptPrompt]= useState(false);
+  const [refundingId,      setRefundingId]      = useState(null);
+
+  // Count how many delegated-action entries are in the history
+  const delegatedCount = orders.filter((o) => o.isDelegatedAction === true).length;
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -75,6 +98,35 @@ const StaffCompletedHistory = () => {
     }
   }, []);
 
+  // ── Refund — only for delegated-action orders this staff member cancelled ──
+  const handleMarkRefund = useCallback(async (orderId) => {
+    const confirmed = window.confirm(
+      "⚠️ Mark refund as completed?\n\n" +
+      "This is irreversible. The order will be excluded from revenue and the buyer will see it as REFUNDED."
+    );
+    if (!confirmed) return;
+    setRefundingId(orderId);
+    try {
+      const res = await axiosInstance.post(`/completed-history/${orderId}/refund`);
+      if (res.data.success) {
+        toast.success("Refund marked. The order is now excluded from revenue.");
+        setOrders((prev) =>
+          prev.map((o) =>
+            o._id === orderId
+              ? { ...o, refundMade: true, refundMadeAt: new Date().toISOString(), deliveryStatus: "refunded" }
+              : o
+          )
+        );
+      } else {
+        toast.error(res.data.message || "Failed to mark refund");
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Error marking refund");
+    } finally {
+      setRefundingId(null);
+    }
+  }, []);
+
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
   if (loading) return <p className="text-center py-10">Loading...</p>;
@@ -83,6 +135,9 @@ const StaffCompletedHistory = () => {
     <div className="p-5">
       <h2 className="text-2xl font-bold mb-3">📜 Staff Completed Orders</h2>
 
+      {/* Delegation info banner — only shows when delegated action history exists */}
+      <DelegationInfoBanner delegatedCount={delegatedCount} />
+
       <SharedOrderTable
         orders={orders}
         role="staff"
@@ -90,6 +145,8 @@ const StaffCompletedHistory = () => {
         onDeleteMany={deleteOrderDirect}
         onClearAll={clearAllOrders}
         onViewReceipt={handleViewReceipt}
+        onMarkRefund={handleMarkRefund}
+        refundingId={refundingId}
       />
 
       <ReceiptModal

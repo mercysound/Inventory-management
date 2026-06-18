@@ -20,6 +20,7 @@ import Product from "./components/share-component/product/Product.jsx";
 import Logout from "./components/share-component/logout/Logout.jsx";
 import CompleteProfile from "./components/share-component/complete-profile/CompleteProfile.jsx";
 import StaffOrders from "./components/staff/orders/StaffOrders.jsx";
+import StaffPlacedOrders from "./components/staff/placedOrders/StaffPlacedOrders.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
 
@@ -91,6 +92,7 @@ function App() {
           >
             <Route index                    element={<CustomerProducts />} />
             <Route path="orders"            element={<StaffOrders />} />
+            <Route path="placed-orders"     element={<StaffPlacedOrders />} />
             <Route path="completed-history" element={<StaffCompletedHistory />} />
             <Route path="profile"           element={<Profile />} />
             <Route path="logout"            element={<Logout />} />

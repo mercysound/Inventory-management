@@ -2,26 +2,17 @@
 import express from "express";
 import {
   getAllPlacedOrders,
+  getPlacedOrderById,
   updateDeliveryStatus,
   clearAllPlacedOrders,
 } from "../controllers/allOrdersPlacedController.js";
 import { authMiddleware, authorizeRoles } from "../middleware/authMiddleware.js";
+import { checkDelegatedAccess, softDelegationCheck } from "../middleware/delegationMiddleware.js";
 import orderNotifier from "../utils/orderNotifier.js";
 
 const router = express.Router();
 
-// GET all placed orders (admin sees all; others see their own)
-router.get("/", authMiddleware, getAllPlacedOrders);
-
-// PUT update delivery status for a placed order
-router.put("/:id/status", authMiddleware, authorizeRoles("admin"), updateDeliveryStatus);
-
-// DELETE clear all placed orders
-router.delete("/clear/all", authMiddleware, authorizeRoles("admin"), clearAllPlacedOrders);
-
-// ── SSE stream — pushes real-time order status updates to buyers ─────────────
-// Customers / wholesale connect here and get notified instantly when the admin
-// changes their order status — no page reload needed.
+// ── SSE stream — MUST be defined before /:id so "stream" is not treated as an id ──
 router.get("/stream", authMiddleware, (req, res) => {
   res.set({
     "Content-Type":  "text/event-stream",
@@ -39,7 +30,6 @@ router.get("/stream", authMiddleware, (req, res) => {
     } catch (e) { /* ignore — client disconnected */ }
   };
 
-  // Only forward events that belong to this user (or broadcast events)
   const onOrderUpdated = (payload) => {
     if (!payload.userId || payload.userId === userId) {
       sendEvent("placedOrderUpdated", payload);
@@ -48,7 +38,6 @@ router.get("/stream", authMiddleware, (req, res) => {
 
   orderNotifier.on("placedOrderUpdated", onOrderUpdated);
 
-  // Keep-alive ping every 20 s so the connection isn't dropped by proxies
   const keepAlive = setInterval(() => {
     try { res.write(": ping\n\n"); } catch (e) { /* ignore */ }
   }, 20_000);
@@ -58,5 +47,18 @@ router.get("/stream", authMiddleware, (req, res) => {
     orderNotifier.removeListener("placedOrderUpdated", onOrderUpdated);
   });
 });
+
+// GET all placed orders — all authenticated users; controller filters by role
+// softDelegationCheck passes customers/wholesale through and sets isDelegatedStaff for staff
+router.get("/", authMiddleware, softDelegationCheck, getAllPlacedOrders);
+
+// GET a single placed order by ID — admin and delegated staff only
+router.get("/:id", authMiddleware, checkDelegatedAccess, getPlacedOrderById);
+
+// PUT update delivery status — admin and delegated staff only
+router.put("/:id/status", authMiddleware, checkDelegatedAccess, updateDeliveryStatus);
+
+// DELETE clear all placed orders — admin only
+router.delete("/clear/all", authMiddleware, authorizeRoles("admin"), clearAllPlacedOrders);
 
 export default router;

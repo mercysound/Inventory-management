@@ -410,9 +410,10 @@ const generateInvoice = async (req, res) => {
           desc: o.product?.description || "",
           categoryName: o.product?.categoryId?.name,
         },
-        quantity: o.quantity,
-        price: o.price,
+        quantity:  o.quantity,
+        price:     o.price,
         totalPrice: o.quantity * o.price,
+        priceMode: o.priceMode || "retail",  // ← needed for roleBadge in preview
       }));
     }
 
@@ -430,6 +431,7 @@ const generateInvoice = async (req, res) => {
 
       const tryFindOrder = async (Model) => Model
         .findOne(query)
+        .populate("userOrdering", "name role email")
         .populate(populateOpts)
         .sort({ createdAt: -1 });
 
@@ -454,33 +456,96 @@ const generateInvoice = async (req, res) => {
       if (!order) return res.status(404).json({ message: "Order not found" });
 
       receiptOrderId = order._id;
+
+      // ── Override name + payment from the actual order document ────────────
+      // Query params customerName / paymentMethod are only reliable for brand-new
+      // receipts generated immediately after checkout (where we pass them directly).
+      // For history receipts, always use the stored values so they are never blank.
+      const resolvedCustomerName  = order.buyerName
+        || order.userOrdering?.name
+        || (safeCustomerName !== "Guest Customer" ? safeCustomerName : null)
+        || "Customer";
+      const resolvedPaymentMethod = order.paymentMethod
+        || (safePaymentMethod !== "Not Specified" ? safePaymentMethod : null)
+        || "Not Specified";
+
+      // Determine buyer role badge (WS / RT) and price mode
+      const buyerRole   = order.userOrdering?.role || null;
+      const isCancelled = order.cancelled === true;
+      const cancelledAt = order.cancelledAt ? new Date(order.cancelledAt) : null;
+      const refundMade  = order.refundMade  === true;
+
+      // For delegated-staff orders, include the staff info
+      const changedByName = order.changedByName || null;
+      const changedById   = order.changedBy ? String(order.changedBy).slice(-8).toUpperCase() : null;
+      const isDelegated   = order.isDelegatedAction === true;
+
       orders = order.productList.map((i) => ({
         product: {
           name: i.productName || i.productId?.name || i.productDescription || i.categoryName || "Unknown Product",
           desc: i.productDescription || (i.categoryName ? `Category: ${i.categoryName}` : "") || i.productId?.description || "",
           categoryName: i.categoryName || i.productId?.categoryId?.name || "",
         },
-        quantity: i.quantity,
-        price: i.price,
+        quantity:   i.quantity,
+        price:      i.price,
         totalPrice: i.totalPrice,
-        priceMode: i.priceMode,
+        priceMode:  i.priceMode,
       }));
+
+      // Expose resolved values for the render sections below
+      Object.assign(req, {
+        _resolvedCustomerName:  resolvedCustomerName,
+        _resolvedPaymentMethod: resolvedPaymentMethod,
+        _buyerRole:   buyerRole,
+        _isCancelled: isCancelled,
+        _cancelledAt: cancelledAt,
+        _refundMade:  refundMade,
+        _changedByName: changedByName,
+        _changedById:   changedById,
+        _isDelegated:   isDelegated,
+        _orderCreatedAt: order.createdAt,
+      });
     }
 
     if (!orders.length)
       return res.status(404).json({ message: "No orders found" });
 
     /* ======================================================
-       3  TOTALS
+       3  RESOLVE FINAL DISPLAY VALUES
+          For preview mode: use query-param values (user just typed them).
+          For final/history mode: use the stored order values resolved above.
     ====================================================== */
+    const displayName    = req._resolvedCustomerName  || safeCustomerName;
+    const displayPayment = req._resolvedPaymentMethod || safePaymentMethod;
+    const buyerRole      = req._buyerRole   || null;
+    const isCancelled    = req._isCancelled || false;
+    const cancelledAt    = req._cancelledAt || null;
+    const refundMade     = req._refundMade  || false;
+    const changedByName  = req._changedByName || null;
+    const changedById    = req._changedById   || null;
+    const isDelegated    = req._isDelegated   || false;
+    const orderCreatedAt = req._orderCreatedAt || null;
+
+    // Role badge label: WS for wholesale, RT for retail customer, Staff for staff
+    // For walk-in (staff) orders, determine from first product's priceMode
+    const firstPriceMode = orders[0]?.priceMode || "retail";
+    let roleBadge = "";
+    if (buyerRole === "wholesale") roleBadge = "WS";
+    else if (buyerRole === "customer") roleBadge = "RT";
+    else if (buyerRole === "staff") roleBadge = firstPriceMode === "wholesale" ? "WS" : "RT";
+    // For preview mode — infer from logged-in user's role
+    else if (mode === "preview") {
+      if (req.user?.role === "wholesale") roleBadge = "WS";
+      else if (req.user?.role === "customer") roleBadge = "RT";
+      else if (req.user?.role === "staff") roleBadge = firstPriceMode === "wholesale" ? "WS" : "RT";
+    }
     const totalAmount  = orders.reduce((sum, o) => sum + o.totalPrice, 0);
     const orderIdShort = receiptOrderId
       ? String(receiptOrderId).slice(-10).toUpperCase()
       : "N/A";
-    const dateStr = new Date().toLocaleString("en-NG", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
+    const dateStr = orderCreatedAt
+      ? new Date(orderCreatedAt).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" })
+      : new Date().toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" });
 
     /* ======================================================
        4  RAW PDF DOWNLOAD - only when ?download=true
@@ -517,15 +582,39 @@ const generateInvoice = async (req, res) => {
         [
           ["Order ID:", orderIdShort],
           ["Date:", dateStr],
-          ["Customer:", customerName],
-          ["Payment:", paymentMethod],
-          ["Status:", paymentStatus],
+          ["Customer:", displayName],
+          ["Payment:", displayPayment],
+          ["Status:", isCancelled ? "CANCELLED" : paymentStatus],
+          ...(roleBadge ? [["PT:", roleBadge === "WS" ? "WSP" : "RTP"]] : []),
+          ...(buyerRole === "staff" && changedByName ? [["Staff:", changedByName + (changedById ? "  #" + changedById : "")]] : []),
+          ...(buyerRole === "staff" && !changedByName && req.user?.role === "staff" ? [["Staff:", (req.user.name || "Staff") + "  #" + String(req.user._id).slice(-8).toUpperCase()]] : []),
         ].forEach(([label, value]) => {
           const ly = doc.y;
           doc.font("Helvetica-Bold").text(label, margin, ly, { continued: false, width: 70 });
           doc.font("Helvetica").text(value, margin + 72, ly, { width: contentWidth - 72 });
           doc.moveDown(0.3);
         });
+
+        // ── Cancellation block (PDF) ────────────────────────────────────────
+        if (isCancelled) {
+          divider();
+          doc.moveDown(0.5);
+          doc.fontSize(7.5).font("Helvetica-Bold").fillColor("#b91c1c")
+            .text("ORDER CANCELLED", margin, doc.y, { align: "center", width: contentWidth });
+          doc.font("Helvetica").fontSize(7).fillColor("#374151").moveDown(0.3);
+          if (cancelledAt) {
+            const cly = doc.y;
+            doc.font("Helvetica-Bold").text("Cancelled on:", margin, cly, { width: 75 });
+            doc.font("Helvetica").text(new Date(cancelledAt).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" }), margin + 77, cly, { width: contentWidth - 77 });
+            doc.moveDown(0.3);
+          }
+          if (refundMade) {
+            doc.font("Helvetica-Bold").fillColor("#7c3aed").text("Refund: Completed", margin, doc.y, { width: contentWidth });
+          } else {
+            doc.font("Helvetica-Bold").fillColor("#b91c1c").text("Refund: Pending — contact store", margin, doc.y, { width: contentWidth });
+          }
+          doc.fillColor("#000").moveDown(0.3);
+        }
 
         divider();
         doc.moveDown(0.5);
@@ -648,9 +737,10 @@ const generateInvoice = async (req, res) => {
           React ReceiptModal component outside the iframe.
     ====================================================== */
 
-    const statusColor  = paymentStatus === "Paid" ? "#15803d" : "#b91c1c";
-    const statusBg     = paymentStatus === "Paid" ? "#f0fdf4" : "#fef2f2";
-    const statusBorder = paymentStatus === "Paid" ? "#bbf7d0" : "#fecaca";
+    const statusColor  = (isCancelled) ? "#b91c1c" : (paymentStatus === "Paid" ? "#15803d" : "#b91c1c");
+    const statusBg     = (isCancelled) ? "#fef2f2" : (paymentStatus === "Paid" ? "#f0fdf4" : "#fef2f2");
+    const statusBorder = (isCancelled) ? "#fecaca" : (paymentStatus === "Paid" ? "#bbf7d0" : "#fecaca");
+    const statusLabel  = isCancelled ? "CANCELLED" : paymentStatus;
 
     const itemRows = orders.map((o, idx) => {
       const rawName = o.product.name || o.product.desc || o.product.categoryName || "Unknown item";
@@ -749,10 +839,32 @@ const generateInvoice = async (req, res) => {
       '<div class="meta">',
       '<div class="meta-row"><span class="meta-lbl">Order ID</span><span class="meta-val">#' + orderIdShort + '</span></div>',
       '<div class="meta-row"><span class="meta-lbl">Date</span><span class="meta-val">' + dateStr + '</span></div>',
-      '<div class="meta-row"><span class="meta-lbl">Customer</span><span class="meta-val">' + safeCustomerName + '</span></div>',
-      '<div class="meta-row"><span class="meta-lbl">Payment method</span><span class="meta-val">' + safePaymentMethod + '</span></div>',
-      '<div class="meta-row"><span class="meta-lbl">Status</span><span class="meta-val"><span class="status-badge">' + paymentStatus + '</span></span></div>',
+      '<div class="meta-row"><span class="meta-lbl">Customer</span><span class="meta-val">' + escapeHtml(displayName) + '</span></div>',
+      '<div class="meta-row"><span class="meta-lbl">Payment method</span><span class="meta-val">' + escapeHtml(displayPayment) + '</span></div>',
+      '<div class="meta-row"><span class="meta-lbl">Status</span><span class="meta-val"><span class="status-badge">' + statusLabel + '</span></span></div>',
+      // PT row — WSP or RTP, subtle abbreviation
+      ...(roleBadge ? [
+        '<div class="meta-row"><span class="meta-lbl">PT</span><span class="meta-val"><span style="background:' + (roleBadge === "WS" ? "#fef3c7" : "#eff6ff") + ';color:' + (roleBadge === "WS" ? "#92400e" : "#1d4ed8") + ';border:1px solid ' + (roleBadge === "WS" ? "#fde68a" : "#bfdbfe") + ';padding:1px 8px;border-radius:99px;font-size:.7rem;font-weight:700;">' + (roleBadge === "WS" ? "WSP" : "RTP") + '</span></span></div>',
+      ] : []),
+      // Staff info row — for walk-in (staff-created) orders
+      ...(buyerRole === "staff" && changedByName ? [
+        '<div class="meta-row"><span class="meta-lbl">Staff</span><span class="meta-val">' + escapeHtml(changedByName) + (changedById ? ' <span style="font-size:.68rem;color:#9ca3af">#' + changedById + '</span>' : '') + '</span></div>',
+      ] : []),
+      ...(buyerRole === "staff" && !changedByName && req.user?.role === "staff" ? [
+        '<div class="meta-row"><span class="meta-lbl">Staff</span><span class="meta-val">' + escapeHtml(req.user.name || "Staff") + ' <span style="font-size:.68rem;color:#9ca3af">#' + String(req.user._id).slice(-8).toUpperCase() + '</span></span></div>',
+      ] : []),
       '</div>',
+
+      // ── Cancellation notice block ──────────────────────────────────────────
+      ...(isCancelled ? [
+        '<hr class="dash"/>',
+        '<div style="margin:0 16px 0;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 14px;">',
+        '<div style="font-weight:700;color:#b91c1c;font-size:.74rem;text-align:center;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;">⚠️ Order Cancelled</div>',
+        ...(cancelledAt ? ['<div style="display:flex;justify-content:space-between;font-size:.75rem;padding:3px 0;"><span style="font-weight:600;color:#6b7280;">Cancelled on</span><span>' + new Date(cancelledAt).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" }) + '</span></div>'] : []),
+        '<div style="display:flex;justify-content:space-between;font-size:.75rem;padding:3px 0;"><span style="font-weight:600;color:#6b7280;">Refund</span><span style="font-weight:700;color:' + (refundMade ? "#7c3aed" : "#b91c1c") + '">' + (refundMade ? "✅ Completed" : "⏳ Pending — contact store") + '</span></div>',
+        '</div>',
+        '<div style="height:12px"></div>',
+      ] : []),
 
       '<hr class="dash"/>',
 
@@ -888,7 +1000,9 @@ const setPriceMode = async (req, res) => {
     // Fetch all user's cart orders
     const orders = await OrderModel.find({ userOrdering: userId }).populate("product");
     if (!orders.length) {
-      return sendError(res, 400, "Your cart is empty");
+      // Empty cart — nothing to reprice, but this is not an error.
+      // Wholesale users hit this on every page load before adding items.
+      return sendResponse(res, 200, { success: true, updated: 0 }, "Cart is empty — nothing to update");
     }
 
     // Update each order with the new price tier

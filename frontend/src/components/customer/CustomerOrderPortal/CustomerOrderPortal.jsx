@@ -89,6 +89,9 @@ const CustomerOrderPortal = () => {
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [loading,        setLoading]        = useState(true);
   const [refreshing,     setRefreshing]     = useState(false);
+  // Incremented each time SSE fires — tells the modal to silently re-fetch
+  // its cancelled-pending list without any prop-sync loop.
+  const [modalRefreshKey, setModalRefreshKey] = useState(0);
 
   // Receipt states
   const [showReceiptPrompt, setShowReceiptPrompt] = useState(false);
@@ -156,7 +159,7 @@ const CustomerOrderPortal = () => {
     return () => window.removeEventListener("ordersUpdated", onExternalUpdate);
   }, [fetchOrders]);
 
-  // ── SSE: listen for real-time order status changes from admin ─────────────
+  // ── SSE: listen for real-time order status changes from admin/delegated staff ──
   // Stays alive the whole time the user is on the cart page so the pending
   // badge, stats row, and modal all update instantly without a page reload.
   useEffect(() => {
@@ -168,8 +171,10 @@ const CustomerOrderPortal = () => {
     const es   = new EventSource(url);
 
     es.addEventListener("placedOrderUpdated", () => {
-      // Silent re-fetch — no spinner, just updates badge + stats instantly
+      // Silently re-fetch cart data and pending orders list
       fetchOrders(true);
+      // Bump the key so the modal re-fetches its cancelled-pending list silently
+      setModalRefreshKey((k) => k + 1);
     });
 
     es.addEventListener("error", () => {
@@ -566,12 +571,12 @@ const CustomerOrderPortal = () => {
 
       {/* ── Modals ─────────────────────────────────────────────────────────── */}
 
-      {/* Pending orders modal — also shows cancelled orders awaiting refund */}
+      {/* Pending orders modal — shows active orders + cancelled-awaiting-refund */}
       <PendingOrdersModal
         isOpen={showPendingModal}
         onClose={() => setShowPendingModal(false)}
-        pendingOrders={pendingOrders}
-        onRefresh={() => fetchOrders(true)}
+        activeOrders={pendingOrders}
+        refreshKey={modalRefreshKey}
       />
 
       {/* Final receipt modal */}

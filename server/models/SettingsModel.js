@@ -39,6 +39,20 @@ const settingsSchema = new mongoose.Schema(
       type:    Date,
       default: null,
     },
+
+    // ── Staff Order Management Delegation ─────────────────────────────────
+    // delegateToAllStaff: true → every staff member can manage placed orders
+    // delegatedStaffIds:  list of specific staff user IDs when not delegating to all
+    // Only one mode is active at a time — if delegateToAllStaff is true,
+    // delegatedStaffIds is ignored on the server.
+    delegateToAllStaff: { type: Boolean, default: false },
+    delegatedStaffIds: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref:  "User",
+      },
+    ],
+    // ─────────────────────────────────────────────────────────────────────
   },
   { timestamps: true }
 );

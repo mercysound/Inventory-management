@@ -9,12 +9,11 @@ import SkeletonLoader from "../../common/SkeletonLoader";
 const StatusBadge = ({ status }) => {
   const s = status?.toLowerCase() || "pending";
   const config = {
-    pending:    { bg: "bg-amber-50",   text: "text-amber-700",  border: "border-amber-200",  icon: <Clock size={11} /> },
-    "in transit":{ bg:"bg-blue-50",   text: "text-blue-700",   border: "border-blue-200",   icon: <Truck size={11} /> },
-    processing: { bg: "bg-purple-50",  text: "text-purple-700", border: "border-purple-200", icon: <RefreshCw size={11} /> },
-    completed:  { bg: "bg-green-50",   text: "text-green-700",  border: "border-green-200",  icon: <PackageCheck size={11} /> },
-    // ✅ Cancelled status shown in pending modal until refund is made
-    cancelled:  { bg: "bg-red-50",     text: "text-red-700",    border: "border-red-200",    icon: <AlertTriangle size={11} /> },
+    pending:      { bg: "bg-amber-50",  text: "text-amber-700",  border: "border-amber-200",  icon: <Clock size={11} /> },
+    "in transit": { bg: "bg-blue-50",   text: "text-blue-700",   border: "border-blue-200",   icon: <Truck size={11} /> },
+    processing:   { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200", icon: <RefreshCw size={11} /> },
+    completed:    { bg: "bg-green-50",  text: "text-green-700",  border: "border-green-200",  icon: <PackageCheck size={11} /> },
+    cancelled:    { bg: "bg-red-50",    text: "text-red-700",    border: "border-red-200",    icon: <AlertTriangle size={11} /> },
   };
   const c = config[s] || config.pending;
   return (
@@ -63,7 +62,10 @@ const OrderCard = ({ order, index, isCancelled }) => (
         Please contact the store if you have not received it.
         {order.cancelledAt && (
           <span className="block mt-0.5 text-red-500">
-            Cancelled on: {new Date(order.cancelledAt).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })}
+            Cancelled on:{" "}
+            {new Date(order.cancelledAt).toLocaleDateString("en-NG", {
+              day: "numeric", month: "long", year: "numeric",
+            })}
           </span>
         )}
       </div>
@@ -109,84 +111,74 @@ const OrderCard = ({ order, index, isCancelled }) => (
 );
 
 // ─── Main modal ────────────────────────────────────────────────────────────────
-const PendingOrdersModal = ({ isOpen, onClose, pendingOrders = [], onRefresh }) => {
-  const [orders,          setOrders]          = useState([]);
+//
+// Data responsibilities:
+//   activeOrders   — passed from parent (CustomerOrderPortal), kept fresh by
+//                    the parent's SSE connection. Covers pending + processing.
+//   cancelledOrders — fetched here once on open, then silently re-fetched
+//                    whenever `refreshKey` changes (parent increments it on
+//                    every SSE event, including refund notifications).
+//
+// This design avoids the flicker loop that caused skeleton/content toggling.
+// ─────────────────────────────────────────────────────────────────────────────
+const PendingOrdersModal = ({
+  isOpen,
+  onClose,
+  activeOrders = [],
+  refreshKey   = 0,
+}) => {
   const [cancelledOrders, setCancelledOrders] = useState([]);
   const [loading,         setLoading]         = useState(false);
-  const esRef = useRef(null);
 
-  // ── Fetch both active-pending and cancelled-pending ────────────────────────
-  const fetchAll = useCallback(async (silent = false) => {
+  // Guards against React StrictMode double-invoke on mount
+  const hasFetchedRef  = useRef(false);
+  // Tracks the last refreshKey we acted on — must be declared before effects
+  const prevRefreshKey = useRef(refreshKey);
+
+  // ── Fetch cancelled-pending list ──────────────────────────────────────────
+  const fetchCancelled = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      const [placedRes, cancelledRes] = await Promise.all([
-        axiosInstance.get("/placed-orders"),
-        axiosInstance.get("/completed-history/cancelled-pending"),
-      ]);
-
-      if (placedRes.data.success) {
-        const history = placedRes.data.orders || [];
-        setOrders(
-          history.filter((o) =>
-            ["pending", "processing"].includes(o.deliveryStatus?.toLowerCase())
-          )
-        );
-      }
-      if (cancelledRes.data.success) {
-        setCancelledOrders(cancelledRes.data.orders || []);
+      const res = await axiosInstance.get("/completed-history/cancelled-pending");
+      if (res.data.success) {
+        setCancelledOrders(res.data.orders || []);
       }
     } catch {
-      if (!silent) toast.error("Failed to fetch orders");
+      if (!silent) toast.error("Failed to load cancelled orders");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
-  // ── Open / close lifecycle ─────────────────────────────────────────────────
+  // ── On open: fetch once; on close: reset guards ───────────────────────────
   useEffect(() => {
     if (!isOpen) {
-      // Close SSE when modal closes
-      if (esRef.current) { esRef.current.close(); esRef.current = null; }
+      // Reset so next open triggers a fresh fetch
+      hasFetchedRef.current  = false;
+      // Sync baseline so a refreshKey that changed while closed doesn't
+      // trigger a redundant silent fetch the moment the modal re-opens
+      prevRefreshKey.current = refreshKey;
       return;
     }
-
-    // Initial fetch when modal opens
-    fetchAll();
-
-    // ── Open SSE stream for real-time updates ──────────────────────────────
-    const token = localStorage.getItem("pos-token");
-    if (token) {
-      const base = import.meta.env.VITE_API_URL || "/api";
-      const url  = `${base}/placed-orders/stream?token=${encodeURIComponent(token)}`;
-      const es   = new EventSource(url);
-      esRef.current = es;
-
-      es.addEventListener("placedOrderUpdated", () => {
-        // Re-fetch silently — no spinner, instant update
-        fetchAll(true);
-        // Also tell the parent CartPage to refresh its badge count
-        onRefresh?.();
-      });
-
-      es.addEventListener("error", () => {
-        // SSE error — close and let it reconnect on next modal open
-        es.close();
-        esRef.current = null;
-      });
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      fetchCancelled(false);
     }
+  }, [isOpen]); // intentionally only [isOpen] — fetchCancelled is stable, refreshKey handled below
 
-    return () => {
-      if (esRef.current) { esRef.current.close(); esRef.current = null; }
-    };
-  }, [isOpen, fetchAll, onRefresh]);
-
-  // ── Keep local orders in sync when parent passes fresh pendingOrders ───────
+  // ── Silent re-fetch when parent signals an update ─────────────────────────
+  // refreshKey increments each time the parent SSE fires (status change OR refund).
+  // We compare against prevRefreshKey to act only on new increments.
   useEffect(() => {
-    if (pendingOrders.length > 0) setOrders(pendingOrders);
-  }, [pendingOrders]);
+    if (!isOpen) return;
+    if (refreshKey !== prevRefreshKey.current) {
+      prevRefreshKey.current = refreshKey;
+      fetchCancelled(true); // silent — no spinner, no loading flash
+    }
+  }, [isOpen, refreshKey, fetchCancelled]);
 
-  const grandTotal      = orders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
-  const totalOrderCount = orders.length + cancelledOrders.length;
+  const grandTotal      = activeOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+  const totalOrderCount = activeOrders.length + cancelledOrders.length;
 
   return (
     <AnimatePresence>
@@ -225,8 +217,10 @@ const PendingOrdersModal = ({ isOpen, onClose, pendingOrders = [], onRefresh }) 
                   </p>
                 </div>
               </div>
-              <button onClick={onClose}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition">
+              <button
+                onClick={onClose}
+                className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"
+              >
                 <X size={18} />
               </button>
             </div>
@@ -247,12 +241,12 @@ const PendingOrdersModal = ({ isOpen, onClose, pendingOrders = [], onRefresh }) 
                 </div>
               ) : (
                 <>
-                  {/* Active pending/processing orders */}
-                  {orders.map((order, i) => (
+                  {/* Active pending / processing — from parent prop, no fetch here */}
+                  {activeOrders.map((order, i) => (
                     <OrderCard key={order._id} order={order} index={i} isCancelled={false} />
                   ))}
 
-                  {/* ✅ Cancelled-but-not-refunded orders */}
+                  {/* Cancelled-but-not-refunded — auto-removed when refund is marked */}
                   {cancelledOrders.length > 0 && (
                     <>
                       <div className="flex items-center gap-2 pt-2">
@@ -266,7 +260,7 @@ const PendingOrdersModal = ({ isOpen, onClose, pendingOrders = [], onRefresh }) 
                         <OrderCard
                           key={order._id}
                           order={order}
-                          index={orders.length + i}
+                          index={activeOrders.length + i}
                           isCancelled={true}
                         />
                       ))}
@@ -276,11 +270,11 @@ const PendingOrdersModal = ({ isOpen, onClose, pendingOrders = [], onRefresh }) 
               )}
             </div>
 
-            {/* Footer / grand total */}
-            {orders.length > 0 && (
+            {/* Footer / grand total — only active orders count */}
+            {activeOrders.length > 0 && (
               <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100 bg-gray-50 flex-shrink-0">
                 <span className="text-sm text-gray-500 font-medium">
-                  Grand Total ({orders.length} active order{orders.length !== 1 ? "s" : ""})
+                  Grand Total ({activeOrders.length} active order{activeOrders.length !== 1 ? "s" : ""})
                 </span>
                 <span className="text-lg font-bold text-gray-900">
                   ₦{grandTotal.toLocaleString()}

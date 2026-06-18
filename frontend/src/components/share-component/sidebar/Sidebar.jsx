@@ -1,16 +1,19 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   FaBox, FaCog, FaHome, FaShoppingCart, FaSignOutAlt,
-  FaTable, FaTruck, FaUsers, FaTimes, FaHistory,
+  FaTable, FaTruck, FaUsers, FaTimes, FaHistory, FaClipboardList,
 } from "react-icons/fa";
 import { Clock } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../../context/AuthContext";
+import { useDelegation } from "../../../hooks/useDelegation";
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  // Delegation status — only fetches when user is staff
+  const { isDelegated } = useDelegation();
 
   const adminMenu = [
     { name: "Dashboard",       path: "/admin-dashboard",                    icon: <FaHome /> },
@@ -28,13 +31,25 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     { name: "Logout",          path: "/logout",                             icon: <FaSignOutAlt /> },
   ];
 
-  const staffMenu = [
-    { name: "Products", path: "/customer-dashboard",                   icon: <FaBox /> },
-    { name: "Cart",     path: "/customer-dashboard/orders",            icon: <FaShoppingCart /> },
-    { name: "History",  path: "/customer-dashboard/completed-history", icon: <FaHistory /> },
-    { name: "Profile",  path: "/customer-dashboard/profile",           icon: <FaCog /> },
-    { name: "Logout",   path: "/logout",                               icon: <FaSignOutAlt /> },
+  const staffMenuBase = [
+    { name: "Products",     path: "/customer-dashboard",                   icon: <FaBox /> },
+    { name: "Cart",         path: "/customer-dashboard/orders",            icon: <FaShoppingCart /> },
+    { name: "History",      path: "/customer-dashboard/completed-history", icon: <FaHistory /> },
+    { name: "Profile",      path: "/customer-dashboard/profile",           icon: <FaCog /> },
+    { name: "Logout",       path: "/logout",                               icon: <FaSignOutAlt /> },
   ];
+
+  // Inject "Placed Orders" item right before Profile when staff is delegated
+  const staffMenu = isDelegated
+    ? [
+        { name: "Products",      path: "/customer-dashboard",                   icon: <FaBox /> },
+        { name: "Cart",          path: "/customer-dashboard/orders",            icon: <FaShoppingCart /> },
+        { name: "Placed Orders", path: "/customer-dashboard/placed-orders",     icon: <FaClipboardList />, highlight: true },
+        { name: "History",       path: "/customer-dashboard/completed-history", icon: <FaHistory /> },
+        { name: "Profile",       path: "/customer-dashboard/profile",           icon: <FaCog /> },
+        { name: "Logout",        path: "/logout",                               icon: <FaSignOutAlt /> },
+      ]
+    : staffMenuBase;
 
   const customerMenu = [
     { name: "Products", path: "/user-dashboard",                   icon: <FaBox /> },
@@ -53,14 +68,15 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     { name: "Logout",   path: "/logout",                                icon: <FaSignOutAlt /> },
   ];
 
-  const [menuLinks, setMenuLinks] = useState([]);
-
-  useEffect(() => {
-    if (user?.role === "admin")     setMenuLinks(adminMenu);
-    else if (user?.role === "staff")     setMenuLinks(staffMenu);
-    else if (user?.role === "customer")  setMenuLinks(customerMenu);
-    else if (user?.role === "wholesale") setMenuLinks(wholesaleMenu);
-  }, [user]);
+  // Derive menu links directly — no useState needed, recomputes when
+  // user role or isDelegated (for staff) changes.
+  const menuLinks = (() => {
+    if (user?.role === "admin")     return adminMenu;
+    if (user?.role === "staff")     return staffMenu;
+    if (user?.role === "customer")  return customerMenu;
+    if (user?.role === "wholesale") return wholesaleMenu;
+    return [];
+  })();
 
   return (
     <AnimatePresence>

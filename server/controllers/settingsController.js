@@ -178,3 +178,156 @@ export const getAdminEmail = async () => {
 
   return process.env.ADMIN_EMAIL || "";
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /settings/delegation
+// Admin reads current delegation config (which staff are delegated).
+// Populates staff user details for the UI.
+// ─────────────────────────────────────────────────────────────────────────────
+export const getDelegation = async (req, res) => {
+  try {
+    const settings = await SettingsModel.findOne({ userId: req.user._id })
+      .populate("delegatedStaffIds", "name email role isActive");
+
+    return sendResponse(res, 200, {
+      delegateToAllStaff: settings?.delegateToAllStaff ?? false,
+      delegatedStaffIds:  settings?.delegatedStaffIds  ?? [],
+    }, "Delegation settings retrieved");
+  } catch (err) {
+    console.error("getDelegation error:", err.message);
+    return sendError(res, 500, "Failed to fetch delegation settings");
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PUT /settings/delegation
+// Admin sets delegation mode.
+//
+// Body:
+//   { delegateToAllStaff: boolean, delegatedStaffIds: string[] }
+//
+// If delegateToAllStaff is true, delegatedStaffIds is cleared on the server
+// so there is no ambiguity about which mode is active.
+//
+// Sends email notifications to staff when their access is granted or revoked.
+// ─────────────────────────────────────────────────────────────────────────────
+export const updateDelegation = async (req, res) => {
+  try {
+    const { delegateToAllStaff, delegatedStaffIds } = req.body;
+
+    // Load current settings to diff who was added/removed
+    const current = await SettingsModel.findOne({ userId: req.user._id });
+    const prevAllStaff  = current?.delegateToAllStaff ?? false;
+    const prevIds       = (current?.delegatedStaffIds || []).map((id) => String(id));
+
+    const patch = {};
+
+    if (typeof delegateToAllStaff === "boolean") {
+      patch.delegateToAllStaff = delegateToAllStaff;
+      if (delegateToAllStaff) patch.delegatedStaffIds = [];
+    }
+
+    if (Array.isArray(delegatedStaffIds) && !delegateToAllStaff) {
+      patch.delegatedStaffIds  = delegatedStaffIds;
+      patch.delegateToAllStaff = false;
+    }
+
+    const settings = await SettingsModel.findOneAndUpdate(
+      { userId: req.user._id },
+      { $set: patch },
+      { new: true, upsert: true }
+    ).populate("delegatedStaffIds", "name email role isActive");
+
+    // ── Fire-and-forget delegation change emails ──────────────────────────
+    setImmediate(async () => {
+      try {
+        const { sendStaffDelegationEmail } = await import("../utils/email/staffDelegationEmail.js");
+        const storeName = current?.storeName || "Melech Store";
+        const adminName = req.user.name || "Admin";
+
+        const newAllStaff = settings.delegateToAllStaff;
+        const newIds      = (settings.delegatedStaffIds || []).map((u) =>
+          typeof u === "object" ? String(u._id) : String(u)
+        );
+
+        // Mode changed to "all staff" — notify all current staff
+        if (newAllStaff && !prevAllStaff) {
+          const allStaff = await UserModel.find({ role: "staff", isActive: true }).select("name email");
+          for (const s of allStaff) {
+            await sendStaffDelegationEmail({ staffEmail: s.email, staffName: s.name, adminName, granted: true, storeName }).catch(() => {});
+          }
+          return;
+        }
+
+        // Mode changed away from "all staff" — notify all staff that access is revoked
+        if (!newAllStaff && prevAllStaff) {
+          const allStaff = await UserModel.find({ role: "staff", isActive: true }).select("name email");
+          for (const s of allStaff) {
+            // Only revoke those NOT in the new specific list
+            if (!newIds.includes(String(s._id))) {
+              await sendStaffDelegationEmail({ staffEmail: s.email, staffName: s.name, adminName, granted: false, storeName }).catch(() => {});
+            }
+          }
+          return;
+        }
+
+        // Specific-list mode: diff additions and removals
+        const added   = newIds.filter((id) => !prevIds.includes(id));
+        const removed = prevIds.filter((id) => !newIds.includes(id));
+
+        if (added.length > 0) {
+          const addedUsers = await UserModel.find({ _id: { $in: added } }).select("name email");
+          for (const s of addedUsers) {
+            await sendStaffDelegationEmail({ staffEmail: s.email, staffName: s.name, adminName, granted: true, storeName }).catch(() => {});
+          }
+        }
+        if (removed.length > 0) {
+          const removedUsers = await UserModel.find({ _id: { $in: removed } }).select("name email");
+          for (const s of removedUsers) {
+            await sendStaffDelegationEmail({ staffEmail: s.email, staffName: s.name, adminName, granted: false, storeName }).catch(() => {});
+          }
+        }
+      } catch (emailErr) {
+        console.error("Delegation email error:", emailErr.message);
+      }
+    });
+
+    return sendResponse(res, 200, {
+      delegateToAllStaff: settings.delegateToAllStaff,
+      delegatedStaffIds:  settings.delegatedStaffIds,
+    }, "Delegation settings updated");
+  } catch (err) {
+    console.error("updateDelegation error:", err.message);
+    return sendError(res, 500, "Failed to update delegation settings");
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /settings/my-delegation
+// Staff calls this to find out whether they have order-management delegation.
+// Returns { isDelegated: boolean } — lightweight, no sensitive data.
+// ─────────────────────────────────────────────────────────────────────────────
+export const getMyDelegationStatus = async (req, res) => {
+  try {
+    // Only makes sense for staff — other roles always get false
+    if (req.user.role !== "staff") {
+      return sendResponse(res, 200, { isDelegated: false }, "Not a staff account");
+    }
+
+    const settings = await SettingsModel.findOne({}).sort({ createdAt: 1 });
+
+    if (!settings) {
+      return sendResponse(res, 200, { isDelegated: false }, "No settings found");
+    }
+
+    const staffId = String(req.user._id);
+    const isDelegated =
+      settings.delegateToAllStaff === true ||
+      (settings.delegatedStaffIds || []).some((id) => String(id) === staffId);
+
+    return sendResponse(res, 200, { isDelegated }, "Delegation status retrieved");
+  } catch (err) {
+    console.error("getMyDelegationStatus error:", err.message);
+    return sendError(res, 500, "Failed to check delegation status");
+  }
+};

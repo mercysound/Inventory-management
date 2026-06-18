@@ -1,5 +1,6 @@
 import CompletedOrderHistoryModel from "../models/CompletedOrderHistoryModel.js";
 import { sendResponse, sendError } from "../utils/apiResponse.js";
+import orderNotifier from "../utils/orderNotifier.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // normalizeProductList
@@ -46,14 +47,22 @@ const normalizeProductList = (productList = []) =>
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /completed-history
-// Admin: sees all non-adminHidden orders
-// Customer/Wholesale:
-//   - Sees their own non-cancelled orders (delivered etc.)
-//   - ALSO sees their cancelled orders where refundMade = true
-//     (before refund is marked, cancelled orders stay in PendingOrdersModal
-//      via AllOrdersPlaced → but wait, they've been moved to history already.
-//      The trick: we return cancelled-but-not-refunded orders ONLY to admin.
-//      The buyer sees them only after refundMade = true.)
+//
+// Admin:
+//   Sees everything not explicitly hidden by admin.
+//
+// Staff (delegated):
+//   Sees ONLY history entries where they personally made the status change
+//   (isDelegatedAction = true AND changedBy = staffId).
+//   This ensures staff only see the work they did, not admin or other staff actions.
+//
+// Staff (non-delegated / regular staff walk-in orders):
+//   Sees their own walk-in sale history (userOrdering = staffId) — unchanged.
+//   NOTE: A staff member may appear in both buckets if they are also a delegated
+//   staff, so we use $or to merge both sets cleanly.
+//
+// Customer / Wholesale:
+//   Sees their own non-cancelled orders, plus cancelled+refunded ones.
 // ─────────────────────────────────────────────────────────────────────────────
 export const getCompletedHistory = async (req, res) => {
   try {
@@ -65,21 +74,43 @@ export const getCompletedHistory = async (req, res) => {
     if (role === "admin") {
       // Admin sees everything except what they've explicitly hidden
       query = { adminHidden: { $ne: true } };
+
+    } else if (role === "staff") {
+      // Staff sees:
+      //   (a) Their own walk-in sale entries (userOrdering = them)
+      //   (b) Delegated-action entries where they changed the status
+      // Both sets respect the hiddenFor filter.
+      query = {
+        hiddenFor: { $nin: [userId] },
+        $or: [
+          // Their own walk-in sales
+          {
+            userOrdering: userId,
+            isDelegatedAction: { $ne: true },
+          },
+          // Delegated actions they performed on customer orders
+          {
+            isDelegatedAction: true,
+            changedBy: userId,
+          },
+        ],
+      };
+
     } else {
-      // Customer / wholesale / staff see only their own orders
-      // AND only non-cancelled, OR cancelled where refundMade = true
+      // Customer / wholesale — their own orders only
       query = {
         userOrdering: userId,
         hiddenFor:    { $nin: [userId] },
         $or: [
-          { cancelled: { $ne: true } },                        // normal delivered orders
-          { cancelled: true, refundMade: true },               // cancelled + refunded (show to buyer)
+          { cancelled: { $ne: true } },
+          { cancelled: true, refundMade: true },
         ],
       };
     }
 
     const orders = await CompletedOrderHistoryModel.find(query)
       .populate("userOrdering", "name email role")
+      .populate("changedBy", "name role")
       .populate({
         path: "productList.productId",
         select: "name categoryId description isDeleted",
@@ -87,7 +118,6 @@ export const getCompletedHistory = async (req, res) => {
       })
       .sort({ createdAt: -1 });
 
-    // Normalize each order so deleted products never show as "unknown"
     const normalized = orders.map((o) => {
       const obj = o.toObject();
       obj.productList = normalizeProductList(obj.productList);
@@ -139,16 +169,25 @@ export const getCancelledPendingRefund = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /completed-history/:id/refund
-// Admin marks refund as done — ONE TIME, IRREVERSIBLE.
+// Marks refund as done — ONE TIME, IRREVERSIBLE.
+//
+// Who can do this:
+//   - Any admin (always)
+//   - The delegated staff who originally cancelled this order
+//     (checked via changedBy === req.user._id AND isDelegatedAction = true)
+//
 // After this:
 //   - refundMade = true, refundMadeAt = now
-//   - refundExcludeFromRevenue = true (excluded from dashboard revenue)
-//   - The order now appears in buyer's history page with status "refunded"
+//   - refundExcludeFromRevenue = true
+//   - deliveryStatus = "refunded"
+//   - The order now appears in buyer's history as "refunded"
 //   - The order disappears from buyer's PendingOrdersModal
 // ─────────────────────────────────────────────────────────────────────────────
 export const markRefundMade = async (req, res) => {
   try {
     const { id } = req.params;
+    const callerId   = String(req.user._id);
+    const callerRole = req.user.role;
 
     const order = await CompletedOrderHistoryModel.findById(id);
     if (!order) return sendError(res, 404, "Order not found");
@@ -161,11 +200,34 @@ export const markRefundMade = async (req, res) => {
       return sendError(res, 400, "Refund has already been marked for this order. This cannot be undone.");
     }
 
+    // Access check — admin always allowed; delegated staff only if they cancelled this order
+    if (callerRole !== "admin") {
+      const cancelledByThisStaff =
+        order.isDelegatedAction === true &&
+        order.changedBy &&
+        String(order.changedBy) === callerId;
+
+      if (!cancelledByThisStaff) {
+        return sendError(
+          res, 403,
+          "Forbidden: Only the admin or the staff member who cancelled this order can mark the refund."
+        );
+      }
+    }
+
     order.refundMade               = true;
     order.refundMadeAt             = new Date();
     order.refundExcludeFromRevenue = true;
-    order.deliveryStatus           = "refunded"; // update status for buyer's view
+    order.deliveryStatus           = "refunded";
     await order.save();
+
+    // Notify the buyer in real-time so their pending modal removes this
+    // order immediately without needing to close and reopen it.
+    orderNotifier.emit("placedOrderUpdated", {
+      orderId: String(order._id),
+      userId:  String(order.userOrdering),
+      status:  "refunded",
+    });
 
     return sendResponse(res, 200, { order }, "Refund marked successfully. This order will no longer count towards revenue.");
   } catch (error) {

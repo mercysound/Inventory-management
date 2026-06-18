@@ -44,6 +44,29 @@ const completedOrderHistorySchema = new mongoose.Schema(
 
     // mark if admin(s) have hidden it (counts as admin-side delete)
     adminHidden: { type: Boolean, default: false },
+
+    // ── Delegation / Status-change audit trail ────────────────────────────
+    // changedBy:        the user who changed the delivery status (admin or delegated staff)
+    // changedByRole:    "admin" or "staff"
+    // changedByName:    snapshot of the changer's name at the time of the change
+    // isDelegatedAction: true when a delegated staff (not the admin) made the change
+    // staffDelegatedFor: populated only when isDelegatedAction = true; points back
+    //                    to the same changedBy user so queries are straightforward.
+    // ─────────────────────────────────────────────────────────────────────
+    changedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref:  "User",
+      default: null,
+    },
+    changedByRole: { type: String, default: null },
+    changedByName: { type: String, default: null },
+    isDelegatedAction: { type: Boolean, default: false },
+    staffDelegatedFor: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref:  "User",
+      default: null,
+    },
+    // ─────────────────────────────────────────────────────────────────────
   },
   { timestamps: true }
 );

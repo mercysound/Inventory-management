@@ -8,9 +8,8 @@ import { sendResponse, sendError } from "../utils/apiResponse.js";
 import orderNotifier from "../utils/orderNotifier.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// normalizeProductList — see completedOrderHistoryController for full comment.
-// Always prefers stored snapshot strings over live populated product data so
-// that deleted products never surface as "Unknown" in placed-order views.
+// normalizeProductList — always prefers stored snapshot strings over live
+// populated product data so deleted products never surface as "Unknown".
 // ─────────────────────────────────────────────────────────────────────────────
 const normalizeProductList = (productList = []) =>
   productList.map((item) => {
@@ -50,12 +49,14 @@ const emailHandlers = {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /placed-orders
-// Admin sees all; customer/wholesale see only their own
+// Admin sees all; delegated staff also sees all; customer/wholesale see own only
 // ─────────────────────────────────────────────────────────────────────────────
 export const getAllPlacedOrders = async (req, res) => {
   try {
     let query = {};
-    if (req.user.role !== "admin") {
+    // admin and delegated staff both see all placed orders
+    const canSeeAll = req.user.role === "admin" || req.isDelegatedStaff === true;
+    if (!canSeeAll) {
       query.userOrdering = req.user._id;
     }
 
@@ -68,7 +69,6 @@ export const getAllPlacedOrders = async (req, res) => {
       })
       .sort({ createdAt: -1 });
 
-    // Normalize so deleted products never surface as "Unknown"
     const normalized = orders.map((o) => {
       const obj = o.toObject();
       obj.productList = normalizeProductList(obj.productList);
@@ -83,15 +83,64 @@ export const getAllPlacedOrders = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// GET /placed-orders/:id
+// Search a single placed order by its ID — for delegated staff and admin.
+// ─────────────────────────────────────────────────────────────────────────────
+export const getPlacedOrderById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const order = await AllOrdersPlacedModel.findById(id)
+      .populate("userOrdering", "name role email")
+      .populate({
+        path: "productList.productId",
+        select: "name categoryId description isDeleted",
+        populate: { path: "categoryId", select: "name" },
+      });
+
+    if (!order) return sendError(res, 404, "Order not found");
+
+    const obj = order.toObject();
+    obj.productList = normalizeProductList(obj.productList);
+
+    return sendResponse(res, 200, { order: obj }, "Order retrieved successfully");
+  } catch (error) {
+    // Mongoose will throw a CastError for a malformed ID
+    if (error.name === "CastError") {
+      return sendError(res, 404, "Order not found — invalid ID format");
+    }
+    console.error("getPlacedOrderById error:", error);
+    return sendError(res, 500, "Error fetching order");
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // PUT /placed-orders/:id/status
-// Admin updates delivery status. When status = "cancelled":
-//   1. Restore stock for every product in the order
-//   2. Move order to CompletedOrderHistory with cancelled=true, deliveryStatus="cancelled"
+// Admin OR delegated staff updates delivery status.
+//
+// Delegation audit trail:
+//   - changedBy:          the user who made the change
+//   - changedByRole:      "admin" or "staff"
+//   - changedByName:      name snapshot at time of change
+//   - isDelegatedAction:  true when a delegated staff (not admin) made the change
+//   - staffDelegatedFor:  same as changedBy (for query convenience)
+//
+// Refund access:
+//   - If a delegated staff cancels an order, they are recorded as changedBy.
+//   - The refund button is accessible to whoever cancelled it (changedBy) OR
+//     any admin. The completedOrderHistoryController.markRefundMade enforces this.
+//
+// When status = "cancelled":
+//   1. Restore stock
+//   2. Move to CompletedOrderHistory with cancelled=true + audit fields
 //   3. Delete from AllOrdersPlaced
-//   4. Send cancellation email to the buyer
-//   5. Order stays visible in buyer's Pending modal until admin marks refund
+//   4. Send cancellation email to buyer
+//
 // When status = "delivered":
-//   Move to CompletedOrderHistory with deliveryStatus="delivered"
+//   Move to CompletedOrderHistory with deliveryStatus="delivered" + audit fields
+//
+// When status = "processing":
+//   Update in-place + send processing email + real-time SSE
 // ─────────────────────────────────────────────────────────────────────────────
 export const updateDeliveryStatus = async (req, res) => {
   try {
@@ -105,9 +154,22 @@ export const updateDeliveryStatus = async (req, res) => {
 
     const previousStatus = order.deliveryStatus;
 
-    // ── CANCEL flow ──────────────────────────────────────────────────────
+    // ── Who is making this change? ────────────────────────────────────────
+    const changer = req.user;
+    const isDelegated = req.isDelegatedStaff === true;
+
+    // Shared audit fields written into every CompletedOrderHistory entry
+    const auditFields = {
+      changedBy:         changer._id,
+      changedByRole:     changer.role,
+      changedByName:     changer.name || "",
+      isDelegatedAction: isDelegated,
+      staffDelegatedFor: isDelegated ? changer._id : null,
+    };
+
+    // ── CANCEL flow ───────────────────────────────────────────────────────
     if (deliveryStatus.toLowerCase() === "cancelled") {
-      // 1. Restore stock for every product in this order
+      // 1. Restore stock
       for (const item of order.productList) {
         await ProductModel.findByIdAndUpdate(
           item.productId,
@@ -115,26 +177,27 @@ export const updateDeliveryStatus = async (req, res) => {
         );
       }
 
-      // 2. Move to CompletedOrderHistory with cancelled flag
+      // 2. Move to CompletedOrderHistory
       await CompletedOrderHistoryModel.create({
-        userOrdering: order.userOrdering?._id || order.userOrdering,
-        buyerName:    order.buyerName,
-        paymentMethod: order.paymentMethod,
-        deliveryStatus: "cancelled",
-        cancelled:    true,
-        cancelledAt:  new Date(),
-        refundMade:   false,
-        refundExcludeFromRevenue: false, // will become true when refund is confirmed
-        totalPrice:   order.totalPrice,
-        allQuantity:  order.allQuantity,
-        productList:  order.productList,
-        paid:         order.paid || true,
+        userOrdering:            order.userOrdering?._id || order.userOrdering,
+        buyerName:               order.buyerName,
+        paymentMethod:           order.paymentMethod,
+        deliveryStatus:          "cancelled",
+        cancelled:               true,
+        cancelledAt:             new Date(),
+        refundMade:              false,
+        refundExcludeFromRevenue: false,
+        totalPrice:              order.totalPrice,
+        allQuantity:             order.allQuantity,
+        productList:             order.productList,
+        paid:                    order.paid || true,
+        ...auditFields,
       });
 
       // 3. Delete from active placed orders
       await AllOrdersPlacedModel.findByIdAndDelete(id);
 
-      // 4. Send cancellation email
+      // 4. Send cancellation email to buyer
       try {
         if (order.userOrdering?.email) {
           await sendCustomerCancelledEmail({
@@ -148,22 +211,22 @@ export const updateDeliveryStatus = async (req, res) => {
         console.error("Cancel email failed:", emailErr.message);
       }
 
-      // Notify buyers in real-time — cancelled
+      // Real-time SSE notification to buyer
       orderNotifier.emit("placedOrderUpdated", {
         orderId: id,
         userId:  String(order.userOrdering?._id || order.userOrdering),
         status:  "cancelled",
       });
 
+      const who = isDelegated ? `Delegated staff (${changer.name})` : "Admin";
       return sendResponse(
         res, 200, null,
-        "Order cancelled. Stock restored and buyer has been notified."
+        `Order cancelled by ${who}. Stock restored and buyer has been notified.`
       );
     }
 
-      // ── DELIVERED flow ────────────────────────────────────────────────────
-      if (deliveryStatus.toLowerCase() === "delivered") {
-      // Send email
+    // ── DELIVERED flow ────────────────────────────────────────────────────
+    if (deliveryStatus.toLowerCase() === "delivered") {
       try {
         if (order.userOrdering?.email) {
           await sendCustomerDeliveredEmail({
@@ -176,34 +239,32 @@ export const updateDeliveryStatus = async (req, res) => {
         console.error("Delivered email failed:", emailErr.message);
       }
 
-      // Move to history
       await CompletedOrderHistoryModel.create({
-        userOrdering:  order.userOrdering?._id || order.userOrdering,
-        buyerName:     order.buyerName,
-        paymentMethod: order.paymentMethod,
+        userOrdering:   order.userOrdering?._id || order.userOrdering,
+        buyerName:      order.buyerName,
+        paymentMethod:  order.paymentMethod,
         deliveryStatus: "delivered",
-        totalPrice:    order.totalPrice,
-        allQuantity:   order.allQuantity,
-        productList:   order.productList,
+        totalPrice:     order.totalPrice,
+        allQuantity:    order.allQuantity,
+        productList:    order.productList,
+        ...auditFields,
       });
 
       await AllOrdersPlacedModel.findByIdAndDelete(id);
 
-      // Notify buyers in real-time
       orderNotifier.emit("placedOrderUpdated", {
-        orderId:  id,
-        userId:   String(order.userOrdering?._id || order.userOrdering),
-        status:   "delivered",
+        orderId: id,
+        userId:  String(order.userOrdering?._id || order.userOrdering),
+        status:  "delivered",
       });
 
       return sendResponse(res, 200, null, "Order marked as delivered and moved to history.");
     }
 
-    // ── PROCESSING or other status ────────────────────────────────────────
+    // ── PROCESSING or other status ─────────────────────────────────────────
     order.deliveryStatus = deliveryStatus;
     await order.save();
 
-    // Send email for processing
     if (previousStatus !== deliveryStatus && emailHandlers[deliveryStatus.toLowerCase()]) {
       try {
         await emailHandlers[deliveryStatus.toLowerCase()]({
@@ -216,7 +277,6 @@ export const updateDeliveryStatus = async (req, res) => {
       }
     }
 
-    // Notify buyers in real-time
     orderNotifier.emit("placedOrderUpdated", {
       orderId: id,
       userId:  String(order.userOrdering?._id || order.userOrdering),
