@@ -634,7 +634,7 @@ const generateInvoice = async (req, res) => {
         doc.font("Helvetica-Bold").text("Unit",     col.price, hy + 3, { width: 52 });
         doc.font("Helvetica-Bold").text("Subtotal", col.total, hy + 3, { width: 52 });
         doc.font("Helvetica").fontSize(6).fillColor("#cce0ff")
-          .text("Name / Desc / Cat.", col.name,  hy + 13, { width: 82 })
+          .text("Name / Cat. / Desc", col.name,  hy + 13, { width: 82 })
           .text("Price",              col.price, hy + 13, { width: 52 })
           .text("(Qty x Price)",      col.total, hy + 13, { width: 52 });
 
@@ -872,7 +872,7 @@ const generateInvoice = async (req, res) => {
       '<table>',
       '<thead><tr>',
       '<th style="width:22px;text-align:center">#</th>',
-      '<th>Item <small>Name / desc / category</small></th>',
+      '<th>Item <small>Name / category / desc</small></th>',
       '<th style="text-align:center">Qty</th>',
       '<th style="text-align:right">Unit <small>price</small></th>',
       '<th style="text-align:right">Subtotal <small>Qty x price</small></th>',
