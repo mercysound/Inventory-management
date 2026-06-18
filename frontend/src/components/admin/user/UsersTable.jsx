@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
+const PAGE_SIZE = 15;
+
 const Avatar = ({ name, size = 34, dimmed = false }) => {
   const initials = name?.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
   const hue = [...(name || "")].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
@@ -64,6 +66,16 @@ const StatusBadge = ({ isActive }) =>
     </span>
   );
 
+// Shared pagination button style helper
+const pgBtn = (disabled, active = false) => ({
+  padding: "5px 11px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+  cursor: disabled ? "not-allowed" : "pointer", fontFamily: "inherit",
+  border: active ? "none" : "1px solid #e2e8f0",
+  background: active ? "#0f172a" : disabled ? "#f8fafc" : "#fff",
+  color: active ? "#fff" : disabled ? "#cbd5e1" : "#374151",
+  transition: "all .15s",
+});
+
 export default function UsersTable({
   users, loading, searchQuery, setSearchQuery,
   roleFilter, setRoleFilter, sortConfig, onSort,
@@ -72,7 +84,12 @@ export default function UsersTable({
 }) {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkReason,  setBulkReason]  = useState("");
-  const [showReason,  setShowReason]  = useState(false); // reason dialog state
+  const [showReason,  setShowReason]  = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset to page 1 whenever the filtered list changes
+  const totalPages  = Math.ceil(users.length / PAGE_SIZE);
+  const paginated   = users.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const cols = [
     { key: "name",  label: "Name"  },
@@ -252,6 +269,7 @@ export default function UsersTable({
         <p className="ut-result-count">
           {loading ? "Loading…" : `${users.length} user${users.length !== 1 ? "s" : ""}`}
           {(searchQuery || roleFilter !== "all") && !loading && " (filtered)"}
+          {!loading && totalPages > 1 && ` — page ${currentPage} of ${totalPages}`}
         </p>
 
         {/* ── Desktop table ── */}
@@ -287,7 +305,7 @@ export default function UsersTable({
                   </td>
                 </tr>
               ) : (
-                users.map((user, i) => {
+                paginated.map((user, i) => {
                   const isSelf       = user._id === currentAdminId;
                   const isDeactivated = user.isActive === false;
                   const isSelected   = selectedIds.has(user._id);
@@ -360,8 +378,7 @@ export default function UsersTable({
         </div>
 
         {/* ── Mobile cards ── */}
-        <div className="ut-cards">
-          {loading ? (
+        <div className="ut-cards">          {loading ? (
             [...Array(3)].map((_, i) => (
               <div key={i} className="ut-card" style={{ background: "#f8fafc" }}>
                 {[...Array(3)].map((_, j) => (
@@ -376,7 +393,7 @@ export default function UsersTable({
           ) : users.length === 0 ? (
             <div className="ut-empty">No users found</div>
           ) : (
-            users.map((user, i) => {
+            paginated.map((user, i) => {
               const isSelf        = user._id === currentAdminId;
               const isDeactivated = user.isActive === false;
               const isSelected    = selectedIds.has(user._id);
@@ -434,7 +451,52 @@ export default function UsersTable({
           )}
         </div>
 
-      </div>
+      </div>{/* end ut-wrap */}
+
+      {/* ── Pagination controls ── */}
+      {!loading && totalPages > 1 && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "center",
+          gap: 8, padding: "14px 0", flexWrap: "wrap",
+        }}>
+          <button
+            onClick={() => setCurrentPage(1)}
+            disabled={currentPage === 1}
+            style={pgBtn(currentPage === 1)}>«</button>
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            style={pgBtn(currentPage === 1)}>‹ Prev</button>
+
+          {/* Page number pills */}
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+            .reduce((acc, p, idx, arr) => {
+              if (idx > 0 && p - arr[idx - 1] > 1) acc.push("…");
+              acc.push(p);
+              return acc;
+            }, [])
+            .map((p, idx) =>
+              p === "…" ? (
+                <span key={`ellipsis-${idx}`} style={{ color: "#94a3b8", fontSize: 13 }}>…</span>
+              ) : (
+                <button key={p} onClick={() => setCurrentPage(p)}
+                  style={pgBtn(false, p === currentPage)}>
+                  {p}
+                </button>
+              )
+            )}
+
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            style={pgBtn(currentPage === totalPages)}>Next ›</button>
+          <button
+            onClick={() => setCurrentPage(totalPages)}
+            disabled={currentPage === totalPages}
+            style={pgBtn(currentPage === totalPages)}>»</button>
+        </div>
+      )}
     </>
   );
 }

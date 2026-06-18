@@ -77,8 +77,11 @@ axiosInstance.interceptors.response.use(
 
     // ── Deactivated account — 403 with ACCOUNT_DEACTIVATED code ──────────────
     // Show a clear friendly message, clear the session, and redirect to login.
-    // This handles users who are ALREADY logged in when the admin deactivates them —
-    // their next API request hits this block and they are gracefully signed out.
+    // EXCEPTION: if the request was to /orders/complete or /orders/payment,
+    // we let it through in authMiddleware (req.accountSuspended = true) so the
+    // order is saved and Paystack is not left holding unreconciled money.
+    // That means this interceptor will ONLY see ACCOUNT_DEACTIVATED from
+    // other endpoints — redirect is always safe here.
     if (status === 403 && error.response?.data?.code === "ACCOUNT_DEACTIVATED") {
       localStorage.removeItem("pos-token");
       localStorage.removeItem("pos-user");

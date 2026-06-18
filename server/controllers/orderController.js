@@ -172,6 +172,15 @@ const getOrders = async (req, res) => {
 const verifyStock = async (req, res) => {
   try {
     const userId = req.user._id;
+
+    // Reject suspended accounts at the pre-payment gate — before Paystack opens.
+    // This is the cleanest point to catch suspension: no money has changed hands yet.
+    if (req.user.isActive === false) {
+      return sendError(res, 403,
+        "Your account has been temporarily suspended and cannot process payments. Please contact support."
+      );
+    }
+
     const orders = await OrderModel.find({ userOrdering: userId }).populate("product");
     if (!orders.length) return sendError(res, 400, "Your cart is empty");
 

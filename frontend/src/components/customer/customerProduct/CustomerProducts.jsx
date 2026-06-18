@@ -165,6 +165,8 @@ const CustomerProducts = () => {
   const [searchQuery,       setSearchQuery]       = useState("");
   const [selectedCategory,  setSelectedCategory]  = useState("");
   const [showWholesaleCol,  setShowWholesaleCol]  = useState(false);
+  const [currentPage,       setCurrentPage]       = useState(1);
+  const PRODUCTS_PAGE_SIZE = 20;
   const [orderData,         setOrderData]         = useState({
     orderId: "", productId: "", productName: "", productImage: "",
     productDescription: "", productCategory: "",
@@ -529,8 +531,8 @@ const CustomerProducts = () => {
     [products]
   );
 
-  const handleSearch         = (e) => { const q = e.target.value; setSearchQuery(q);  applyFilters(q, selectedCategory); };
-  const handleCategoryChange = (e) => { const c = e.target.value; setSelectedCategory(c); applyFilters(searchQuery, c); };
+  const handleSearch         = (e) => { const q = e.target.value; setSearchQuery(q);  setCurrentPage(1); applyFilters(q, selectedCategory); };
+  const handleCategoryChange = (e) => { const c = e.target.value; setSelectedCategory(c); setCurrentPage(1); applyFilters(searchQuery, c); };
 
   // ── Open order modal — NO await before setOpenModal so it opens instantly ──
   // We open the modal immediately with the product data we already have,
@@ -592,6 +594,12 @@ const CustomerProducts = () => {
   };
 
   const totalCartItems = Object.values(cartMap).reduce((sum, item) => sum + (item.quantity || 0), 0);
+
+  // ── Pagination derived values ─────────────────────────────────────────────
+  const cpPaginated = filteredProducts.slice(
+    (currentPage - 1) * PRODUCTS_PAGE_SIZE,
+    currentPage * PRODUCTS_PAGE_SIZE
+  );
 
   // ─── Render ───────────────────────────────────────────────────────────
   return (
@@ -715,9 +723,7 @@ const CustomerProducts = () => {
       </div>
 
       {/* ── Content ───────────────────────────────────────────────── */}
-      {loading ? (
-        <CustomerProductsSkeleton />
-      ) : (
+      {loading ? <CustomerProductsSkeleton /> : (
         <>
           {/* Desktop table */}
           <div className="hidden md:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -742,8 +748,8 @@ const CustomerProducts = () => {
               </thead>
 
               <tbody className="divide-y divide-gray-50">
-                {filteredProducts.length > 0 ? (
-                  filteredProducts.map((product, index) => {
+                {cpPaginated.length > 0 ? (
+                  cpPaginated.map((product, index) => {
                     const cartItem = cartMap[product._id];
                     const inCart  = !!cartItem;
 
@@ -855,8 +861,8 @@ const CustomerProducts = () => {
           {/* Mobile cards */}
           <div className="md:hidden space-y-3">
             <AnimatePresence>
-              {filteredProducts.length > 0 ? (
-                filteredProducts.map((product, index) => {
+              {cpPaginated.length > 0 ? (
+                cpPaginated.map((product, index) => {
                   const cartItem = cartMap[product._id] || null;
 
                   return (
@@ -950,6 +956,33 @@ const CustomerProducts = () => {
               )}
             </AnimatePresence>
           </div>
+
+          {/* Pagination bar */}
+          {Math.ceil(filteredProducts.length / PRODUCTS_PAGE_SIZE) > 1 && (
+            <div className="flex items-center justify-center gap-2 py-4 flex-wrap">
+              <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition">
+                ← Prev
+              </button>
+              {Array.from({ length: Math.ceil(filteredProducts.length / PRODUCTS_PAGE_SIZE) }, (_, i) => i + 1)
+                .filter((p) => p === 1 || p === Math.ceil(filteredProducts.length / PRODUCTS_PAGE_SIZE) || Math.abs(p - currentPage) <= 1)
+                .reduce((acc, p, idx, arr) => { if (idx > 0 && p - arr[idx-1] > 1) acc.push("…"); acc.push(p); return acc; }, [])
+                .map((p, idx) => p === "…"
+                  ? <span key={`e${idx}`} className="text-gray-400 text-sm">…</span>
+                  : <button key={p} onClick={() => setCurrentPage(p)}
+                      className={`w-8 h-8 rounded-lg text-sm font-semibold border transition ${p === currentPage ? "bg-green-600 text-white border-green-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
+                      {p}
+                    </button>
+                )}
+              <button onClick={() => setCurrentPage((p) => Math.min(Math.ceil(filteredProducts.length / PRODUCTS_PAGE_SIZE), p + 1))} disabled={currentPage === Math.ceil(filteredProducts.length / PRODUCTS_PAGE_SIZE)}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition">
+                Next →
+              </button>
+              <span className="text-xs text-gray-400 ml-1">
+                {(currentPage - 1) * PRODUCTS_PAGE_SIZE + 1}–{Math.min(currentPage * PRODUCTS_PAGE_SIZE, filteredProducts.length)} of {filteredProducts.length}
+              </span>
+            </div>
+          )}
         </>
       )}
 

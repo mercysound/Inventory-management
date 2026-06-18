@@ -1,7 +1,20 @@
-import React from "react";
+import React, { useState } from "react";
 import { Pencil, Trash2, Mail, Phone, MapPin, User, Package, AlertTriangle } from "lucide-react";
 
+const PAGE_SIZE = 12;
+
+const pgBtn = (disabled, active = false) => ({
+  padding: "4px 10px", borderRadius: 7, fontSize: 12, fontWeight: 600,
+  cursor: disabled ? "not-allowed" : "pointer", fontFamily: "inherit",
+  border: active ? "none" : "1px solid #e2e8f0",
+  background: active ? "#4f46e5" : disabled ? "#f8fafc" : "#fff",
+  color: active ? "#fff" : disabled ? "#cbd5e1" : "#374151",
+  transition: "all .15s",
+});
+
 const SupplierTable = ({ suppliers, handleEdit, handleDelete }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+
   if (suppliers.length === 0)
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-xl border border-gray-100">
@@ -9,16 +22,31 @@ const SupplierTable = ({ suppliers, handleEdit, handleDelete }) => {
           <User size={20} className="text-gray-400" />
         </div>
         <p className="text-sm font-medium text-gray-600">No suppliers yet</p>
-        <p className="text-xs text-gray-400 mt-1">
-          Add your first supplier using the button above
-        </p>
+        <p className="text-xs text-gray-400 mt-1">Add your first supplier using the button above</p>
       </div>
     );
 
-  const totalProducts = suppliers.reduce((s, sup) => s + (sup.productCount || 0), 0);
-  const totalLowStock = suppliers.reduce((s, sup) => s + (sup.lowStockCount || 0), 0);
+  const totalPages = Math.ceil(suppliers.length / PAGE_SIZE);
+  const paginated  = suppliers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  const totalProducts   = suppliers.reduce((s, sup) => s + (sup.productCount    || 0), 0);
+  const totalLowStock   = suppliers.reduce((s, sup) => s + (sup.lowStockCount   || 0), 0);
   const totalOutOfStock = suppliers.reduce((s, sup) => s + (sup.outOfStockCount || 0), 0);
   const activeSuppliers = suppliers.filter((s) => s.productCount > 0).length;
+
+  const Pagination = () => totalPages > 1 ? (
+    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, padding:"12px 0", flexWrap:"wrap" }}>
+      <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} style={pgBtn(currentPage === 1)}>← Prev</button>
+      {Array.from({ length: totalPages }, (_, i) => i + 1)
+        .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+        .reduce((acc, p, idx, arr) => { if (idx > 0 && p - arr[idx-1] > 1) acc.push("…"); acc.push(p); return acc; }, [])
+        .map((p, idx) => p === "…"
+          ? <span key={`e${idx}`} style={{ color:"#94a3b8", fontSize:13 }}>…</span>
+          : <button key={p} onClick={() => setCurrentPage(p)} style={pgBtn(false, p === currentPage)}>{p}</button>
+        )}
+      <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} style={pgBtn(currentPage === totalPages)}>Next →</button>
+    </div>
+  ) : null;
 
   return (
     <div className="w-full bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
@@ -68,12 +96,12 @@ const SupplierTable = ({ suppliers, handleEdit, handleDelete }) => {
             </tr>
           </thead>
           <tbody>
-            {suppliers.map((supplier, index) => (
+            {paginated.map((supplier, index) => (
               <tr
                 key={supplier._id}
                 className="border-b border-gray-50 last:border-none hover:bg-gray-50 transition-colors align-middle"
               >
-                <td className="px-4 py-3 text-gray-400 text-xs">{index + 1}</td>
+                <td className="px-4 py-3 text-gray-400 text-xs">{(currentPage - 1) * PAGE_SIZE + index + 1}</td>
 
                 {/* Supplier name */}
                 <td className="px-4 py-3">
@@ -201,11 +229,12 @@ const SupplierTable = ({ suppliers, handleEdit, handleDelete }) => {
             ))}
           </tbody>
         </table>
+        <Pagination />
       </div>
 
       {/* MOBILE CARDS */}
       <div className="md:hidden divide-y divide-gray-50">
-        {suppliers.map((supplier) => (
+        {paginated.map((supplier) => (
           <div key={supplier._id} className="p-4">
 
             {/* Card header */}
@@ -317,6 +346,7 @@ const SupplierTable = ({ suppliers, handleEdit, handleDelete }) => {
             )}
           </div>
         ))}
+        <Pagination />
       </div>
     </div>
   );

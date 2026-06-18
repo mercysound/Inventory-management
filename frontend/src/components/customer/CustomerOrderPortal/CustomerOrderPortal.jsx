@@ -376,7 +376,23 @@ const CustomerOrderPortal = () => {
       const res = await axiosInstance.post("/orders/verify-stock");
       return res.data.success;
     } catch (err) {
-      const data = err?.response?.data;
+      const data   = err?.response?.data;
+      const status = err?.response?.status;
+
+      // Account suspended — clear message, no redirect (user hasn't paid yet)
+      if (status === 403 && data?.code === "ACCOUNT_DEACTIVATED") {
+        toast.error(
+          "⚠️ Your account has been temporarily suspended. Please contact support before making a payment.",
+          { autoClose: 8000 }
+        );
+        return false;
+      }
+
+      if (status === 403) {
+        toast.error(data?.message || "Your account cannot process payments right now. Please contact support.");
+        return false;
+      }
+
       if (data?.message === "STOCK_CONFLICT" && data?.conflicts?.length) {
         const lines = data.conflicts.map((c) =>
           c.available === 0

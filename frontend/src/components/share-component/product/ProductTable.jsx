@@ -192,9 +192,13 @@ const ProductTable = ({
     return () => observer.disconnect();
   }, [loadMore]);
 
+  // Reset visible count whenever the product list changes — catches both
+  // filtering down (fewer results) and switching back to "All Categories"
+  // (more results). Without this, the infinite-scroll window stays at the
+  // previous count and shows fewer items than exist.
   useEffect(() => {
-    if (products.length < visibleCount) setVisibleCount(products.length || PAGE_SIZE);
-  }, [products.length]);
+    setVisibleCount(PAGE_SIZE);
+  }, [products]);
 
   // Determine desktop table columns
   // Admin always sees both prices; staff sees retail + optional wholesale column

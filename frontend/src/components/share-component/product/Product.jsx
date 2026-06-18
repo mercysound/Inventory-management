@@ -31,6 +31,9 @@ const Product = () => {
   const [filteredProducts,  setFilteredProducts]  = useState([]);
   const [selectedCategory,  setSelectedCategory]  = useState("");
   const [searchValue,       setSearchValue]       = useState("");
+  const productsRef         = useRef([]);   // always holds the latest products array
+  const selectedCategoryRef = useRef("");   // latest category filter value
+  const searchValueRef      = useRef("");   // latest search value
   const [loading,           setLoading]           = useState(false);
   const [image,             setImage]             = useState(null);
   const [showDeletedPopup,  setShowDeletedPopup]  = useState(false);
@@ -50,26 +53,23 @@ const Product = () => {
         setCategories(response.data.categories);
         setSuppliers(response.data.suppliers);
         const newProducts = response.data.products;
+        productsRef.current = newProducts;
         setProducts(newProducts);
-        // Re-apply current filters against the fresh list — preserves what
-        // the admin already selected instead of resetting to "All Categories"
-        setSelectedCategory((currentCat) => {
-          setSearchValue((currentSearch) => {
-            setFilteredProducts(
-              newProducts.filter((p) => {
-                const matchesSearch   = currentSearch
-                  ? p.name.toLowerCase().includes(currentSearch.toLowerCase())
-                  : true;
-                const matchesCategory = currentCat
-                  ? (p.categoryId?._id ?? p.categoryId) === currentCat
-                  : true;
-                return matchesSearch && matchesCategory;
-              })
-            );
-            return currentSearch; // keep search unchanged
-          });
-          return currentCat; // keep category unchanged
-        });
+        // Re-apply the current filters against the fresh product list.
+        // Read current filter values directly — no stale-closure problem.
+        const currentCat    = selectedCategoryRef.current;
+        const currentSearch = searchValueRef.current;
+        setFilteredProducts(
+          newProducts.filter((p) => {
+            const matchesSearch   = currentSearch
+              ? p.name.toLowerCase().includes(currentSearch.toLowerCase())
+              : true;
+            const matchesCategory = currentCat
+              ? (p.categoryId?._id ?? p.categoryId) === currentCat
+              : true;
+            return matchesSearch && matchesCategory;
+          })
+        );
       } else {
         toast.error("Error fetching products. Please try again");
       }
@@ -83,15 +83,15 @@ const Product = () => {
 
   useEffect(() => { fetchProducts(); }, []);
 
-  // ── Central filter — always applies both search + category together ───────
-  const applyFilters = (search, category, source) => {
-    const base = source || products;
-    const s    = search   !== undefined ? search   : searchValue;
-    const c    = category !== undefined ? category : selectedCategory;
+  // ── Central filter — reads from refs so it never has a stale closure ────────
+  // Always call this after updating the ref values.
+  const applyFilters = (search, category) => {
+    const s = search   !== undefined ? search   : searchValueRef.current;
+    const c = category !== undefined ? category : selectedCategoryRef.current;
 
-    const result = base.filter((p) => {
+    const result = productsRef.current.filter((p) => {
       const matchesSearch   = s ? p.name.toLowerCase().includes(s.toLowerCase()) : true;
-      // Empty string means "All Categories" — never filter by category in that case
+      // c === "" means "All Categories" — show everything
       const matchesCategory = c ? (p.categoryId?._id ?? p.categoryId) === c : true;
       return matchesSearch && matchesCategory;
     });
@@ -100,14 +100,16 @@ const Product = () => {
 
   const handleSearch = (e) => {
     const value = e.target.value;
+    searchValueRef.current = value;
     setSearchValue(value);
-    applyFilters(value, selectedCategory);
+    applyFilters(value, selectedCategoryRef.current);
   };
 
   const handleCategoryChange = (e) => {
-    const category = e.target.value;       // "" means All Categories
+    const category = e.target.value;   // "" = All Categories
+    selectedCategoryRef.current = category;
     setSelectedCategory(category);
-    applyFilters(searchValue, category);   // ✅ "" correctly resets to all
+    applyFilters(searchValueRef.current, category);
   };
 
   // ── Edit ─────────────────────────────────────────────────────────────────
@@ -132,18 +134,22 @@ const Product = () => {
     if (!confirm("Are you sure you want to delete this product?")) return;
     const previousProducts = products;
     const previousFiltered = filteredProducts;
-    setProducts((prev) => prev.filter((p) => p._id !== id));
+    const next = products.filter((p) => p._id !== id);
+    productsRef.current = next;
+    setProducts(next);
     setFilteredProducts((prev) => prev.filter((p) => p._id !== id));
     try {
       const response = await axiosInstance.delete(`/products/${id}`);
       if (response.data.success) {
         toast.success("Product deleted successfully!");
       } else {
+        productsRef.current = previousProducts;
         setProducts(previousProducts);
         setFilteredProducts(previousFiltered);
         toast.error("Error deleting product.");
       }
     } catch {
+      productsRef.current = previousProducts;
       setProducts(previousProducts);
       setFilteredProducts(previousFiltered);
       toast.error("Error deleting product. Please try again");
@@ -185,8 +191,9 @@ const Product = () => {
             const updatedProduct = refreshed.data.products.find((p) => p._id === targetId);
             if (updatedProduct) {
               const newProducts = products.map((p) => p._id === targetId ? updatedProduct : p);
+              productsRef.current = newProducts;
               setProducts(newProducts);
-              applyFilters(searchValue, selectedCategory, newProducts);
+              applyFilters(searchValueRef.current, selectedCategoryRef.current);
             }
           }
         } else {

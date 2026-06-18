@@ -25,12 +25,25 @@ const authMiddleware = async (req, res, next) => {
 
     // Block deactivated users — every authenticated request is checked here.
     // isActive defaults to true so existing users without the field are unaffected.
+    //
+    // EXCEPTION: /orders/complete and /orders/payment are allowed through even
+    // when the account is suspended. This protects users who have already been
+    // charged by Paystack — we must let the order complete and the receipt
+    // generate, otherwise the money is taken but nothing is recorded.
+    // The controller receives req.accountSuspended = true so it can log it.
     if (user.isActive === false) {
-      return res.status(403).json({
-        success: false,
-        code:    "ACCOUNT_DEACTIVATED",
-        message: "Your account has been temporarily suspended. Please contact support.",
-      });
+      const url = req.originalUrl || "";
+      const isPaymentCompletion = url.includes("/orders/complete") || url.includes("/orders/payment");
+
+      if (!isPaymentCompletion) {
+        return res.status(403).json({
+          success: false,
+          code:    "ACCOUNT_DEACTIVATED",
+          message: "Your account has been temporarily suspended. Please contact support.",
+        });
+      }
+      // Payment completion — allow through, flag on req
+      req.accountSuspended = true;
     }
 
     req.user = user;

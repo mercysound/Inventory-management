@@ -28,7 +28,9 @@ const ExpiringOrders = () => {
   const [settings, setSettings] = useState({ orderExpiryHours: 48 });
   const [loading,  setLoading]  = useState(true);
   const [expanded, setExpanded] = useState({});
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshing,  setRefreshing]  = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const EXPIRY_PAGE_SIZE = 10;
 
   const fetchData = useCallback(async (silent = false) => {
     try {
@@ -164,7 +166,7 @@ const ExpiringOrders = () => {
           {/* Orders list */}
           <div className="space-y-3">
             <AnimatePresence>
-              {orders.map((order, i) => (
+              {orders.slice((currentPage - 1) * EXPIRY_PAGE_SIZE, currentPage * EXPIRY_PAGE_SIZE).map((order, i) => (
                 <motion.div
                   key={order._id}
                   initial={{ opacity: 0, y: 8 }}
@@ -278,6 +280,30 @@ const ExpiringOrders = () => {
               ))}
             </AnimatePresence>
           </div>
+
+          {/* Pagination */}
+          {Math.ceil(orders.length / EXPIRY_PAGE_SIZE) > 1 && (
+            <div className="flex items-center justify-center gap-2 pt-4 flex-wrap">
+              <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition">
+                ← Prev
+              </button>
+              {Array.from({ length: Math.ceil(orders.length / EXPIRY_PAGE_SIZE) }, (_, i) => i + 1)
+                .filter((p) => p === 1 || p === Math.ceil(orders.length / EXPIRY_PAGE_SIZE) || Math.abs(p - currentPage) <= 1)
+                .reduce((acc, p, idx, arr) => { if (idx > 0 && p - arr[idx-1] > 1) acc.push("…"); acc.push(p); return acc; }, [])
+                .map((p, idx) => p === "…"
+                  ? <span key={`e${idx}`} className="text-gray-400 text-sm">…</span>
+                  : <button key={p} onClick={() => setCurrentPage(p)}
+                      className={`w-8 h-8 rounded-lg text-sm font-semibold border transition ${p === currentPage ? "bg-amber-500 text-white border-amber-500" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
+                      {p}
+                    </button>
+                )}
+              <button onClick={() => setCurrentPage((p) => Math.min(Math.ceil(orders.length / EXPIRY_PAGE_SIZE), p + 1))} disabled={currentPage === Math.ceil(orders.length / EXPIRY_PAGE_SIZE)}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition">
+                Next →
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>
