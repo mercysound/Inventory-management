@@ -75,6 +75,22 @@ axiosInstance.interceptors.response.use(
     const status = error.response?.status;
     const requestUrl = originalRequest?.url || "";
 
+    // ── Deactivated account — 403 with ACCOUNT_DEACTIVATED code ──────────────
+    // Show a clear friendly message, clear the session, and redirect to login.
+    // This handles users who are ALREADY logged in when the admin deactivates them —
+    // their next API request hits this block and they are gracefully signed out.
+    if (status === 403 && error.response?.data?.code === "ACCOUNT_DEACTIVATED") {
+      localStorage.removeItem("pos-token");
+      localStorage.removeItem("pos-user");
+      toast.error(
+        "⚠️ Your account has been temporarily suspended. Please contact support.",
+        { autoClose: 8000, toastId: "account-deactivated" }
+      );
+      // Small delay so the toast is visible before redirect
+      setTimeout(() => { window.location.href = "/"; }, 1500);
+      return Promise.reject(error);
+    }
+
     // ✅ FIX: Don't attempt refresh for auth routes (login, register, etc.)
     // Previously, a failed login (401) would trigger refresh → fail → window.location.href = "/"
     // which reloaded the page and swallowed the "Invalid credentials" error toast.

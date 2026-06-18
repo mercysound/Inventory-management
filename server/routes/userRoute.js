@@ -11,6 +11,8 @@ import {
   updateUser,
   emailBroadcast,
   emailBroadcastStatus,
+  toggleUserStatus,
+  bulkToggleUserStatus,
 } from '../controllers/userController.js';
 import {
   userSchema,
@@ -41,6 +43,13 @@ router.get('/email-broadcast/:jobId', authMiddleware, authorizeRoles('admin'), e
 // ── Admin: user management ────────────────────────────────────────────────────
 router.post('/add', authMiddleware, authorizeRoles('admin'), validate(userSchema), addUser);
 router.get('/', authMiddleware, authorizeRoles('admin'), getUsers);
+
+// ── Admin: activate / deactivate ─────────────────────────────────────────────
+// bulk-status MUST be registered before /:id so Express doesn't treat
+// "bulk-status" as a user id parameter.
+router.post('/bulk-status', authMiddleware, authorizeRoles('admin'), bulkToggleUserStatus);
+router.patch('/:id/status', authMiddleware, authorizeRoles('admin'), toggleUserStatus);
+
 router.put('/:id', authMiddleware, authorizeRoles('admin'), validate(updateUserSchema), updateUser);
 router.delete('/:id', authMiddleware, authorizeRoles('admin'), deleteUser);
 

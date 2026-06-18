@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { sendResponse, sendError } from '../utils/apiResponse.js';
 import { getPaginationParams, getPaginationMeta } from '../utils/pagination.js';
 import { sendWithRetry } from '../utils/email/sendWithRetry.js';
+import { sendDeactivationEmail, sendActivationEmail } from '../utils/email/userStatusEmail.js';
 
 const VALID_ROLES = ['admin', 'staff', 'customer', 'wholesale'];
 
@@ -342,6 +343,146 @@ function _classifyError(err) {
   return err?.message || 'Unknown delivery error';
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// toggleUserStatus — PATCH /users/:id/status
+// Admin activates or deactivates a single user.
+// Key design decisions:
+//   - Admin cannot deactivate themselves.
+//   - Admin cannot deactivate the last remaining admin.
+//   - Already-active sessions finish gracefully; block kicks in on next request.
+//   - Sends email to the affected user (fire-and-forget, never blocks response).
+// ─────────────────────────────────────────────────────────────────────────────
+const toggleUserStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isActive, reason } = req.body;
+    const adminId = req.user._id;
+
+    if (String(id) === String(adminId)) {
+      return sendError(res, 400, 'You cannot deactivate your own account.');
+    }
+
+    const user = await UserModel.findById(id);
+    if (!user) return sendError(res, 404, 'User not found');
+
+    // Guard: never lock out the last admin
+    if (user.role === 'admin' && isActive === false) {
+      const activeAdmins = await UserModel.countDocuments({ role: 'admin', isActive: true });
+      if (activeAdmins <= 1) {
+        return sendError(res, 400, 'Cannot deactivate the last active admin account.');
+      }
+    }
+
+    const activate = isActive === true || isActive === 'true';
+
+    user.isActive          = activate;
+    user.deactivatedAt     = activate ? null : new Date();
+    user.deactivatedReason = activate ? null : (reason?.trim() || null);
+    await user.save();
+
+    // Fire-and-forget email — never let it block the response
+    setImmediate(() => {
+      if (activate) {
+        sendActivationEmail({ userName: user.name, userEmail: user.email })
+          .catch((e) => console.error('Activation email failed:', e.message));
+      } else {
+        sendDeactivationEmail({
+          userName:  user.name,
+          userEmail: user.email,
+          reason:    reason?.trim() || null,
+        }).catch((e) => console.error('Deactivation email failed:', e.message));
+      }
+    });
+
+    return sendResponse(
+      res, 200,
+      { user: { _id: user._id, isActive: user.isActive } },
+      activate ? 'User account reactivated.' : 'User account deactivated.'
+    );
+  } catch (error) {
+    console.error('toggleUserStatus error:', error);
+    return sendError(res, 500, 'Failed to update user status.');
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// bulkToggleUserStatus — POST /users/bulk-status
+// Admin activates or deactivates multiple users at once.
+// Returns a summary: { succeeded, failed, skipped }
+// ─────────────────────────────────────────────────────────────────────────────
+const bulkToggleUserStatus = async (req, res) => {
+  try {
+    const { userIds, isActive, reason } = req.body;
+    const adminId = req.user._id;
+
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return sendError(res, 400, 'Provide a non-empty array of userIds.');
+    }
+
+    const activate = isActive === true || isActive === 'true';
+
+    // Never include the requesting admin in a bulk deactivation
+    const safeIds = userIds.filter((id) => String(id) !== String(adminId));
+    const skippedSelf = userIds.length - safeIds.length;
+
+    // If deactivating admins, make sure at least one active admin remains
+    if (!activate) {
+      const targetAdmins = await UserModel.find({
+        _id: { $in: safeIds },
+        role: 'admin',
+        isActive: true,
+      }).select('_id');
+
+      if (targetAdmins.length > 0) {
+        const totalActiveAdmins = await UserModel.countDocuments({ role: 'admin', isActive: true });
+        if (totalActiveAdmins - targetAdmins.length < 1) {
+          return sendError(res, 400, 'Cannot deactivate all admins — at least one must remain active.');
+        }
+      }
+    }
+
+    const users = await UserModel.find({ _id: { $in: safeIds } });
+
+    let succeeded = 0;
+    let failed    = 0;
+
+    for (const user of users) {
+      try {
+        user.isActive          = activate;
+        user.deactivatedAt     = activate ? null : new Date();
+        user.deactivatedReason = activate ? null : (reason?.trim() || null);
+        await user.save();
+        succeeded++;
+
+        // Send emails fire-and-forget
+        setImmediate(() => {
+          if (activate) {
+            sendActivationEmail({ userName: user.name, userEmail: user.email })
+              .catch(() => {});
+          } else {
+            sendDeactivationEmail({
+              userName:  user.name,
+              userEmail: user.email,
+              reason:    reason?.trim() || null,
+            }).catch(() => {});
+          }
+        });
+      } catch {
+        failed++;
+      }
+    }
+
+    return sendResponse(
+      res, 200,
+      { succeeded, failed, skipped: skippedSelf },
+      `${succeeded} user${succeeded !== 1 ? 's' : ''} ${activate ? 'reactivated' : 'deactivated'} successfully.`
+    );
+  } catch (error) {
+    console.error('bulkToggleUserStatus error:', error);
+    return sendError(res, 500, 'Failed to update user statuses.');
+  }
+};
+
 export {
   addUser,
   getUser,
@@ -352,4 +493,6 @@ export {
   updateUser,
   emailBroadcast,
   emailBroadcastStatus,
+  toggleUserStatus,
+  bulkToggleUserStatus,
 };

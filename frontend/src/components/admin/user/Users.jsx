@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import axiosInstance from "../../../utils/axiosInstance";
+import { useAuth } from "../../../context/AuthContext";
 import UsersTable from "./UsersTable";
 import AddUserPanel from "./AddUserPanel";
 import EmailBroadcastPanel from "./EmailBroadcastPanel";
@@ -22,6 +23,9 @@ export const roleColors = {
 };
 
 export default function Users() {
+  const { user: adminUser } = useAuth();
+  const currentAdminId = adminUser?._id || adminUser?.id || "";
+
   const [activeTab,   setActiveTab]   = useState("list");
   const [users,       setUsers]       = useState([]);
   const [filtered,    setFiltered]    = useState([]);
@@ -30,6 +34,11 @@ export default function Users() {
   const [searchQuery, setSearchQuery] = useState("");
   const [editTarget,  setEditTarget]  = useState(null);
   const [sortConfig,  setSortConfig]  = useState({ key: "name", dir: "asc" });
+
+  // ── Single-user suspend confirmation state ────────────────────────────────
+  const [suspendTarget,  setSuspendTarget]  = useState(null); // { user, activate }
+  const [suspendReason,  setSuspendReason]  = useState("");
+  const [suspendLoading, setSuspendLoading] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -66,6 +75,57 @@ export default function Users() {
       const res = await axiosInstance.delete(`/users/${id}`);
       if (res.data.success) { toast.success("User deleted"); fetchUsers(); }
     } catch { toast.error("Delete failed."); }
+  };
+
+  // ── Single toggle — opens confirmation modal ──────────────────────────────
+  const handleToggleStatus = (user, activate) => {
+    setSuspendTarget({ user, activate });
+    setSuspendReason("");
+  };
+
+  // ── Confirm single suspend/activate ──────────────────────────────────────
+  const confirmToggleStatus = async () => {
+    if (!suspendTarget) return;
+    const { user, activate } = suspendTarget;
+    setSuspendLoading(true);
+    try {
+      const res = await axiosInstance.patch(`/users/${user._id}/status`, {
+        isActive: activate,
+        reason:   suspendReason.trim() || undefined,
+      });
+      if (res.data.success) {
+        toast.success(activate ? `${user.name} has been reactivated.` : `${user.name} has been suspended.`);
+        // Optimistic local update — no full re-fetch needed
+        setUsers((prev) => prev.map((u) =>
+          u._id === user._id ? { ...u, isActive: activate } : u
+        ));
+        setSuspendTarget(null);
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to update user status.");
+    } finally {
+      setSuspendLoading(false);
+    }
+  };
+
+  // ── Bulk toggle — called directly from UsersTable after its own confirm ───
+  const handleBulkToggleStatus = async (ids, activate, reason) => {
+    try {
+      const res = await axiosInstance.post("/users/bulk-status", {
+        userIds:  ids,
+        isActive: activate,
+        reason:   reason || undefined,
+      });
+      if (res.data.success) {
+        toast.success(res.data.message);
+        // Optimistic local update
+        setUsers((prev) => prev.map((u) =>
+          ids.includes(u._id) ? { ...u, isActive: activate } : u
+        ));
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to update user statuses.");
+    }
   };
 
   // Counts per role for the filter pill badges
@@ -119,11 +179,12 @@ export default function Users() {
           {/* Stats pills — now includes wholesale */}
           <div className="um-stats">
             {[
-              { label: "Total",     value: users.length,             color: "#64748b" },
-              { label: "Admins",    value: counts.admin    || 0,     color: "#7c3aed" },
-              { label: "Staff",     value: counts.staff    || 0,     color: "#2563eb" },
-              { label: "Customers", value: counts.customer  || 0,    color: "#16a34a" },
-              { label: "Wholesale", value: counts.wholesale || 0,    color: "#92400e" },
+              { label: "Total",     value: users.length,                                  color: "#64748b" },
+              { label: "Admins",    value: counts.admin     || 0,                         color: "#7c3aed" },
+              { label: "Staff",     value: counts.staff     || 0,                         color: "#2563eb" },
+              { label: "Customers", value: counts.customer  || 0,                         color: "#16a34a" },
+              { label: "Wholesale", value: counts.wholesale || 0,                         color: "#92400e" },
+              { label: "Suspended", value: users.filter((u) => u.isActive === false).length, color: "#dc2626" },
             ].map((s) => (
               <div key={s.label} className="um-stat-pill">
                 <span className="um-stat-num" style={{ color: s.color }}>{s.value}</span>
@@ -164,7 +225,10 @@ export default function Users() {
                 onSort={(k) => setSortConfig((p) => ({ key: k, dir: p.key === k && p.dir === "asc" ? "desc" : "asc" }))}
                 onDelete={handleDelete}
                 onEdit={(u) => setEditTarget(u)}
+                onToggleStatus={handleToggleStatus}
+                onBulkToggleStatus={handleBulkToggleStatus}
                 roleColors={roleColors}
+                currentAdminId={currentAdminId}
               />
             )}
             {activeTab === "add"   && <AddUserPanel onSuccess={() => { fetchUsers(); setActiveTab("list"); }} />}
@@ -180,6 +244,113 @@ export default function Users() {
             onClose={() => setEditTarget(null)}
             onSuccess={() => { fetchUsers(); setEditTarget(null); }}
           />
+        )}
+      </AnimatePresence>
+
+      {/* ── Single-user Suspend / Activate confirmation modal ── */}
+      <AnimatePresence>
+        {suspendTarget && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => !suspendLoading && setSuspendTarget(null)}
+            style={{
+              position: "fixed", inset: 0, background: "rgba(15,23,42,.55)",
+              zIndex: 1300, display: "flex", alignItems: "center",
+              justifyContent: "center", padding: "16px", backdropFilter: "blur(3px)",
+            }}>
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }} transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: "#fff", borderRadius: 18, width: "100%", maxWidth: 440,
+                boxShadow: "0 24px 64px rgba(0,0,0,.2)", overflow: "hidden",
+              }}>
+              {/* Header */}
+              <div style={{
+                background: suspendTarget.activate ? "#16a34a" : "#dc2626",
+                padding: "20px 24px",
+              }}>
+                <p style={{ margin: 0, color: "#fff", fontSize: 17, fontWeight: 800 }}>
+                  {suspendTarget.activate ? "▶ Reactivate Account" : "⏸ Suspend Account"}
+                </p>
+                <p style={{ margin: "4px 0 0", color: "rgba(255,255,255,.8)", fontSize: 12 }}>
+                  {suspendTarget.user.name} · {suspendTarget.user.email}
+                </p>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: "20px 24px" }}>
+                {suspendTarget.activate ? (
+                  <p style={{ fontSize: 14, color: "#374151", lineHeight: 1.6, margin: "0 0 16px" }}>
+                    This will <strong>restore full access</strong> for this user. They will be able
+                    to log in immediately and will receive a reactivation email.
+                  </p>
+                ) : (
+                  <>
+                    <p style={{ fontSize: 14, color: "#374151", lineHeight: 1.6, margin: "0 0 12px" }}>
+                      This will <strong>block all access</strong> for this user. They will be
+                      signed out on their next request and will receive a notification email.
+                    </p>
+                    <p style={{
+                      fontSize: 12, background: "#fef3c7", border: "1px solid #fde68a",
+                      borderRadius: 8, padding: "8px 12px", color: "#92400e", margin: "0 0 16px",
+                    }}>
+                      ℹ️ Any active session finishes gracefully — their current page action
+                      completes before the block takes effect.
+                    </p>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 6 }}>
+                      Reason <span style={{ fontWeight: 400, color: "#94a3b8" }}>(optional — included in email)</span>
+                    </label>
+                    <textarea
+                      value={suspendReason}
+                      onChange={(e) => setSuspendReason(e.target.value)}
+                      placeholder="e.g. App undergoing price updates, maintenance mode, security review…"
+                      rows={3}
+                      style={{
+                        width: "100%", padding: "10px 12px", border: "1px solid #e2e8f0",
+                        borderRadius: 9, fontSize: 13, fontFamily: "inherit",
+                        background: "#f8fafc", outline: "none", resize: "vertical",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div style={{
+                display: "flex", gap: 10, padding: "0 24px 20px",
+                justifyContent: "flex-end",
+              }}>
+                <button
+                  onClick={() => setSuspendTarget(null)}
+                  disabled={suspendLoading}
+                  style={{
+                    background: "#f8fafc", color: "#64748b", border: "1px solid #e2e8f0",
+                    borderRadius: 9, padding: "9px 20px", fontSize: 13, fontWeight: 600,
+                    cursor: "pointer", fontFamily: "inherit",
+                  }}>
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmToggleStatus}
+                  disabled={suspendLoading}
+                  style={{
+                    background: suspendTarget.activate ? "#16a34a" : "#dc2626",
+                    color: "#fff", border: "none", borderRadius: 9,
+                    padding: "9px 24px", fontSize: 13, fontWeight: 700,
+                    cursor: suspendLoading ? "not-allowed" : "pointer",
+                    fontFamily: "inherit", opacity: suspendLoading ? 0.7 : 1,
+                  }}>
+                  {suspendLoading
+                    ? "Processing…"
+                    : suspendTarget.activate ? "▶ Reactivate" : "⏸ Suspend"
+                  }
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </>

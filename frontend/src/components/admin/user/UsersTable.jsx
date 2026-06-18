@@ -1,16 +1,18 @@
-import React from "react";
-import { motion } from "framer-motion";
+import React, { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
-const Avatar = ({ name, size = 34 }) => {
+const Avatar = ({ name, size = 34, dimmed = false }) => {
   const initials = name?.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
   const hue = [...(name || "")].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
   return (
     <div style={{
       width: size, height: size, borderRadius: "50%",
-      background: `hsl(${hue},55%,88%)`, color: `hsl(${hue},55%,35%)`,
+      background: dimmed ? "#e2e8f0" : `hsl(${hue},55%,88%)`,
+      color:      dimmed ? "#94a3b8" : `hsl(${hue},55%,35%)`,
       display: "flex", alignItems: "center", justifyContent: "center",
       fontSize: size * 0.35, fontWeight: 700, flexShrink: 0,
       fontFamily: "'DM Mono',monospace",
+      opacity: dimmed ? 0.7 : 1,
     }}>
       {initials}
     </div>
@@ -27,11 +29,11 @@ const SkeletonRows = () => (
   <>
     {[...Array(5)].map((_, i) => (
       <tr key={i}>
-        {[...Array(6)].map((_, j) => (
+        {[...Array(7)].map((_, j) => (
           <td key={j} style={{ padding: "12px 14px" }}>
             <div style={{
               height: 13, background: "#f1f5f9", borderRadius: 6,
-              width: j === 1 ? "75%" : j === 0 ? "30px" : "55%",
+              width: j === 0 ? "20px" : j === 2 ? "75%" : "55%",
               animation: "ut-shimmer 1.4s infinite",
             }} />
           </td>
@@ -41,11 +43,37 @@ const SkeletonRows = () => (
   </>
 );
 
+const StatusBadge = ({ isActive }) =>
+  isActive === false ? (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 4,
+      background: "#fef2f2", color: "#dc2626",
+      border: "1px solid #fecaca", borderRadius: 20,
+      fontSize: 10, fontWeight: 700, padding: "2px 8px",
+    }}>
+      ⏸ Suspended
+    </span>
+  ) : (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 4,
+      background: "#f0fdf4", color: "#16a34a",
+      border: "1px solid #bbf7d0", borderRadius: 20,
+      fontSize: 10, fontWeight: 700, padding: "2px 8px",
+    }}>
+      ✓ Active
+    </span>
+  );
+
 export default function UsersTable({
   users, loading, searchQuery, setSearchQuery,
   roleFilter, setRoleFilter, sortConfig, onSort,
-  onDelete, onEdit, roleColors,
+  onDelete, onEdit, onToggleStatus, onBulkToggleStatus,
+  roleColors, currentAdminId,
 }) {
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkReason,  setBulkReason]  = useState("");
+  const [showReason,  setShowReason]  = useState(false); // reason dialog state
+
   const cols = [
     { key: "name",  label: "Name"  },
     { key: "email", label: "Email" },
@@ -53,8 +81,44 @@ export default function UsersTable({
     { key: "role",  label: "Role"  },
   ];
 
-  // ✅ Wholesale added to filter buttons
   const filterRoles = ["all", "admin", "staff", "customer", "wholesale"];
+
+  // Users that can be selected — admin cannot select themselves
+  const selectableUsers = useMemo(
+    () => users.filter((u) => u._id !== currentAdminId),
+    [users, currentAdminId]
+  );
+
+  const allSelected  = selectableUsers.length > 0 && selectableUsers.every((u) => selectedIds.has(u._id));
+  const someSelected = selectedIds.size > 0;
+
+  const toggleOne = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(selectableUsers.map((u) => u._id)));
+    }
+  };
+
+  const clearSelection = () => { setSelectedIds(new Set()); setBulkReason(""); setShowReason(false); };
+
+  const selectedUsers    = users.filter((u) => selectedIds.has(u._id));
+  const anyActive        = selectedUsers.some((u) => u.isActive !== false);
+  const anyDeactivated   = selectedUsers.some((u) => u.isActive === false);
+
+  const handleBulkAction = (activate) => {
+    if (!someSelected) return;
+    onBulkToggleStatus([...selectedIds], activate, bulkReason.trim() || null);
+    clearSelection();
+  };
 
   return (
     <>
@@ -71,20 +135,25 @@ export default function UsersTable({
         .ut-count-badge{font-size:10px;font-weight:700;border-radius:10px;padding:1px 5px;font-family:'DM Mono',monospace;}
         .ut-result-count{font-size:11px;color:#94a3b8;padding:6px 14px 0;margin:0;}
         .ut-table-wrap{overflow-x:auto;display:none;}
-        .ut-table{width:100%;border-collapse:collapse;min-width:620px;}
+        .ut-table{width:100%;border-collapse:collapse;min-width:680px;}
         .ut-thead{background:#f8fafc;}
         .ut-th{padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:#94a3b8;letter-spacing:0.06em;text-transform:uppercase;border-bottom:1px solid #f1f5f9;white-space:nowrap;}
         .ut-sort-btn{background:none;border:none;cursor:pointer;font-family:inherit;font-size:10px;font-weight:700;color:#94a3b8;letter-spacing:0.06em;text-transform:uppercase;padding:0;display:flex;align-items:center;}
         .ut-tr{background:#fff;border-bottom:1px solid #f8fafc;transition:background .1s;}
         .ut-tr:hover{background:#f8fafc;}
+        .ut-tr-deactivated{background:#fafafa;opacity:.75;}
+        .ut-tr-deactivated:hover{background:#f3f4f6;}
         .ut-td{padding:11px 14px;vertical-align:middle;font-size:13px;}
         .ut-role-pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:0.03em;text-transform:capitalize;}
         .ut-edit-btn{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:3px;transition:all .15s;white-space:nowrap;}
         .ut-del-btn{background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:7px;padding:4px 9px;font-size:12px;cursor:pointer;transition:all .15s;}
+        .ut-suspend-btn{background:#fef3c7;color:#b45309;border:1px solid #fde68a;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s;}
+        .ut-activate-btn{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s;}
         .ut-empty{text-align:center;padding:48px;color:#94a3b8;font-size:13px;}
         .ut-cards{display:flex;flex-direction:column;gap:10px;padding:12px;}
         .ut-card{border:1px solid #f1f5f9;border-radius:12px;padding:14px;background:#fff;transition:box-shadow .15s;}
         .ut-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.06);}
+        .ut-card-deactivated{background:#fafafa;border-color:#e5e7eb;opacity:.8;}
         .ut-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;}
         .ut-card-info{min-width:0;}
         .ut-card-name{font-size:14px;font-weight:700;color:#0f172a;margin:0 0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -92,7 +161,16 @@ export default function UsersTable({
         .ut-card-meta{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;}
         .ut-card-row{display:flex;gap:6px;font-size:12px;color:#475569;align-items:flex-start;}
         .ut-card-key{font-weight:700;color:#94a3b8;min-width:54px;flex-shrink:0;}
-        .ut-card-actions{display:flex;gap:8px;}
+        .ut-card-actions{display:flex;gap:8px;flex-wrap:wrap;}
+        .ut-bulk-bar{background:#0f172a;color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+        .ut-bulk-count{font-size:12px;font-weight:700;}
+        .ut-bulk-btn{border-radius:7px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;border:none;white-space:nowrap;}
+        .ut-bulk-deactivate{background:#fef3c7;color:#92400e;}
+        .ut-bulk-activate{background:#d1fae5;color:#065f46;}
+        .ut-bulk-clear{background:transparent;color:#94a3b8;border:1px solid #334155 !important;border-radius:7px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:inherit;}
+        .ut-reason-input{border:1px solid #334155;border-radius:7px;padding:5px 10px;font-size:11px;font-family:inherit;background:#1e293b;color:#f1f5f9;outline:none;min-width:200px;}
+        .ut-reason-input::placeholder{color:#64748b;}
+        .ut-cb{width:15px;height:15px;cursor:pointer;accent-color:#6366f1;}
         @media(min-width:640px){
           .ut-toolbar{flex-direction:row;align-items:center;padding:14px 18px;}
           .ut-search-wrap{max-width:280px;}
@@ -108,18 +186,15 @@ export default function UsersTable({
       `}</style>
 
       <div className="ut-wrap">
-        {/* Toolbar */}
+
+        {/* ── Toolbar ── */}
         <div className="ut-toolbar">
           <div className="ut-search-wrap">
             <span className="ut-search-icon">🔍</span>
             <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search name or email…" className="ut-search" aria-label="Search users" />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery("")} className="ut-clear">✕</button>
-            )}
+            {searchQuery && <button onClick={() => setSearchQuery("")} className="ut-clear">✕</button>}
           </div>
-
-          {/* ✅ Role filter buttons — wholesale included */}
           <div className="ut-filters" role="group" aria-label="Filter by role">
             {filterRoles.map((r) => (
               <button key={r} onClick={() => setRoleFilter(r)} className="ut-filter"
@@ -130,11 +205,10 @@ export default function UsersTable({
                 }}>
                 {r === "all" ? "All" : r.charAt(0).toUpperCase() + r.slice(1)}
                 {r !== "all" && (
-                  <span className="ut-count-badge"
-                    style={{
-                      background: roleFilter === r ? "rgba(255,255,255,.18)" : (roleColors[r]?.bg || "#f1f5f9"),
-                      color:      roleFilter === r ? "#fff" : (roleColors[r]?.text || "#64748b"),
-                    }}>
+                  <span className="ut-count-badge" style={{
+                    background: roleFilter === r ? "rgba(255,255,255,.18)" : (roleColors[r]?.bg  || "#f1f5f9"),
+                    color:      roleFilter === r ? "#fff"                  : (roleColors[r]?.text || "#64748b"),
+                  }}>
                     {users.filter((u) => u.role === r).length}
                   </span>
                 )}
@@ -143,26 +217,63 @@ export default function UsersTable({
           </div>
         </div>
 
+        {/* ── Bulk action bar — slides in when users are selected ── */}
+        <AnimatePresence>
+          {someSelected && (
+            <motion.div className="ut-bulk-bar"
+              initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.18 }}>
+              <span className="ut-bulk-count">
+                {selectedIds.size} user{selectedIds.size !== 1 ? "s" : ""} selected
+              </span>
+              <input
+                value={bulkReason}
+                onChange={(e) => setBulkReason(e.target.value)}
+                placeholder="Reason (optional, sent by email)…"
+                className="ut-reason-input"
+              />
+              {anyActive && (
+                <button className="ut-bulk-btn ut-bulk-deactivate"
+                  onClick={() => handleBulkAction(false)}>
+                  ⏸ Suspend selected
+                </button>
+              )}
+              {anyDeactivated && (
+                <button className="ut-bulk-btn ut-bulk-activate"
+                  onClick={() => handleBulkAction(true)}>
+                  ▶ Reactivate selected
+                </button>
+              )}
+              <button className="ut-bulk-clear" onClick={clearSelection}>✕ Clear</button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <p className="ut-result-count">
           {loading ? "Loading…" : `${users.length} user${users.length !== 1 ? "s" : ""}`}
           {(searchQuery || roleFilter !== "all") && !loading && " (filtered)"}
         </p>
 
-        {/* Desktop table */}
+        {/* ── Desktop table ── */}
         <div className="ut-table-wrap">
           <table className="ut-table" aria-label="Users table">
             <thead>
               <tr className="ut-thead">
-                <th className="ut-th" style={{ width: 40 }}>#</th>
+                {/* Select-all checkbox */}
+                <th className="ut-th" style={{ width: 32, paddingRight: 4 }}>
+                  <input type="checkbox" className="ut-cb"
+                    checked={allSelected} onChange={toggleAll}
+                    title="Select all" aria-label="Select all users" />
+                </th>
+                <th className="ut-th" style={{ width: 36 }}>#</th>
                 {cols.map((c) => (
                   <th key={c.key} className="ut-th">
                     <button onClick={() => onSort(c.key)} className="ut-sort-btn">
-                      {c.label}
-                      <SortIcon active={sortConfig.key === c.key} dir={sortConfig.dir} />
+                      {c.label}<SortIcon active={sortConfig.key === c.key} dir={sortConfig.dir} />
                     </button>
                   </th>
                 ))}
-                <th className="ut-th">Address</th>
+                <th className="ut-th">Status</th>
                 <th className="ut-th" style={{ textAlign: "center" }}>Actions</th>
               </tr>
             </thead>
@@ -171,62 +282,84 @@ export default function UsersTable({
                 <SkeletonRows />
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="ut-empty">
-                    <div style={{ fontSize: 28, marginBottom: 8 }}>👤</div>
-                    No users found
+                  <td colSpan={8} className="ut-empty">
+                    <div style={{ fontSize: 28, marginBottom: 8 }}>👤</div>No users found
                   </td>
                 </tr>
               ) : (
-                users.map((user, i) => (
-                  <motion.tr key={user._id}
-                    initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.025 }} className="ut-tr">
-                    <td className="ut-td" style={{ color: "#94a3b8", fontSize: 11 }}>{i + 1}</td>
-                    <td className="ut-td">
-                      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                        <Avatar name={user.name} />
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: 13, color: "#0f172a" }}>{user.name}</div>
-                          <div style={{ fontSize: 10, color: "#94a3b8" }}>
-                            {user.profileCompleted ? "✓ Complete" : "Incomplete"}
+                users.map((user, i) => {
+                  const isSelf       = user._id === currentAdminId;
+                  const isDeactivated = user.isActive === false;
+                  const isSelected   = selectedIds.has(user._id);
+                  return (
+                    <motion.tr key={user._id}
+                      initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.02 }}
+                      className={`ut-tr${isDeactivated ? " ut-tr-deactivated" : ""}`}
+                      style={{ background: isSelected ? "#f5f3ff" : undefined }}>
+                      {/* Row checkbox */}
+                      <td className="ut-td" style={{ paddingRight: 4 }}>
+                        {!isSelf && (
+                          <input type="checkbox" className="ut-cb"
+                            checked={isSelected} onChange={() => toggleOne(user._id)}
+                            aria-label={`Select ${user.name}`} />
+                        )}
+                      </td>
+                      <td className="ut-td" style={{ color: "#94a3b8", fontSize: 11 }}>{i + 1}</td>
+                      <td className="ut-td">
+                        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                          <Avatar name={user.name} dimmed={isDeactivated} />
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: isDeactivated ? "#94a3b8" : "#0f172a" }}>
+                              {user.name}
+                              {isSelf && <span style={{ fontSize: 10, color: "#6366f1", marginLeft: 5 }}>(you)</span>}
+                            </div>
+                            <div style={{ fontSize: 10, color: "#94a3b8" }}>
+                              {user.profileCompleted ? "✓ Complete" : "Incomplete"}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="ut-td">
-                      <a href={`mailto:${user.email}`} style={{ color: "#2563eb", textDecoration: "none", fontSize: 12 }}>
-                        {user.email}
-                      </a>
-                    </td>
-                    <td className="ut-td" style={{ fontSize: 12 }}>
-                      {user.phone || <span style={{ color: "#cbd5e1" }}>—</span>}
-                    </td>
-                    <td className="ut-td">
-                      <span className="ut-role-pill" style={{
-                        background: roleColors[user.role]?.bg    || "#f1f5f9",
-                        color:      roleColors[user.role]?.text  || "#64748b",
-                        border:     `1px solid ${roleColors[user.role]?.border || "#e2e8f0"}`,
-                      }}>
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="ut-td" style={{ fontSize: 12, maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {user.address || <span style={{ color: "#cbd5e1" }}>—</span>}
-                    </td>
-                    <td className="ut-td">
-                      <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
-                        <button onClick={() => onEdit(user)} className="ut-edit-btn">✏️ Edit</button>
-                        <button onClick={() => onDelete(user._id)} className="ut-del-btn">🗑</button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))
+                      </td>
+                      <td className="ut-td">
+                        <a href={`mailto:${user.email}`} style={{ color: "#2563eb", textDecoration: "none", fontSize: 12 }}>
+                          {user.email}
+                        </a>
+                      </td>
+                      <td className="ut-td" style={{ fontSize: 12 }}>
+                        {user.phone || <span style={{ color: "#cbd5e1" }}>—</span>}
+                      </td>
+                      <td className="ut-td">
+                        <span className="ut-role-pill" style={{
+                          background: roleColors[user.role]?.bg   || "#f1f5f9",
+                          color:      roleColors[user.role]?.text || "#64748b",
+                          border:     `1px solid ${roleColors[user.role]?.border || "#e2e8f0"}`,
+                        }}>
+                          {user.role}
+                        </span>
+                      </td>
+                      <td className="ut-td">
+                        <StatusBadge isActive={user.isActive} />
+                      </td>
+                      <td className="ut-td">
+                        <div style={{ display: "flex", gap: 5, justifyContent: "center", flexWrap: "wrap" }}>
+                          <button onClick={() => onEdit(user)} className="ut-edit-btn">✏️ Edit</button>
+                          {!isSelf && (
+                            isDeactivated
+                              ? <button onClick={() => onToggleStatus(user, true)}  className="ut-activate-btn">▶ Activate</button>
+                              : <button onClick={() => onToggleStatus(user, false)} className="ut-suspend-btn">⏸ Suspend</button>
+                          )}
+                          <button onClick={() => onDelete(user._id)} className="ut-del-btn">🗑</button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
 
-        {/* Mobile cards */}
+        {/* ── Mobile cards ── */}
         <div className="ut-cards">
           {loading ? (
             [...Array(3)].map((_, i) => (
@@ -243,41 +376,64 @@ export default function UsersTable({
           ) : users.length === 0 ? (
             <div className="ut-empty">No users found</div>
           ) : (
-            users.map((user, i) => (
-              <motion.div key={user._id}
-                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }} className="ut-card">
-                <div className="ut-card-top">
-                  <div style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0, flex: 1 }}>
-                    <Avatar name={user.name} size={38} />
-                    <div className="ut-card-info">
-                      <p className="ut-card-name">{user.name}</p>
-                      <p className="ut-card-email">{user.email}</p>
+            users.map((user, i) => {
+              const isSelf        = user._id === currentAdminId;
+              const isDeactivated = user.isActive === false;
+              const isSelected    = selectedIds.has(user._id);
+              return (
+                <motion.div key={user._id}
+                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  className={`ut-card${isDeactivated ? " ut-card-deactivated" : ""}`}
+                  style={{ background: isSelected ? "#f5f3ff" : undefined }}>
+                  <div className="ut-card-top">
+                    <div style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0, flex: 1 }}>
+                      {/* Mobile checkbox */}
+                      {!isSelf && (
+                        <input type="checkbox" className="ut-cb" checked={isSelected}
+                          onChange={() => toggleOne(user._id)} aria-label={`Select ${user.name}`} />
+                      )}
+                      <Avatar name={user.name} size={38} dimmed={isDeactivated} />
+                      <div className="ut-card-info">
+                        <p className="ut-card-name">
+                          {user.name}
+                          {isSelf && <span style={{ fontSize: 10, color: "#6366f1", marginLeft: 5 }}>(you)</span>}
+                        </p>
+                        <p className="ut-card-email">{user.email}</p>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end", flexShrink: 0 }}>
+                      <span className="ut-role-pill" style={{
+                        background: roleColors[user.role]?.bg   || "#f1f5f9",
+                        color:      roleColors[user.role]?.text || "#64748b",
+                        border:     `1px solid ${roleColors[user.role]?.border || "#e2e8f0"}`,
+                      }}>
+                        {user.role}
+                      </span>
+                      <StatusBadge isActive={user.isActive} />
                     </div>
                   </div>
-                  <span className="ut-role-pill" style={{
-                    background: roleColors[user.role]?.bg    || "#f1f5f9",
-                    color:      roleColors[user.role]?.text  || "#64748b",
-                    border:     `1px solid ${roleColors[user.role]?.border || "#e2e8f0"}`,
-                    flexShrink: 0,
-                  }}>
-                    {user.role}
-                  </span>
-                </div>
-                {(user.phone || user.address) && (
-                  <div className="ut-card-meta">
-                    {user.phone   && <div className="ut-card-row"><span className="ut-card-key">Phone</span>{user.phone}</div>}
-                    {user.address && <div className="ut-card-row"><span className="ut-card-key">Address</span><span style={{ wordBreak: "break-word" }}>{user.address}</span></div>}
+                  {(user.phone || user.address) && (
+                    <div className="ut-card-meta">
+                      {user.phone   && <div className="ut-card-row"><span className="ut-card-key">Phone</span>{user.phone}</div>}
+                      {user.address && <div className="ut-card-row"><span className="ut-card-key">Address</span><span style={{ wordBreak: "break-word" }}>{user.address}</span></div>}
+                    </div>
+                  )}
+                  <div className="ut-card-actions">
+                    <button onClick={() => onEdit(user)} className="ut-edit-btn" style={{ flex: 1, justifyContent: "center" }}>✏️ Edit</button>
+                    {!isSelf && (
+                      isDeactivated
+                        ? <button onClick={() => onToggleStatus(user, true)}  className="ut-activate-btn" style={{ flex: 1 }}>▶ Activate</button>
+                        : <button onClick={() => onToggleStatus(user, false)} className="ut-suspend-btn"  style={{ flex: 1 }}>⏸ Suspend</button>
+                    )}
+                    <button onClick={() => onDelete(user._id)} className="ut-del-btn" style={{ flex: 1 }}>🗑 Delete</button>
                   </div>
-                )}
-                <div className="ut-card-actions">
-                  <button onClick={() => onEdit(user)} className="ut-edit-btn" style={{ flex: 1, justifyContent: "center" }}>✏️ Edit</button>
-                  <button onClick={() => onDelete(user._id)} className="ut-del-btn" style={{ flex: 1 }}>🗑 Delete</button>
-                </div>
-              </motion.div>
-            ))
+                </motion.div>
+              );
+            })
           )}
         </div>
+
       </div>
     </>
   );

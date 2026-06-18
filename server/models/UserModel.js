@@ -15,6 +15,13 @@ const userSchema = new mongoose.Schema({
   profileCompleted: { type: Boolean, default: false },
   resetPasswordToken: { type: String },
   resetPasswordExpires: { type: Date },
+  // ── Deactivation ──────────────────────────────────────────────────────────
+  // isActive: false = user is blocked from logging in / making API requests.
+  // Already-authenticated users finish their current session gracefully —
+  // the block only kicks in on the NEXT request after deactivation.
+  isActive:         { type: Boolean, default: true },
+  deactivatedAt:    { type: Date,    default: null },
+  deactivatedReason:{ type: String,  default: null },
 }, {
   timestamps: true,
 });

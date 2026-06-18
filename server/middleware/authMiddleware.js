@@ -23,6 +23,16 @@ const authMiddleware = async (req, res, next) => {
     const user = await User.findById(decoded.id).select("-password");
     if (!user) return res.status(401).json({ success: false, message: "User not found" });
 
+    // Block deactivated users — every authenticated request is checked here.
+    // isActive defaults to true so existing users without the field are unaffected.
+    if (user.isActive === false) {
+      return res.status(403).json({
+        success: false,
+        code:    "ACCOUNT_DEACTIVATED",
+        message: "Your account has been temporarily suspended. Please contact support.",
+      });
+    }
+
     req.user = user;
     next();
   } catch (error) {
