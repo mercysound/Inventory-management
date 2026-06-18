@@ -1,11 +1,14 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import ProductTable from "./ProductTable";
 import ProductForm from "./ProductForm";
 import ProductSkeleton from "./ProductSkeleton";
 import axiosInstance from "../../../utils/axiosInstance";
 import DeletedProductsPopup from "./DeletedProductsPopup";
-import { parseApiError } from "../../../../../server/utils/parseApiError";
+
+// Extract a readable message from an axios error
+const parseApiError = (err) =>
+  err?.response?.data?.message || err?.message || "Something went wrong. Please try again.";
 
 const EMPTY_FORM = {
   name:           "",
@@ -39,18 +42,34 @@ const Product = () => {
   const [formData, setFormData] = useState(EMPTY_FORM);
 
   // ── Fetch all products ────────────────────────────────────────────────────
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
       const response = await axiosInstance.get("/products");
       if (response.data.success) {
         setCategories(response.data.categories);
         setSuppliers(response.data.suppliers);
-        setProducts(response.data.products);
-        setFilteredProducts(response.data.products);
-        // Reset filters on fresh fetch
-        setSelectedCategory("");
-        setSearchValue("");
+        const newProducts = response.data.products;
+        setProducts(newProducts);
+        // Re-apply current filters against the fresh list — preserves what
+        // the admin already selected instead of resetting to "All Categories"
+        setSelectedCategory((currentCat) => {
+          setSearchValue((currentSearch) => {
+            setFilteredProducts(
+              newProducts.filter((p) => {
+                const matchesSearch   = currentSearch
+                  ? p.name.toLowerCase().includes(currentSearch.toLowerCase())
+                  : true;
+                const matchesCategory = currentCat
+                  ? (p.categoryId?._id ?? p.categoryId) === currentCat
+                  : true;
+                return matchesSearch && matchesCategory;
+              })
+            );
+            return currentSearch; // keep search unchanged
+          });
+          return currentCat; // keep category unchanged
+        });
       } else {
         toast.error("Error fetching products. Please try again");
       }
@@ -60,7 +79,7 @@ const Product = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => { fetchProducts(); }, []);
 
@@ -72,7 +91,8 @@ const Product = () => {
 
     const result = base.filter((p) => {
       const matchesSearch   = s ? p.name.toLowerCase().includes(s.toLowerCase()) : true;
-      const matchesCategory = c ? p.categoryId?._id === c : true; // "" = all
+      // Empty string means "All Categories" — never filter by category in that case
+      const matchesCategory = c ? (p.categoryId?._id ?? p.categoryId) === c : true;
       return matchesSearch && matchesCategory;
     });
     setFilteredProducts(result);

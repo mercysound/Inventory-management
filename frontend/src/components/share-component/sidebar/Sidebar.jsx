@@ -74,12 +74,27 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         >
           {/* Header */}
           <div className="h-16 flex items-center justify-between border-b border-gray-700 px-4">
-            <div>
+            <div className="flex items-center gap-2">
               <span className="text-lg md:text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-pink-400">
                 MELECH SH
               </span>
+              {user?.role === "admin" && (
+                <span className="text-[10px] bg-red-500 text-white rounded-full px-2 py-0.5 font-semibold uppercase tracking-wide">
+                  Admin
+                </span>
+              )}
+              {user?.role === "staff" && (
+                <span className="text-[10px] bg-indigo-500 text-white rounded-full px-2 py-0.5 font-semibold uppercase tracking-wide">
+                  Staff
+                </span>
+              )}
+              {user?.role === "customer" && (
+                <span className="text-[10px] bg-green-500 text-white rounded-full px-2 py-0.5 font-semibold uppercase tracking-wide">
+                  Customer
+                </span>
+              )}
               {user?.role === "wholesale" && (
-                <span className="ml-2 text-[10px] bg-amber-500 text-white rounded-full px-2 py-0.5 font-semibold uppercase tracking-wide">
+                <span className="text-[10px] bg-amber-500 text-white rounded-full px-2 py-0.5 font-semibold uppercase tracking-wide">
                   Wholesale
                 </span>
               )}

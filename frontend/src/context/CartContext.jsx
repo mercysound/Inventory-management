@@ -90,7 +90,13 @@ export const CartProvider = ({ children }) => {
 
     const handlePriceChange = () => {
       const total = cartCountRef.current;
-      window.dispatchEvent(new CustomEvent('ordersUpdated', { detail: { total } }));
+      window.dispatchEvent(new CustomEvent('ordersUpdated', {
+        detail: {
+          total,
+          priceChanged: true,
+          updatedAt: new Date().toISOString(),
+        },
+      }));
       scheduleRefresh();
     };
 

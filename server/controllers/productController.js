@@ -130,10 +130,14 @@ const updateProduct = async (req, res) => {
     // Handle image removal
     if (updateData.removeImage === 'true' || updateData.removeImage === true) {
       if (product.image) {
-        const urlParts = product.image.split('/');
-        const uploadIndex = urlParts.indexOf('upload');
-        const publicId = urlParts.slice(uploadIndex + 2).join('/').replace(/\.[^/.]+$/, '');
-        await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+        try {
+          const urlParts    = product.image.split('/');
+          const uploadIndex = urlParts.indexOf('upload');
+          if (uploadIndex !== -1) {
+            const publicId = urlParts.slice(uploadIndex + 2).join('/').replace(/\.[^/.]+$/, '');
+            if (publicId) await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+          }
+        } catch (e) { console.error('Cloudinary remove-image cleanup failed:', e.message); }
       }
       updateData.image = null;
     }
@@ -141,10 +145,14 @@ const updateProduct = async (req, res) => {
     // Handle new image upload
     if (req.file) {
       if (product.image) {
-        const urlParts = product.image.split('/');
-        const uploadIndex = urlParts.indexOf('upload');
-        const publicId = urlParts.slice(uploadIndex + 2).join('/').replace(/\.[^/.]+$/, '');
-        await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+        try {
+          const urlParts    = product.image.split('/');
+          const uploadIndex = urlParts.indexOf('upload');
+          if (uploadIndex !== -1) {
+            const publicId = urlParts.slice(uploadIndex + 2).join('/').replace(/\.[^/.]+$/, '');
+            if (publicId) await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+          }
+        } catch (e) { console.error('Cloudinary old-image cleanup failed:', e.message); }
       }
       const uploadResult = await cloudinary.uploader.upload(req.file.path, {
         resource_type: 'image',
@@ -253,17 +261,31 @@ const deleteProductPermanent = async (req, res) => {
     const product = await ProductModel.findById(id);
     if (!product) return sendError(res, 404, 'Product not found');
 
+    // Attempt to remove the image from Cloudinary.
+    // Wrapped in its own try/catch so a bad URL or Cloudinary error
+    // never blocks the actual product deletion from the database.
     if (product.image) {
-      const urlParts = product.image.split('/');
-      const uploadIndex = urlParts.indexOf('upload');
-      const publicId = urlParts.slice(uploadIndex + 2).join('/').replace(/\.[^/.]+$/, '');
-      await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+      try {
+        const urlParts   = product.image.split('/');
+        const uploadIndex = urlParts.indexOf('upload');
+        if (uploadIndex !== -1) {
+          // Skip the version segment (e.g. "v1234567890") that follows "upload"
+          const publicId = urlParts.slice(uploadIndex + 2).join('/').replace(/\.[^/.]+$/, '');
+          if (publicId) {
+            await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+          }
+        }
+      } catch (cloudinaryErr) {
+        // Log but do not abort — the product should still be deleted even if
+        // Cloudinary cleanup fails (e.g. image already removed, bad URL, network issue)
+        console.error('Cloudinary cleanup failed during permanent delete:', cloudinaryErr.message);
+      }
     }
 
     await ProductModel.findByIdAndDelete(id);
     return sendResponse(res, 200, null, 'Product permanently deleted');
   } catch (error) {
-    console.error(error);
+    console.error('deleteProductPermanent error:', error);
     return sendError(res, 500, 'Failed to permanently delete product');
   }
 };

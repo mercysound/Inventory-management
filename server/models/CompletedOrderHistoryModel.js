@@ -29,6 +29,9 @@ const completedOrderHistorySchema = new mongoose.Schema(
     productList: [
       {
         productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+        productName: String,
+        productDescription: String,
+        categoryName: String,
         quantity: Number,
         price: Number,
         totalPrice: Number,

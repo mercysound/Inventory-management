@@ -1,5 +1,6 @@
 // server/controllers/settingsController.js
 import SettingsModel from "../models/SettingsModel.js";
+import UserModel     from "../models/UserModel.js";
 import { sendResponse, sendError } from "../utils/apiResponse.js";
 
 // ── Helper: get or create settings doc for the current admin user ─────────────
@@ -152,4 +153,28 @@ export const getExpiryConfigForCron = async () => {
     reminderIntervalHours:  settings?.reminderIntervalHours  ?? 6,
     adminNotificationEmail: settings?.adminNotificationEmail ?? "",
   };
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// getAdminEmail — shared helper used by orderController and anywhere that
+// needs to send a notification to the admin.
+//
+// Resolution order:
+//   1. adminNotificationEmail from settings (what admin set in the UI)
+//   2. Admin user's account email from the DB
+//   3. ADMIN_EMAIL env variable as last resort
+// ─────────────────────────────────────────────────────────────────────────────
+export const getAdminEmail = async () => {
+  try {
+    const settings = await SettingsModel.findOne({}).sort({ createdAt: 1 });
+    const fromSettings = settings?.adminNotificationEmail?.trim();
+    if (fromSettings) return fromSettings;
+
+    const adminUser = await UserModel.findOne({ role: "admin" }).select("email");
+    if (adminUser?.email) return adminUser.email;
+  } catch (err) {
+    console.error("getAdminEmail error:", err.message);
+  }
+
+  return process.env.ADMIN_EMAIL || "";
 };

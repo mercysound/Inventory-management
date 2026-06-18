@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import axiosInstance from "../../../utils/axiosInstance";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
@@ -76,10 +76,12 @@ const OrderCard = ({ order, index, isCancelled }) => (
           <div key={idx} className="flex items-start justify-between gap-2">
             <div>
               <span className="text-sm font-medium text-gray-700">
-                {item?.productId?.name || "Unnamed"}
+                {item?.productName || item?.productId?.name || "Unknown Product"}
               </span>
-              {item?.productId?.categoryId?.name && (
-                <span className="ml-1.5 text-xs text-gray-400">({item.productId.categoryId.name})</span>
+              {(item?.categoryName || item?.productId?.categoryId?.name) && (
+                <span className="ml-1.5 text-xs text-gray-400">
+                  ({item?.categoryName || item?.productId?.categoryId?.name})
+                </span>
               )}
             </div>
             <div className="text-right flex-shrink-0">
@@ -107,54 +109,78 @@ const OrderCard = ({ order, index, isCancelled }) => (
 );
 
 // ─── Main modal ────────────────────────────────────────────────────────────────
-const PendingOrdersModal = ({ isOpen, onClose, pendingOrders = [] }) => {
+const PendingOrdersModal = ({ isOpen, onClose, pendingOrders = [], onRefresh }) => {
   const [orders,          setOrders]          = useState([]);
   const [cancelledOrders, setCancelledOrders] = useState([]);
   const [loading,         setLoading]         = useState(false);
+  const esRef = useRef(null);
 
+  // ── Fetch both active-pending and cancelled-pending ────────────────────────
+  const fetchAll = useCallback(async (silent = false) => {
+    try {
+      if (!silent) setLoading(true);
+      const [placedRes, cancelledRes] = await Promise.all([
+        axiosInstance.get("/placed-orders"),
+        axiosInstance.get("/completed-history/cancelled-pending"),
+      ]);
+
+      if (placedRes.data.success) {
+        const history = placedRes.data.orders || [];
+        setOrders(
+          history.filter((o) =>
+            ["pending", "processing"].includes(o.deliveryStatus?.toLowerCase())
+          )
+        );
+      }
+      if (cancelledRes.data.success) {
+        setCancelledOrders(cancelledRes.data.orders || []);
+      }
+    } catch {
+      if (!silent) toast.error("Failed to fetch orders");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // ── Open / close lifecycle ─────────────────────────────────────────────────
   useEffect(() => {
-    if (!isOpen) return;
-
-    // Use prop data for active pending orders if available
-    if (pendingOrders.length > 0) {
-      setOrders(pendingOrders);
-    } else {
-      // Fetch active pending orders
-      const fetchAll = async () => {
-        try {
-          setLoading(true);
-          const res = await axiosInstance.get("/placed-orders");
-          if (res.data.success) {
-            const history = res.data.orders || [];
-            const pending = history.filter((o) =>
-              ["pending", "processing"].includes(o.deliveryStatus?.toLowerCase())
-            );
-            setOrders(pending);
-          }
-        } catch {
-          toast.error("Failed to fetch orders");
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchAll();
+    if (!isOpen) {
+      // Close SSE when modal closes
+      if (esRef.current) { esRef.current.close(); esRef.current = null; }
+      return;
     }
 
-    // ✅ Always fetch cancelled-but-not-refunded orders separately
-    // These show in the pending modal until admin marks refund
-    const fetchCancelled = async () => {
-      try {
-        const res = await axiosInstance.get("/completed-history/cancelled-pending");
-        if (res.data.success) {
-          setCancelledOrders(res.data.orders || []);
-        }
-      } catch {
-        // Silently fail — not critical
-      }
-    };
-    fetchCancelled();
-  }, [isOpen, pendingOrders]);
+    // Initial fetch when modal opens
+    fetchAll();
 
+    // ── Open SSE stream for real-time updates ──────────────────────────────
+    const token = localStorage.getItem("pos-token");
+    if (token) {
+      const base = import.meta.env.VITE_API_URL || "/api";
+      const url  = `${base}/placed-orders/stream?token=${encodeURIComponent(token)}`;
+      const es   = new EventSource(url);
+      esRef.current = es;
+
+      es.addEventListener("placedOrderUpdated", () => {
+        // Re-fetch silently — no spinner, instant update
+        fetchAll(true);
+        // Also tell the parent CartPage to refresh its badge count
+        onRefresh?.();
+      });
+
+      es.addEventListener("error", () => {
+        // SSE error — close and let it reconnect on next modal open
+        es.close();
+        esRef.current = null;
+      });
+    }
+
+    return () => {
+      if (esRef.current) { esRef.current.close(); esRef.current = null; }
+    };
+  }, [isOpen, fetchAll, onRefresh]);
+
+  // ── Keep local orders in sync when parent passes fresh pendingOrders ───────
   useEffect(() => {
     if (pendingOrders.length > 0) setOrders(pendingOrders);
   }, [pendingOrders]);

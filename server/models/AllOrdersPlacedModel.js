@@ -16,6 +16,9 @@ const allOrdersPlacedSchema = new mongoose.Schema(
     productList: [
       {
         productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+        productName: { type: String },
+        productDescription: { type: String },
+        categoryName: { type: String },
         quantity:  { type: Number },
         price:     { type: Number },
         totalPrice:{ type: Number },

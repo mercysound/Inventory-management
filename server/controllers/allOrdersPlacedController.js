@@ -5,6 +5,42 @@ import { sendCustomerProcessingEmail } from "../utils/email/customerProcessing.j
 import { sendCustomerDeliveredEmail } from "../utils/email/customerOrderDelivered.js";
 import { sendCustomerCancelledEmail } from "../utils/email/customerOrderCancelled.js";
 import { sendResponse, sendError } from "../utils/apiResponse.js";
+import orderNotifier from "../utils/orderNotifier.js";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// normalizeProductList — see completedOrderHistoryController for full comment.
+// Always prefers stored snapshot strings over live populated product data so
+// that deleted products never surface as "Unknown" in placed-order views.
+// ─────────────────────────────────────────────────────────────────────────────
+const normalizeProductList = (productList = []) =>
+  productList.map((item) => {
+    const snap = item.toObject ? item.toObject() : { ...item };
+    const live = snap.productId;
+    return {
+      ...snap,
+      productName:        snap.productName        || live?.name              || "Unknown Product",
+      categoryName:       snap.categoryName       || live?.categoryId?.name  || "Unknown Category",
+      productDescription: snap.productDescription || live?.description       || "",
+      productId: live
+        ? {
+            ...(live.toObject ? live.toObject() : live),
+            name:        snap.productName        || live.name              || "Unknown Product",
+            description: snap.productDescription || live.description       || "",
+            categoryId:  live.categoryId
+              ? {
+                  ...(live.categoryId.toObject ? live.categoryId.toObject() : live.categoryId),
+                  name: snap.categoryName || live.categoryId?.name || "Unknown Category",
+                }
+              : { name: snap.categoryName || "Unknown Category" },
+          }
+        : {
+            _id:         snap.productId,
+            name:        snap.productName        || "Unknown Product",
+            description: snap.productDescription || "",
+            categoryId:  { name: snap.categoryName || "Unknown Category" },
+          },
+    };
+  });
 
 // Email handler map — cancel is handled separately below
 const emailHandlers = {
@@ -27,12 +63,19 @@ export const getAllPlacedOrders = async (req, res) => {
       .populate("userOrdering", "name role email")
       .populate({
         path: "productList.productId",
-        select: "name categoryId description",
+        select: "name categoryId description isDeleted",
         populate: { path: "categoryId", select: "name" },
       })
       .sort({ createdAt: -1 });
 
-    return sendResponse(res, 200, { orders }, "Placed orders retrieved successfully");
+    // Normalize so deleted products never surface as "Unknown"
+    const normalized = orders.map((o) => {
+      const obj = o.toObject();
+      obj.productList = normalizeProductList(obj.productList);
+      return obj;
+    });
+
+    return sendResponse(res, 200, { orders: normalized }, "Placed orders retrieved successfully");
   } catch (error) {
     console.error("getAllPlacedOrders error:", error);
     return sendError(res, 500, "Error fetching placed orders");
@@ -105,14 +148,21 @@ export const updateDeliveryStatus = async (req, res) => {
         console.error("Cancel email failed:", emailErr.message);
       }
 
+      // Notify buyers in real-time — cancelled
+      orderNotifier.emit("placedOrderUpdated", {
+        orderId: id,
+        userId:  String(order.userOrdering?._id || order.userOrdering),
+        status:  "cancelled",
+      });
+
       return sendResponse(
         res, 200, null,
         "Order cancelled. Stock restored and buyer has been notified."
       );
     }
 
-    // ── DELIVERED flow ────────────────────────────────────────────────────
-    if (deliveryStatus.toLowerCase() === "delivered") {
+      // ── DELIVERED flow ────────────────────────────────────────────────────
+      if (deliveryStatus.toLowerCase() === "delivered") {
       // Send email
       try {
         if (order.userOrdering?.email) {
@@ -139,6 +189,13 @@ export const updateDeliveryStatus = async (req, res) => {
 
       await AllOrdersPlacedModel.findByIdAndDelete(id);
 
+      // Notify buyers in real-time
+      orderNotifier.emit("placedOrderUpdated", {
+        orderId:  id,
+        userId:   String(order.userOrdering?._id || order.userOrdering),
+        status:   "delivered",
+      });
+
       return sendResponse(res, 200, null, "Order marked as delivered and moved to history.");
     }
 
@@ -159,6 +216,13 @@ export const updateDeliveryStatus = async (req, res) => {
       }
     }
 
+    // Notify buyers in real-time
+    orderNotifier.emit("placedOrderUpdated", {
+      orderId: id,
+      userId:  String(order.userOrdering?._id || order.userOrdering),
+      status:  deliveryStatus,
+    });
+
     return sendResponse(res, 200, null, "Delivery status updated successfully.");
   } catch (error) {
     console.error("updateDeliveryStatus error:", error);
@@ -176,20 +240,5 @@ export const clearAllPlacedOrders = async (req, res) => {
   } catch (error) {
     console.error("clearAllPlacedOrders error:", error);
     return sendError(res, 500, "Error clearing orders");
-  }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// DELETE /placed-orders/:id — admin deletes single order
-// ─────────────────────────────────────────────────────────────────────────────
-export const deletePlacedOrder = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const deleted = await AllOrdersPlacedModel.findByIdAndDelete(id);
-    if (!deleted) return sendError(res, 404, "Order not found");
-    return sendResponse(res, 200, null, "Order deleted successfully");
-  } catch (error) {
-    console.error("deletePlacedOrder error:", error);
-    return sendError(res, 500, "Error deleting order");
   }
 };

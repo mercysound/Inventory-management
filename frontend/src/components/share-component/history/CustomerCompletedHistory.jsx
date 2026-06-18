@@ -35,6 +35,18 @@ const CustomerCompletedHistory = () => {
     }
   }, []);
 
+  // Bulk delete — no per-item confirm (caller already confirmed once)
+  const deleteOrderDirect = useCallback(async (id) => {
+    try {
+      const res = await axiosInstance.delete(`/completed-history/${id}`);
+      if (res.data.success) {
+        setOrders((prev) => prev.filter((o) => o._id !== id));
+      }
+    } catch {
+      // silently accumulate — errors shown by caller
+    }
+  }, []);
+
   const clearAllOrders = useCallback(async () => {
     if (!window.confirm("Clear all your completed orders?")) return;
     try {
@@ -77,6 +89,7 @@ const CustomerCompletedHistory = () => {
         orders={orders}
         role="customer"
         onDelete={deleteOrder}
+        onDeleteMany={deleteOrderDirect}
         onClearAll={clearAllOrders}
         onViewReceipt={handleViewReceipt}
       />

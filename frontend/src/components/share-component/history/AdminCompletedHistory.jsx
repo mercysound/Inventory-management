@@ -70,6 +70,18 @@ const AdminCompletedHistory = () => {
     }
   }, []);
 
+  // Bulk delete — no per-item confirm (caller already confirmed once)
+  const deleteOrderDirect = useCallback(async (id) => {
+    try {
+      const res = await axiosInstance.delete(`/completed-history/${id}`);
+      if (res.data.success) {
+        setOrders((prev) => prev.filter((o) => o._id !== id));
+      }
+    } catch {
+      // silently accumulate — errors shown by caller
+    }
+  }, []);
+
   const clearAllOrders = useCallback(async () => {
     if (!window.confirm("Clear all completed orders from admin view?")) return;
     try {
@@ -109,6 +121,7 @@ const AdminCompletedHistory = () => {
         orders={orders}
         role="admin"
         onDelete={deleteOrder}
+        onDeleteMany={deleteOrderDirect}
         onClearAll={clearAllOrders}
         onViewReceipt={handleViewReceipt}
         onMarkRefund={handleMarkRefund}   // ✅ pass refund handler

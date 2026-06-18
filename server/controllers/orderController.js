@@ -6,6 +6,7 @@ import CompletedOrderHistoryModel from "../models/CompletedOrderHistoryModel.js"
 import { sendAdminOrderPlacedEmail } from "../utils/email/adminOrderPlaced.js";
 import { sendResponse, sendError } from "../utils/apiResponse.js";
 import { getPaginationParams, getPaginationMeta } from "../utils/pagination.js";
+import { getAdminEmail } from "../controllers/settingsController.js";
 import mongoose from "mongoose";
 
 const STORE_ACCOUNT = {
@@ -20,8 +21,9 @@ const STORE_ACCOUNT = {
  */
 const addOrder = async (req, res) => {
   try {
-    const { productId, quantity, total, price, priceMode } = req.body;
+    const { productId, quantity, total, price, priceMode, isWholesale } = req.body;
     const userId = req.user._id;
+    const userRole = req.user.role;
 
     const product = await ProductModel.findById(productId);
     if (!product) return sendError(res, 404, "Product not found in order");
@@ -30,7 +32,11 @@ const addOrder = async (req, res) => {
     const existing = await OrderModel.findOne({ userOrdering: userId, product: productId });
     const ONE_HOUR = new Date(Date.now() + 60 * 60 * 1000);
 
-    const finalPriceMode = ["retail", "wholesale"].includes(priceMode) ? priceMode : "retail";
+    // Wholesale-role users always get wholesale pricing — never trust client to send correct priceMode
+    const forceWholesale = userRole === "wholesale";
+    const requestedMode = ["retail", "wholesale"].includes(priceMode) ? priceMode : (isWholesale ? "wholesale" : "retail");
+    const finalPriceMode = forceWholesale ? "wholesale" : requestedMode;
+
     const unitPrice = finalPriceMode === "wholesale"
       ? (product.wholesalePrice ?? product.price)
       : product.price;
@@ -100,13 +106,15 @@ const updateOrder = async (req, res) => {
     if (qty > product.stock) return sendError(res, 400, "Not enough stock available");
 
     const finalPriceMode = ["retail", "wholesale"].includes(priceMode) ? priceMode : order.priceMode || "retail";
-    const unitPrice = finalPriceMode === "wholesale"
+    // Wholesale-role users always stay on wholesale pricing
+    const enforcedPriceMode = req.user.role === "wholesale" ? "wholesale" : finalPriceMode;
+    const unitPrice = enforcedPriceMode === "wholesale"
       ? (product.wholesalePrice ?? product.price)
       : product.price;
 
     order.quantity      = qty;
     order.price         = unitPrice;
-    order.priceMode     = finalPriceMode;
+    order.priceMode     = enforcedPriceMode;
     order.totalPrice    = total || unitPrice * qty;
     order.cartExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
     await order.save();
@@ -243,13 +251,41 @@ const completeOrder = async (req, res) => {
 
     const totalPrice  = orders.reduce((sum, o) => sum + o.quantity * o.price, 0);
     const allQuantity = orders.reduce((sum, o) => sum + o.quantity, 0);
-    const productList = orders.map((o) => ({
-      productId:  o.product._id,
-      quantity:   o.quantity,
-      price:      o.price,
-      totalPrice: o.quantity * o.price,
-      priceMode:  o.priceMode || "retail",
-    }));
+    // Build product snapshot list — ensure we persist product name/description/category
+    const productList = [];
+    for (const o of orders) {
+      const productRef = o.product && typeof o.product === "object" && o.product._id
+        ? o.product._id
+        : o.product;
+
+      let name = o.product && typeof o.product === "object" ? o.product.name || "" : "";
+      let description = o.product && typeof o.product === "object" ? o.product.description || "" : "";
+      let categoryName = o.product && typeof o.product === "object" ? o.product.categoryId?.name || "" : "";
+
+      if ((!name || !description || !categoryName) && mongoose.Types.ObjectId.isValid(productRef)) {
+        try {
+          const p = await ProductModel.findById(productRef).select("name description categoryId").lean();
+          if (p) {
+            name = name || p.name || "";
+            description = description || p.description || "";
+            categoryName = categoryName || p.categoryId?.name || "";
+          }
+        } catch (e) {
+          // ignore lookup failure — we'll fall back to stored fields below
+        }
+      }
+
+      productList.push({
+        productId:          productRef,
+        productName:        name || o.productName || "Unknown Product",
+        productDescription: description || o.productDescription || "",
+        categoryName:       categoryName || o.categoryName || "",
+        quantity:           o.quantity,
+        price:              o.price,
+        totalPrice:         o.quantity * o.price,
+        priceMode:          o.priceMode,
+      });
+    }
 
     let placed;
 
@@ -265,6 +301,25 @@ const completeOrder = async (req, res) => {
         paid:          true,
         deliveryStatus: "pending",
       }], { session });
+
+      // Notify admin of new order — fire-and-forget (after transaction commits)
+      setImmediate(async () => {
+        try {
+          const adminEmail = await getAdminEmail();
+          if (adminEmail) {
+            await sendAdminOrderPlacedEmail({
+              adminEmail,
+              buyerName: buyerName || (role === "wholesale" ? "Wholesale Customer" : "Customer"),
+              totalPrice,
+              orderId: placed[0]._id,
+              role,
+            });
+          }
+        } catch (e) {
+          console.error("Admin order email failed:", e.message);
+        }
+      });
+
 
     } else {
       // ── staff → direct completed history (walk-in sale) ─────────────────
@@ -309,312 +364,430 @@ const escapeHtml = (value) => {
 const generateInvoice = async (req, res) => {
   try {
     const {
-      customerName  = "Guest Customer",
+      customerName = "Guest Customer",
       paymentMethod = "Not Specified",
-      mode          = "preview",
-      orderSource   = "online",
+      mode = "preview",
+      orderSource = "online",
       orderId,
       historyReceipt,
     } = req.query;
 
+    const safeCustomerName = escapeHtml(customerName);
+    const safePaymentMethod = escapeHtml(paymentMethod);
+    const safeOrderSource = escapeHtml(orderSource);
+
     const paymentStatus = mode === "final" ? "Paid" : "Unpaid";
     let orders = [];
     let receiptOrderId = orderId || null;
-    let buyerInfo = { name: customerName, email: "", phone: "", role: "" };
-    let hasPriceModes = false;
 
-    // ── Preview → from active cart ───────────────────────────────────────
+    /* ======================================================
+       1  PREVIEW -> FROM CART
+    ====================================================== */
     if (mode === "preview") {
-      const activeOrders = await OrderModel.find({ userOrdering: req.user._id })
-        .populate({
-          path:     "product",
-          select:   "name description categoryId",
-          populate: { path: "categoryId", select: "name" },
-        });
-
-      if (!activeOrders.length) {
-        return res.status(404).json({ message: "No active orders to preview" });
-      }
-
-      // Get user details for buyer info
-      const user = await OrderModel.findOne({ userOrdering: req.user._id }).session(null);
-      if (req.user) {
-        buyerInfo = {
-          name: req.user.name || customerName,
-          email: req.user.email || "",
-          phone: req.user.phone || "",
-          role: req.user.role || "",
-        };
-      }
-
-      orders = activeOrders.map((o) => {
-        const priceMode = o.priceMode || "retail";
-        hasPriceModes = true;
-        return {
-          product: {
-            name:         o.product?.name,
-            desc:         o.product?.description || "",
-            categoryName: o.product?.categoryId?.name,
-          },
-          quantity:   o.quantity,
-          price:      o.price,
-          totalPrice: o.quantity * o.price,
-          priceMode:  priceMode,
-          priceTag:   priceMode === "wholesale" ? "WSP" : "RTP",
-        };
+      const activeOrders = await OrderModel.find({
+        userOrdering: req.user._id,
+      }).populate({
+        path: "product",
+        select: "name description categoryId",
+        populate: { path: "categoryId", select: "name" },
       });
+
+      if (!activeOrders.length)
+        return res.status(404).json({ message: "No active orders to preview" });
+
+      orders = activeOrders.map((o) => ({
+        product: {
+          name: o.product?.name,
+          desc: o.product?.description || "",
+          categoryName: o.product?.categoryId?.name,
+        },
+        quantity: o.quantity,
+        price: o.price,
+        totalPrice: o.quantity * o.price,
+      }));
     }
 
-    // ── Final → from history model ────────────────────────────────────────
+    /* ======================================================
+       2  FINAL -> FROM HISTORY MODEL
+    ====================================================== */
     if (mode === "final") {
-      let HistoryModel;
-      if (historyReceipt) {
-        HistoryModel = CompletedOrderHistoryModel;
+      const normalizedSource = String(orderSource || "").toLowerCase();
+      const query = orderId ? { _id: orderId } : { userOrdering: req.user._id };
+      const populateOpts = {
+        path: "productList.productId",
+        select: "name description categoryId",
+        populate: { path: "categoryId", select: "name" },
+      };
+
+      const tryFindOrder = async (Model) => Model
+        .findOne(query)
+        .populate(populateOpts)
+        .sort({ createdAt: -1 });
+
+      let order = null;
+      if (normalizedSource === "staff") {
+        order = await tryFindOrder(CompletedOrderHistoryModel);
+      } else if (normalizedSource === "online") {
+        order = await tryFindOrder(AllOrdersPlacedModel);
+      } else if (historyReceipt) {
+        order = await tryFindOrder(CompletedOrderHistoryModel);
       } else {
-        HistoryModel = orderSource === "staff" ? CompletedOrderHistoryModel : AllOrdersPlacedModel;
+        order = await tryFindOrder(AllOrdersPlacedModel);
       }
 
-      const query = orderId ? { _id: orderId } : { userOrdering: req.user._id };
-      let order;
-
-      if (historyReceipt) {
-        order = await HistoryModel.findOne(query)
-          .populate({
-            path:     "productList.productId",
-            select:   "name description categoryId",
-            populate: { path: "categoryId", select: "name" },
-          })
-          .populate({ path: "userOrdering", select: "name email phone role" });
-      } else {
-        order = await HistoryModel.findOne(query)
-          .populate({
-            path:     "productList.productId",
-            select:   "name description categoryId",
-            populate: { path: "categoryId", select: "name" },
-          })
-          .populate({ path: "userOrdering", select: "name email phone role" })
-          .sort({ createdAt: -1 });
+      if (!order && orderId) {
+        order = await tryFindOrder(CompletedOrderHistoryModel);
+      }
+      if (!order) {
+        order = await tryFindOrder(AllOrdersPlacedModel);
       }
 
       if (!order) return res.status(404).json({ message: "Order not found" });
 
       receiptOrderId = order._id;
-      
-      // Extract buyer info from order or user
-      if (order.userOrdering) {
-        buyerInfo = {
-          name: order.userOrdering.name || order.buyerName || customerName,
-          email: order.userOrdering.email || "",
-          phone: order.userOrdering.phone || "",
-          role: order.userOrdering.role || "",
-        };
-      } else {
-        buyerInfo = {
-          name: order.buyerName || customerName,
-          email: "",
-          phone: "",
-          role: orderSource === "staff" ? "staff" : "",
-        };
-      }
+      orders = order.productList.map((i) => ({
+        product: {
+          name: i.productName || i.productId?.name || i.productDescription || i.categoryName || "Unknown Product",
+          desc: i.productDescription || (i.categoryName ? `Category: ${i.categoryName}` : "") || i.productId?.description || "",
+          categoryName: i.categoryName || i.productId?.categoryId?.name || "",
+        },
+        quantity: i.quantity,
+        price: i.price,
+        totalPrice: i.totalPrice,
+        priceMode: i.priceMode,
+      }));
+    }
 
-      orders = order.productList.map((i) => {
-        const priceMode = i.priceMode || "retail";
-        hasPriceModes = true;
-        return {
-          product: {
-            name:         i.productId?.name,
-            desc:         i.productId?.description || "",
-            categoryName: i.productId?.categoryId?.name,
-          },
-          quantity:   i.quantity,
-          price:      i.price,
-          totalPrice: i.totalPrice,
-          priceMode:  priceMode,
-          priceTag:   priceMode === "wholesale" ? "WSP" : "RTP",
+    if (!orders.length)
+      return res.status(404).json({ message: "No orders found" });
+
+    /* ======================================================
+       3  TOTALS
+    ====================================================== */
+    const totalAmount  = orders.reduce((sum, o) => sum + o.totalPrice, 0);
+    const orderIdShort = receiptOrderId
+      ? String(receiptOrderId).slice(-10).toUpperCase()
+      : "N/A";
+    const dateStr = new Date().toLocaleString("en-NG", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+
+    /* ======================================================
+       4  RAW PDF DOWNLOAD - only when ?download=true
+          React modal Download button hits this with ?download=true
+    ====================================================== */
+    const wantRaw = req.query.download === "true";
+
+    if (wantRaw) {
+      const receiptWidth = 300;
+      const margin       = 20;
+      const contentWidth = receiptWidth - margin * 2;
+      const doc          = new PDFDocument({ margin, size: [receiptWidth, 800] });
+      const chunks       = [];
+      doc.on("data", (c) => chunks.push(c));
+
+      await new Promise((resolve, reject) => {
+        doc.on("end", resolve);
+        doc.on("error", reject);
+
+        doc.fontSize(14).font("Helvetica-Bold").fillColor("#1E3A8A")
+          .text("MELECH STORE", margin, 20, { align: "center", width: contentWidth });
+        doc.fontSize(8).font("Helvetica").fillColor("#555")
+          .text("Official Sales Receipt", margin, doc.y + 2, {
+            align: "center", width: contentWidth });
+
+        const divider = () =>
+          doc.moveTo(margin, doc.y + 5)
+            .lineTo(receiptWidth - margin, doc.y + 5)
+            .dash(2, { space: 2 }).strokeColor("#aaa").stroke().undash();
+
+        divider();
+        doc.moveDown(0.8).fontSize(7.5).font("Helvetica").fillColor("#000");
+
+        [
+          ["Order ID:", orderIdShort],
+          ["Date:", dateStr],
+          ["Customer:", customerName],
+          ["Payment:", paymentMethod],
+          ["Status:", paymentStatus],
+        ].forEach(([label, value]) => {
+          const ly = doc.y;
+          doc.font("Helvetica-Bold").text(label, margin, ly, { continued: false, width: 70 });
+          doc.font("Helvetica").text(value, margin + 72, ly, { width: contentWidth - 72 });
+          doc.moveDown(0.3);
+        });
+
+        divider();
+        doc.moveDown(0.5);
+
+        const col = {
+          num: margin, name: margin + 14, qty: margin + 100,
+          price: margin + 126, total: margin + 182,
         };
+
+        doc.fontSize(7.5).font("Helvetica-Bold").fillColor("#fff")
+          .rect(margin, doc.y, contentWidth, 22).fill("#1E3A8A").stroke();
+        const hy = doc.y - 22;
+        doc.fillColor("#fff").fontSize(7);
+        doc.font("Helvetica-Bold").text("#",        col.num,   hy + 3, { width: 12 });
+        doc.font("Helvetica-Bold").text("Item",     col.name,  hy + 3, { width: 82 });
+        doc.font("Helvetica-Bold").text("Qty",      col.qty,   hy + 3, { width: 26 });
+        doc.font("Helvetica-Bold").text("Unit",     col.price, hy + 3, { width: 52 });
+        doc.font("Helvetica-Bold").text("Subtotal", col.total, hy + 3, { width: 52 });
+        doc.font("Helvetica").fontSize(6).fillColor("#cce0ff")
+          .text("Name / Desc / Cat.", col.name,  hy + 13, { width: 82 })
+          .text("Price",              col.price, hy + 13, { width: 52 })
+          .text("(Qty x Price)",      col.total, hy + 13, { width: 52 });
+
+        doc.fillColor("#000").font("Helvetica").fontSize(7.5);
+        let y = doc.y + 4;
+
+        orders.forEach((o, idx) => {
+          const rawName = o.product?.name || o.productName || o.product?.desc || o.productDescription || o.product?.categoryName || o.categoryName || "Unknown item";
+          const name = escapeHtml(rawName);
+          const cat  = o.product?.categoryName || o.categoryName ? "[" + escapeHtml(o.product?.categoryName || o.categoryName) + "]" : "";
+          const raw  = escapeHtml(o.product?.desc || o.productDescription || (o.product?.categoryName || o.categoryName ? `Category: ${o.product?.categoryName || o.categoryName}` : ""));
+          const desc = raw.length > 40 ? raw.slice(0, 40) + "..." : raw;
+          const nh   = doc.heightOfString(name, { width: 82 });
+          const ch   = cat  ? doc.heightOfString(cat,  { width: 82 }) : 0;
+          const dh   = desc ? doc.heightOfString(desc, { width: 82 }) : 0;
+          const rh   = Math.max(24, nh + ch + dh + 10);
+
+          doc.rect(margin, y, contentWidth, rh)
+            .fill(idx % 2 === 0 ? "#F3F4F6" : "#FFF").stroke();
+          doc.fillColor("#000");
+          doc.font("Helvetica-Bold").fontSize(7)
+            .text(String(idx + 1), col.num, y + 4, { width: 12 });
+          doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#000")
+            .text(name, col.name, y + 4, { width: 82 });
+
+          let ty = y + 4 + nh;
+          if (cat) {
+            doc.font("Helvetica").fontSize(6.5).fillColor("#1E3A8A")
+              .text(cat, col.name, ty, { width: 82 });
+            ty += ch;
+          }
+          if (desc)
+            doc.font("Helvetica").fontSize(6.5).fillColor("#555")
+              .text(desc, col.name, ty, { width: 82 });
+
+          const mid = y + rh / 2 - 4;
+          doc.fillColor("#000").font("Helvetica").fontSize(7.5);
+          doc.text(String(o.quantity),                  col.qty,   mid, { width: 26 });
+          doc.text("N" + o.price.toLocaleString(),      col.price, mid, { width: 52 });
+          doc.text("N" + o.totalPrice.toLocaleString(), col.total, mid, { width: 52 });
+          y += rh;
+        });
+
+        y += 6;
+        doc.moveTo(margin, y).lineTo(receiptWidth - margin, y)
+          .strokeColor("#000").stroke();
+        y += 6;
+        doc.fontSize(9).font("Helvetica-Bold").fillColor("#000")
+          .text(
+            "TOTAL (" + orders.length + " item" + (orders.length > 1 ? "s" : "") + "):",
+            col.num, y, { width: 155 }
+          )
+          .text("N" + totalAmount.toLocaleString(), col.total, y, { width: 52 });
+        y += 20;
+
+        if (paymentStatus === "Unpaid" && req.user.role === "staff") {
+          divider();
+          doc.moveDown(0.5);
+          doc.fontSize(7.5).font("Helvetica-Bold").fillColor("#b91c1c")
+            .text("PAYMENT INSTRUCTIONS", margin, doc.y, {
+              align: "center", width: contentWidth });
+          doc.font("Helvetica").fillColor("#000").moveDown(0.3);
+          [
+            ["Bank:", STORE_ACCOUNT.bankName],
+            ["Account Name:", STORE_ACCOUNT.accountName],
+            ["Account No:", STORE_ACCOUNT.accountNumber],
+          ].forEach(([label, value]) => {
+            const ly = doc.y;
+            doc.font("Helvetica-Bold").text(label, margin, ly, { width: 75 });
+            doc.font("Helvetica").text(value, margin + 77, ly, { width: contentWidth - 77 });
+            doc.moveDown(0.3);
+          });
+        }
+
+        divider();
+        doc.moveDown(0.5);
+        doc.fontSize(7).font("Helvetica").fillColor("gray")
+          .text("Thank you for shopping with MELECH STORE!", margin, doc.y, {
+            align: "center", width: contentWidth })
+          .text("No signature required - auto-generated receipt", margin, doc.y + 4, {
+            align: "center", width: contentWidth });
+
+        doc.end();
       });
+
+      const pdfBuffer = Buffer.concat(chunks);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=receipt-" + orderIdShort + ".pdf"
+      );
+      return res.send(pdfBuffer);
     }
 
-    if (!orders.length) return res.status(404).json({ message: "No orders found" });
+    /* ======================================================
+       5  HTML RECEIPT - pure display, no scripts at all.
+          CSP blocks inline scripts and external CDNs inside
+          the iframe, so we serve clean HTML only.
+          All action buttons (Download, Print) live in the
+          React ReceiptModal component outside the iframe.
+    ====================================================== */
 
-    const totalAmount   = orders.reduce((sum, o) => sum + o.totalPrice, 0);
-    const receiptWidth  = 300;
-    const margin        = 20;
-    const contentWidth  = receiptWidth - margin * 2;
+    const statusColor  = paymentStatus === "Paid" ? "#15803d" : "#b91c1c";
+    const statusBg     = paymentStatus === "Paid" ? "#f0fdf4" : "#fef2f2";
+    const statusBorder = paymentStatus === "Paid" ? "#bbf7d0" : "#fecaca";
 
-    const doc = new PDFDocument({ margin, size: [receiptWidth, 850] });
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", "inline; filename=receipt.pdf");
-    doc.pipe(res);
+    const itemRows = orders.map((o, idx) => {
+      const rawName = o.product.name || o.product.desc || o.product.categoryName || "Unknown item";
+      const name = escapeHtml(rawName);
+      const cat = escapeHtml(o.product.categoryName || "");
+      const rawDesc = escapeHtml(o.product.desc || (o.product.categoryName ? `Category: ${o.product.categoryName}` : ""));
+      const desc = rawDesc.length > 60 ? rawDesc.slice(0, 60) + "..." : rawDesc;
+      return (
+        '<tr class="' + (idx % 2 === 0 ? "r-even" : "r-odd") + '">' +
+        '<td class="td-num">' + (idx + 1) + "</td>" +
+        '<td class="td-item">' +
+          '<span class="i-name">' + name + "</span>" +
+          (cat ? '<span class="i-cat">' + cat + "</span>" : "") +
+          (desc ? '<span class="i-desc">' + desc + "</span>" : "") +
+        "</td>" +
+        '<td class="td-c">' + o.quantity + "</td>" +
+        '<td class="td-r">&#8358;' + o.price.toLocaleString() + "</td>" +
+        '<td class="td-r td-bold">&#8358;' + o.totalPrice.toLocaleString() + "</td>" +
+        "</tr>"
+      );
+    }).join("");
 
-    // Store name
-    doc.fontSize(14).font("Helvetica-Bold").fillColor("#1E3A8A")
-      .text("MELECH STORE", margin, 20, { align: "center", width: contentWidth });
-    doc.fontSize(8).font("Helvetica").fillColor("#555")
-      .text("Official Sales Receipt", margin, doc.y + 2, { align: "center", width: contentWidth });
+    const payBlock = (paymentStatus === "Unpaid" && req.user.role === "staff")
+      ? (
+        '<div class="pay-box">' +
+        '<div class="pay-title">Payment instructions</div>' +
+        '<div class="pay-row"><span class="pay-lbl">Bank</span><span>' + escapeHtml(STORE_ACCOUNT.bankName) + "</span></div>" +
+        '<div class="pay-row"><span class="pay-lbl">Account name</span><span>' + escapeHtml(STORE_ACCOUNT.accountName) + "</span></div>" +
+        '<div class="pay-row"><span class="pay-lbl">Account no.</span><span>' + escapeHtml(STORE_ACCOUNT.accountNumber) + "</span></div>" +
+        "</div>"
+      )
+      : "";
 
-    const divider = () => {
-      doc.moveTo(margin, doc.y + 5).lineTo(receiptWidth - margin, doc.y + 5)
-        .dash(2, { space: 2 }).strokeColor("#aaa").stroke().undash();
-    };
+    // Pure HTML — zero JavaScript, zero external scripts.
+    // CSP compliance guaranteed.
+    const html = [
+      '<!DOCTYPE html>',
+      '<html lang="en">',
+      '<head>',
+      '<meta charset="UTF-8"/>',
+      '<meta name="viewport" content="width=device-width,initial-scale=1"/>',
+      '<title>Receipt - MELECH STORE</title>',
+      '<style>',
+      '*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}',
+      'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f0f2f5;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:16px 12px 32px;color:#111827}',
+      '.card{background:#fff;width:100%;max-width:480px;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.10)}',
+      '.store-hd{background:#1E3A8A;color:#fff;text-align:center;padding:22px 16px 16px}',
+      '.store-logo{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.18);display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;margin-bottom:8px;letter-spacing:.05em}',
+      '.store-name{font-size:1.1rem;font-weight:700;letter-spacing:.1em}',
+      '.store-sub{font-size:.7rem;opacity:.7;margin-top:3px;letter-spacing:.06em}',
+      '.dash{border:none;border-top:1.5px dashed #e5e7eb;margin:0 16px}',
+      '.meta{padding:14px 18px;display:flex;flex-direction:column;gap:5px}',
+      '.meta-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.78rem;line-height:1.4}',
+      '.meta-lbl{font-weight:600;color:#6b7280;flex-shrink:0}',
+      '.meta-val{color:#111827;text-align:right;word-break:break-all}',
+      '.status-badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.72rem;font-weight:700;background:' + statusBg + ';color:' + statusColor + ';border:1px solid ' + statusBorder + '}',
+      'table{width:100%;border-collapse:collapse;font-size:.75rem}',
+      'thead tr{background:#1E3A8A;color:#fff}',
+      'thead th{padding:9px 6px;font-weight:700;font-size:.68rem;letter-spacing:.04em;text-align:left;line-height:1.3}',
+      'thead th small{display:block;font-weight:400;opacity:.65;font-size:.6rem;letter-spacing:0}',
+      '.td-num{text-align:center;color:#9ca3af;font-size:.68rem;padding:8px 4px;width:22px;vertical-align:top}',
+      '.td-item{padding:8px 6px;vertical-align:top;width:42%}',
+      '.td-c{text-align:center;padding:8px 4px;vertical-align:middle;width:14%}',
+      '.td-r{text-align:right;padding:8px 6px;vertical-align:middle;width:20%}',
+      '.td-bold{font-weight:700;color:#111827}',
+      '.r-even{background:#f9fafb}',
+      '.r-odd{background:#fff}',
+      '.i-name{display:block;font-weight:700;font-size:.76rem;color:#1f2937}',
+      '.i-cat{display:block;font-size:.65rem;color:#1E3A8A;font-weight:600;margin-top:2px}',
+      '.i-desc{display:block;font-size:.65rem;color:#6b7280;margin-top:2px}',
+      '.total-bar{display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border-top:2px solid #111827;margin-top:2px}',
+      '.total-lbl{font-size:.85rem;font-weight:700}',
+      '.total-amount{font-size:1.1rem;font-weight:800;color:#1E3A8A}',
+      '.pay-box{margin:0 16px 16px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 14px;font-size:.75rem}',
+      '.pay-title{font-weight:700;color:#b91c1c;font-size:.74rem;text-align:center;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em}',
+      '.pay-row{display:flex;justify-content:space-between;gap:8px;padding:3px 0;color:#374151}',
+      '.pay-lbl{font-weight:600;color:#6b7280;flex-shrink:0}',
+      '.pay-acct{font-weight:700;color:#111827;letter-spacing:.04em}',
+      '.footer{text-align:center;padding:12px 16px 18px;font-size:.68rem;color:#9ca3af;line-height:1.7;border-top:1.5px dashed #e5e7eb}',
+      '@media print{body{background:#fff;padding:0}.card{box-shadow:none;border-radius:0;max-width:100%}}',
+      '</style>',
+      '</head>',
+      '<body>',
+      '<div class="card">',
 
-    divider();
-    doc.moveDown(0.8);
-    doc.fontSize(7.5).font("Helvetica").fillColor("#000");
+      // Store header
+      '<div class="store-hd">',
+      '<div class="store-logo">MS</div>',
+      '<div class="store-name">MELECH STORE</div>',
+      '<div class="store-sub">Official Sales Receipt</div>',
+      '</div>',
 
-    // ── BUYER INFORMATION SECTION ──
-    doc.fontSize(7).font("Helvetica-Bold").fillColor("#1E3A8A")
-      .text("BUYER INFORMATION", margin, doc.y, { align: "left", width: contentWidth });
-    doc.moveDown(0.4);
-    doc.fontSize(7).font("Helvetica").fillColor("#000");
-    
-    // Format buyer name with role if available
-    const buyerDisplay = buyerInfo.role 
-      ? `${buyerInfo.name} (${buyerInfo.role.toUpperCase()})`
-      : buyerInfo.name;
-    
-    const buyerLines = [
-      ["Name:",      buyerDisplay],
-      ...(buyerInfo.email ? [["Email:",     buyerInfo.email]] : []),
-      ...(buyerInfo.phone ? [["Phone:",     buyerInfo.phone]] : []),
-    ];
+      '<hr class="dash"/>',
 
-    const infoLines = [
-      ["Order ID:",   receiptOrderId ? String(receiptOrderId).slice(-10).toUpperCase() : "N/A"],
-      ["Date:",       new Date().toLocaleString()],
-      ["Payment:",    paymentMethod],
-      ["Status:",     paymentStatus],
-    ];
+      // Order meta
+      '<div class="meta">',
+      '<div class="meta-row"><span class="meta-lbl">Order ID</span><span class="meta-val">#' + orderIdShort + '</span></div>',
+      '<div class="meta-row"><span class="meta-lbl">Date</span><span class="meta-val">' + dateStr + '</span></div>',
+      '<div class="meta-row"><span class="meta-lbl">Customer</span><span class="meta-val">' + safeCustomerName + '</span></div>',
+      '<div class="meta-row"><span class="meta-lbl">Payment method</span><span class="meta-val">' + safePaymentMethod + '</span></div>',
+      '<div class="meta-row"><span class="meta-lbl">Status</span><span class="meta-val"><span class="status-badge">' + paymentStatus + '</span></span></div>',
+      '</div>',
 
-    // Display buyer info
-    buyerLines.forEach(([label, value]) => {
-      const lineY = doc.y;
-      doc.font("Helvetica-Bold").text(label, margin, lineY, { width: 50 });
-      doc.font("Helvetica").text(value, margin + 52, lineY, { width: contentWidth - 52 });
-      doc.moveDown(0.3);
-    });
+      '<hr class="dash"/>',
 
-    divider();
-    doc.moveDown(0.3);
+      // Items table
+      '<table>',
+      '<thead><tr>',
+      '<th style="width:22px;text-align:center">#</th>',
+      '<th>Item <small>Name / desc / category</small></th>',
+      '<th style="text-align:center">Qty</th>',
+      '<th style="text-align:right">Unit <small>price</small></th>',
+      '<th style="text-align:right">Subtotal <small>Qty x price</small></th>',
+      '</tr></thead>',
+      '<tbody>' + itemRows + '</tbody>',
+      '</table>',
 
-    // Display transaction info
-    infoLines.forEach(([label, value]) => {
-      const lineY = doc.y;
-      doc.font("Helvetica-Bold").text(label, margin, lineY, { width: 50 });
-      doc.font("Helvetica").text(value, margin + 52, lineY, { width: contentWidth - 52 });
-      doc.moveDown(0.3);
-    });
+      // Total
+      '<div class="total-bar">',
+      '<span class="total-lbl">Total &nbsp;<span style="font-weight:400;font-size:.78rem;color:#6b7280">(' + orders.length + ' item' + (orders.length > 1 ? 's' : '') + ')</span></span>',
+      '<span class="total-amount">&#8358;' + totalAmount.toLocaleString() + '</span>',
+      '</div>',
 
-    divider();
-    doc.moveDown(0.5);
+      '<hr class="dash"/>',
 
-    // ── ITEMS TABLE ──
-    const col = { num: margin, name: margin + 14, qty: margin + 90, price: margin + 130, tag: margin + 175, total: margin + 210 };
+      payBlock,
 
-    doc.fontSize(7).font("Helvetica-Bold").fillColor("#fff")
-      .rect(margin, doc.y, contentWidth, 14).fill("#1E3A8A").stroke();
+      // Footer
+      '<div class="footer">',
+      'Thank you for shopping with MELECH STORE<br/>',
+      'No signature required &middot; Auto-generated receipt',
+      '</div>',
 
-    const headerY = doc.y - 14;
-    doc.fillColor("#fff");
-    doc.text("#",     col.num,   headerY + 3, { width: 12 });
-    doc.text("Item",  col.name,  headerY + 3, { width: 74 });
-    doc.text("Qty",   col.qty,   headerY + 3, { width: 38 });
-    doc.text("Price", col.price, headerY + 3, { width: 42 });
-    if (hasPriceModes) {
-      doc.text("Type", col.tag, headerY + 3, { width: 30 });
-    }
-    doc.text("Total", col.total, headerY + 3, { width: 42 });
+      '</div>', // end .card
+      '</body>',
+      '</html>',
+    ].join("\n");
 
-    doc.fillColor("#000").font("Helvetica").fontSize(7);
-    let y = doc.y + 4;
+    res.setHeader("Content-Type", "text/html");
+    return res.send(html);
 
-    orders.forEach((o, index) => {
-      const name       = o.product.name || "—";
-      const category   = o.product.categoryName ? `[${o.product.categoryName}]` : "";
-      const rawDesc    = o.product.desc || "";
-      const shortDesc  = rawDesc.length > 35 ? rawDesc.slice(0, 35) + "…" : rawDesc;
-      const nameText   = `${name} ${category}`.trim();
-      const nameHeight = doc.heightOfString(nameText, { width: 74 });
-      const descHeight = shortDesc ? doc.heightOfString(shortDesc, { width: 74 }) : 0;
-      const rowHeight  = Math.max(20, nameHeight + descHeight + 8);
-
-      doc.rect(margin, y, contentWidth, rowHeight)
-        .fill(index % 2 === 0 ? "#F3F4F6" : "#FFFFFF").stroke();
-
-      doc.fillColor("#000");
-      doc.font("Helvetica-Bold").fontSize(6.5).text(String(index + 1), col.num, y + 3, { width: 12 });
-      doc.font("Helvetica-Bold").fontSize(7).text(nameText, col.name, y + 3, { width: 74 });
-
-      if (shortDesc) {
-        doc.font("Helvetica").fontSize(6).fillColor("#555")
-          .text(shortDesc, col.name, y + 3 + nameHeight, { width: 74 });
-      }
-
-      const midY = y + rowHeight / 2 - 4;
-      doc.fillColor("#000").font("Helvetica").fontSize(6.5);
-      doc.text(String(o.quantity), col.qty, midY, { width: 38 });
-      doc.text(`₦${o.price.toLocaleString()}`, col.price, midY, { width: 42 });
-      
-      if (hasPriceModes) {
-        const tagColor = o.priceTag === "WSP" ? "#d97706" : "#059669";
-        doc.fillColor(tagColor).font("Helvetica-Bold").fontSize(6)
-          .text(o.priceTag, col.tag, midY + 1, { width: 30 });
-        doc.fillColor("#000");
-      }
-      
-      doc.font("Helvetica").fontSize(6.5)
-        .text(`₦${o.totalPrice.toLocaleString()}`, col.total, midY, { width: 42 });
-
-      y += rowHeight;
-    });
-
-    y += 6;
-    doc.moveTo(margin, y).lineTo(receiptWidth - margin, y).strokeColor("#000").stroke();
-    y += 6;
-    doc.fontSize(8).font("Helvetica-Bold").fillColor("#000")
-      .text(`TOTAL:`, col.num, y, { width: 90 })
-      .text(`₦${totalAmount.toLocaleString()}`, col.total, y, { width: 60 });
-    y += 18;
-
-    // ── PRICE MODE LEGEND ──
-    if (hasPriceModes) {
-      doc.fontSize(6.5).font("Helvetica").fillColor("#555");
-      doc.text("RTP = Retail Price", margin, y);
-      doc.text("WSP = Wholesale Price", margin, doc.y + 3);
-      y = doc.y + 8;
-    }
-
-    if (paymentStatus === "Unpaid") {
-      divider();
-      doc.moveDown(0.5);
-      doc.fontSize(7.5).font("Helvetica-Bold").fillColor("#b91c1c")
-        .text("PAYMENT INSTRUCTIONS", margin, doc.y, { align: "center", width: contentWidth });
-      doc.font("Helvetica").fillColor("#000").moveDown(0.3);
-      [
-        ["Bank:",           STORE_ACCOUNT.bankName],
-        ["Account Name:",   STORE_ACCOUNT.accountName],
-        ["Account No:",     STORE_ACCOUNT.accountNumber],
-      ].forEach(([label, value]) => {
-        const lineY = doc.y;
-        doc.font("Helvetica-Bold").text(label, margin, lineY, { width: 75 });
-        doc.font("Helvetica").text(value, margin + 77, lineY, { width: contentWidth - 77 });
-        doc.moveDown(0.3);
-      });
-    }
-
-    divider();
-    doc.moveDown(0.5);
-    doc.fontSize(7).font("Helvetica").fillColor("gray")
-      .text("Thank you for shopping with MELECH STORE!", margin, doc.y, { align: "center", width: contentWidth });
-    doc.text("No signature required — auto-generated receipt", margin, doc.y + 4, { align: "center", width: contentWidth });
-
-    doc.end();
   } catch (error) {
     console.error("generateInvoice error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 /**
  * reduceOrder - decrease quantity
  */

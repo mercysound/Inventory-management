@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import {
-  FaTrashAlt, FaSortUp, FaSortDown,
+  FaSortUp, FaSortDown,
   FaSort, FaChevronDown, FaChevronUp,
 } from "react-icons/fa";
 
@@ -31,7 +31,6 @@ const PlacedOrdersTable = ({
   orders,
   allOrders,
   updateDeliveryStatus,
-  deleteOrder,
   updatingId,
   sortField,
   sortDir,
@@ -134,15 +133,8 @@ const PlacedOrdersTable = ({
                         <option value="pending">Pending</option>
                         <option value="processing">Processing</option>
                         <option value="delivered">Delivered</option>
-                        {/* ✅ Cancel option added */}
                         <option value="cancelled">❌ Cancel Order</option>
                       </select>
-                      <button
-                        onClick={() => deleteOrder(order._id)}
-                        className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs justify-center"
-                      >
-                        <FaTrashAlt /> Delete
-                      </button>
                     </div>
                   </td>
                 </tr>
@@ -161,10 +153,16 @@ const PlacedOrdersTable = ({
                               x{item.quantity}
                             </span>
                             <div>
-                              <span className="font-semibold text-gray-800">{item.productId?.name || "Unnamed"}</span>
-                              <span className="text-gray-400 text-xs ml-2">({item.productId?.categoryId?.name || "No Category"})</span>
-                              {item.productId?.description && (
-                                <p className="text-gray-500 text-xs italic mt-0.5">{item.productId.description}</p>
+                              <span className="font-semibold text-gray-800">
+                                {item.productName || item.productId?.name || "Unknown Product"}
+                              </span>
+                              <span className="text-gray-400 text-xs ml-2">
+                                ({item.categoryName || item.productId?.categoryId?.name || "Unknown Category"})
+                              </span>
+                              {(item.productDescription || item.productId?.description) && (
+                                <p className="text-gray-500 text-xs italic mt-0.5">
+                                  {item.productDescription || item.productId?.description}
+                                </p>
                               )}
                               <p className="text-green-700 text-xs font-medium mt-0.5">
                                 ₦{item.price?.toLocaleString()} each · Total: ₦{item.totalPrice?.toLocaleString()}
@@ -220,11 +218,17 @@ const PlacedOrdersTable = ({
               <ul className="space-y-2 mb-2 pl-2 border-l-2 border-indigo-100">
                 {order.productList?.map((item, idx) => (
                   <li key={idx} className="text-sm">
-                    <span className="font-medium text-gray-800">{item.productId?.name || "Unnamed"}</span>
-                    <span className="text-gray-400 text-xs ml-1">({item.productId?.categoryId?.name || "—"})</span>
+                    <span className="font-medium text-gray-800">
+                      {item.productName || item.productId?.name || "Unknown Product"}
+                    </span>
+                    <span className="text-gray-400 text-xs ml-1">
+                      ({item.categoryName || item.productId?.categoryId?.name || "Unknown Category"})
+                    </span>
                     <span className="ml-1 text-xs">×{item.quantity}</span>
-                    {item.productId?.description && (
-                      <p className="text-gray-400 text-xs italic">{item.productId.description}</p>
+                    {(item.productDescription || item.productId?.description) && (
+                      <p className="text-gray-400 text-xs italic">
+                        {item.productDescription || item.productId?.description}
+                      </p>
                     )}
                     <p className="text-green-700 text-xs">
                       ₦{item.price?.toLocaleString()} each · ₦{item.totalPrice?.toLocaleString()} total
@@ -246,7 +250,7 @@ const PlacedOrdersTable = ({
               </p>
             </div>
 
-            <div className="mt-3 space-y-2">
+            <div className="mt-3">
               <select
                 value={order.deliveryStatus}
                 onChange={(e) => updateDeliveryStatus(order._id, e.target.value)}
@@ -257,12 +261,6 @@ const PlacedOrdersTable = ({
                 <option value="delivered">Delivered</option>
                 <option value="cancelled">❌ Cancel Order</option>
               </select>
-              <button
-                onClick={() => deleteOrder(order._id)}
-                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded flex items-center justify-center gap-1 text-sm w-full"
-              >
-                <FaTrashAlt className="text-xs" /> Delete Order
-              </button>
             </div>
           </div>
         ))}

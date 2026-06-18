@@ -1,4 +1,5 @@
 import React, { memo, useState, useEffect, useMemo, useCallback } from "react";
+import { toast } from "react-toastify";
 import {
   FaTrashAlt, FaChevronDown, FaChevronUp,
   FaSort, FaSortUp, FaSortDown, FaCheckSquare, FaSquare,
@@ -45,6 +46,7 @@ const SharedOrderTable = memo(({
   orders,
   role,
   onDelete,
+  onDeleteMany,
   onClearAll,
   onViewReceipt,
   onMarkRefund,
@@ -161,15 +163,46 @@ const SharedOrderTable = memo(({
 
   const handleDeleteSelected = async () => {
     if (!selectedIds.size) return;
-    const confirmed = window.confirm(
-      `Delete ${selectedIds.size} selected order${selectedIds.size !== 1 ? "s" : ""}? This cannot be undone.`
+
+    // For admin: filter out cancelled-but-not-refunded orders from the selection
+    const blocked = role === "admin"
+      ? orders.filter((o) => selectedIds.has(o._id) && o.cancelled && !o.refundMade)
+      : [];
+
+    const deletable = [...selectedIds].filter(
+      (id) => !blocked.some((o) => o._id === id)
     );
-    if (!confirmed) return;
-    setDeleting(true);
-    // Delete one by one — onDelete handles optimistic update
-    for (const id of selectedIds) {
-      await onDelete(id);
+
+    if (blocked.length > 0 && deletable.length === 0) {
+      toast.warning(
+        `${blocked.length} selected order${blocked.length !== 1 ? "s are" : " is"} cancelled but not yet refunded. Mark the refund${blocked.length !== 1 ? "s" : ""} first before removing.`
+      );
+      return;
     }
+
+    // One single confirm — never ask again per item
+    const msg = blocked.length > 0
+      ? `Delete ${deletable.length} order${deletable.length !== 1 ? "s" : ""}?\n\n⚠️ ${blocked.length} cancelled-but-unrefunded order${blocked.length !== 1 ? "s" : ""} will be skipped — mark their refunds first.`
+      : `Delete ${deletable.length} selected order${deletable.length !== 1 ? "s" : ""}? This cannot be undone.`;
+
+    if (!window.confirm(msg)) return;
+
+    setDeleting(true);
+
+    // Use onDeleteMany (no per-item confirm) if available, fall back to onDelete
+    const deleteFn = onDeleteMany || onDelete;
+
+    // Delete all in parallel — fast, no sequential blocking
+    const results = await Promise.allSettled(deletable.map((id) => deleteFn(id)));
+
+    const failed = results.filter((r) => r.status === "rejected").length;
+
+    if (failed > 0) {
+      toast.error(`${failed} order${failed !== 1 ? "s" : ""} could not be deleted.`);
+    } else {
+      toast.success(`${deletable.length} order${deletable.length !== 1 ? "s" : ""} removed successfully.`);
+    }
+
     setSelectedIds(new Set());
     setDeleting(false);
   };
@@ -180,7 +213,7 @@ const SharedOrderTable = memo(({
     const rows = sorted.map((o) => [
       String(o._id),
       o.buyerName || "Unknown",
-      o.productList?.map((i) => `${i.productId?.name} x${i.quantity}`).join(" | ") || "",
+      o.productList?.map((i) => `${i.productName || i.productId?.name || "Unknown Product"} x${i.quantity}`).join(" | ") || "",
       o.totalPrice || 0,
       o.paymentMethod || "",
       o.deliveryStatus || "",
@@ -434,11 +467,21 @@ const SharedOrderTable = memo(({
                         </span>
                       )}
                       <div className="flex gap-1">
-                        {/* ✅ Individual delete */}
-                        <button onClick={() => onDelete(order._id)}
-                          className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs">
-                          <FaTrashAlt /> Remove
-                        </button>
+                        {/* Remove button — blocked for cancelled-but-not-refunded orders (admin) */}
+                        {role === "admin" && order.cancelled && !order.refundMade ? (
+                          <button
+                            disabled
+                            title="Mark the refund first before removing this order"
+                            className="bg-gray-300 text-gray-500 px-2 py-1 rounded flex items-center gap-1 text-xs cursor-not-allowed"
+                          >
+                            <FaTrashAlt /> Remove
+                          </button>
+                        ) : (
+                          <button onClick={() => onDelete(order._id)}
+                            className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs">
+                            <FaTrashAlt /> Remove
+                          </button>
+                        )}
                         {onViewReceipt && (
                           <button onClick={() => onViewReceipt(order._id, order)}
                             className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">
@@ -464,12 +507,16 @@ const SharedOrderTable = memo(({
                               x{item.quantity}
                             </span>
                             <div>
-                              <span className="font-semibold text-gray-800">{item.productId?.name || "Unnamed"}</span>
-                              <span className="text-gray-400 text-xs ml-2">
-                                ({item.productId?.categoryId?.name || "No Category"})
+                              <span className="font-semibold text-gray-800">
+                                {item.productName || item.productId?.name || "Unknown Product"}
                               </span>
-                              {item.productId?.description && (
-                                <p className="text-gray-500 text-xs italic mt-0.5">{item.productId.description}</p>
+                              <span className="text-gray-400 text-xs ml-2">
+                                ({item.categoryName || item.productId?.categoryId?.name || "Unknown Category"})
+                              </span>
+                              {(item.productDescription || item.productId?.description) && (
+                                <p className="text-gray-500 text-xs italic mt-0.5">
+                                  {item.productDescription || item.productId?.description}
+                                </p>
                               )}
                               <p className="text-green-700 text-xs font-medium mt-0.5">
                                 ₦{item.price?.toLocaleString()} each · Total: ₦{item.totalPrice?.toLocaleString()}
@@ -559,8 +606,12 @@ const SharedOrderTable = memo(({
               <ul className="space-y-2 mb-2 pl-2 border-l-2 border-blue-100">
                 {order.productList?.map((item, idx) => (
                   <li key={idx} className="text-sm">
-                    <span className="font-medium text-gray-800">{item.productId?.name || "Unnamed"}</span>
-                    <span className="text-gray-400 text-xs ml-1">({item.productId?.categoryId?.name || "—"})</span>
+                    <span className="font-medium text-gray-800">
+                      {item.productName || item.productId?.name || "Unknown Product"}
+                    </span>
+                    <span className="text-gray-400 text-xs ml-1">
+                      ({item.categoryName || item.productId?.categoryId?.name || "Unknown Category"})
+                    </span>
                     <span className="ml-1 text-xs">×{item.quantity}</span>
                     <p className="text-green-700 text-xs">₦{item.price?.toLocaleString()} each</p>
                   </li>
@@ -599,10 +650,20 @@ const SharedOrderTable = memo(({
                 </span>
               )}
               <div className="flex gap-2">
-                <button onClick={() => onDelete(order._id)}
-                  className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded flex items-center gap-1 text-sm flex-1 justify-center">
-                  <FaTrashAlt className="text-xs" /> Remove
-                </button>
+                {role === "admin" && order.cancelled && !order.refundMade ? (
+                  <button
+                    disabled
+                    title="Mark the refund first before removing this order"
+                    className="bg-gray-300 text-gray-500 px-3 py-1 rounded flex items-center gap-1 text-sm flex-1 justify-center cursor-not-allowed"
+                  >
+                    <FaTrashAlt className="text-xs" /> Remove
+                  </button>
+                ) : (
+                  <button onClick={() => onDelete(order._id)}
+                    className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded flex items-center gap-1 text-sm flex-1 justify-center">
+                    <FaTrashAlt className="text-xs" /> Remove
+                  </button>
+                )}
                 {onViewReceipt && (
                   <button onClick={() => onViewReceipt(order._id, order)}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm flex-1">

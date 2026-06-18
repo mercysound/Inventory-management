@@ -37,6 +37,7 @@ const ReceiptModal = ({
   onDownload, // optional custom download handler
 }) => {
   const modalRef            = useRef(null);
+  const iframeRef           = useRef(null);
   const [html, setHtml]     = useState("");
   const [fetching, setFetching] = useState(false);
   const [blobUrl, setBlobUrl] = useState("");
@@ -176,13 +177,65 @@ const ReceiptModal = ({
   };
 
   // ── Print ─────────────────────────────────────────────────────────────────
-  // Prints the iframe content directly.
+  // Two strategies depending on content type:
+  //
+  // HTML path (invoiceParams): we have the raw HTML string in state.
+  //   → Open a hidden iframe, write the HTML into it, wait for it to load,
+  //     then call print() on its contentWindow. This bypasses all sandbox
+  //     and cross-origin blob URL restrictions entirely.
+  //
+  // PDF blob path (StaffOrders blob): the browser renders a PDF natively
+  //   inside the iframe so contentWindow.print() is unavailable.
+  //   → Open the blob URL in a new tab; the browser's PDF viewer has its
+  //     own print button, or the user can Ctrl+P from there.
   const handlePrint = () => {
-    const iframe = document.getElementById("receipt-iframe");
-    if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
+    // ── HTML path ──────────────────────────────────────────────────────────
+    if (html) {
+      const printFrame = document.createElement("iframe");
+      printFrame.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:0;";
+      document.body.appendChild(printFrame);
+
+      const doc = printFrame.contentDocument || printFrame.contentWindow?.document;
+      if (!doc) {
+        document.body.removeChild(printFrame);
+        toast.error("Could not open print view.");
+        return;
+      }
+
+      doc.open();
+      doc.write(html);
+      doc.close();
+
+      // Wait for images / styles to load before triggering print
+      printFrame.onload = () => {
+        try {
+          printFrame.contentWindow.focus();
+          printFrame.contentWindow.print();
+        } catch (e) {
+          // Fallback: open in new window
+          const w = window.open("", "_blank");
+          if (w) { w.document.write(html); w.document.close(); w.print(); }
+          else toast.error("Pop-up blocked — please allow pop-ups and try again.");
+        } finally {
+          // Small delay so print dialog can open before we remove the frame
+          setTimeout(() => {
+            try { document.body.removeChild(printFrame); } catch {}
+          }, 1000);
+        }
+      };
+      return;
     }
+
+    // ── PDF blob path ──────────────────────────────────────────────────────
+    // Can't call print() on a native PDF viewer — open in new tab instead
+    const src = blobUrl || previewUrl;
+    if (src) {
+      const tab = window.open(src, "_blank");
+      if (!tab) toast.error("Pop-up blocked — please allow pop-ups and try again.");
+      return;
+    }
+
+    toast.error("Nothing to print yet.");
   };
 
   if (!open) return null;
@@ -241,7 +294,7 @@ const ReceiptModal = ({
             ) : contentUrl || previewUrl || blobUrl ? (
               // Render provided content URL or PDF URL
               <iframe
-                id="receipt-iframe"
+                ref={iframeRef}
                 key={JSON.stringify(invoiceParams)}
                 src={contentUrl || previewUrl || blobUrl}
                 title="Receipt"
@@ -255,16 +308,6 @@ const ReceiptModal = ({
             )}
           </div>
 
-          {/* ── STAFF PAYMENT INFO ── */}
-          {role === "staff" && mode === "preview" && storeAccount && (
-            <div className="mx-4 mb-3 p-4 bg-indigo-50 border border-indigo-100 rounded-xl text-sm flex-shrink-0">
-              <h4 className="font-semibold mb-2 text-indigo-700">Payment Instructions</h4>
-              <p><strong>Bank:</strong> {storeAccount.bankName}</p>
-              <p><strong>Account Name:</strong> {storeAccount.accountName}</p>
-              <p><strong>Account Number:</strong> {storeAccount.accountNumber}</p>
-            </div>
-          )}
-
           {/* ── FOOTER — buttons in React, no CSP/iframe issues ── */}
           <div className="flex justify-between items-center px-5 py-4 border-t border-gray-100 bg-white flex-shrink-0 gap-3">
             <button
@@ -276,7 +319,7 @@ const ReceiptModal = ({
             <div className="flex gap-2">
               <button
                 onClick={handlePrint}
-                disabled={!(html || previewUrl || blobUrl) || fetching}
+                disabled={!(html || blobUrl || previewUrl) || fetching}
                 className="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium transition disabled:opacity-40"
               >
                 🖨 Print

@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { sendResponse, sendError } from '../utils/apiResponse.js';
 import { getPaginationParams, getPaginationMeta } from '../utils/pagination.js';
-import { transporter } from '../utils/email/mailer.js';
+import { sendWithRetry } from '../utils/email/sendWithRetry.js';
 
 const VALID_ROLES = ['admin', 'staff', 'customer', 'wholesale'];
 
@@ -285,12 +285,10 @@ const emailBroadcast = async (req, res) => {
         const batch = recipients.slice(i, i + BATCH);
         const results = await Promise.allSettled(
           batch.map(user =>
-            transporter.sendMail({
-              from: `"Inventory System" <${process.env.MAIL_USER}>`,
-              to: user.email,
+            sendWithRetry({
+              to:      user.email,
               subject,
-              html: htmlShell(body),
-              attachments: mailAttachments,
+              html:    htmlShell(body),
             }).then(() => ({ ok: true, email: user.email }))
               .catch(err => ({ ok: false, email: user.email, reason: _classifyError(err) }))
           )

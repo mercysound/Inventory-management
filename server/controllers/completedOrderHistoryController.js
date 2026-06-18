@@ -2,6 +2,49 @@ import CompletedOrderHistoryModel from "../models/CompletedOrderHistoryModel.js"
 import { sendResponse, sendError } from "../utils/apiResponse.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
+// normalizeProductList
+//
+// After populate, `item.productId` may be null (hard-deleted product).
+// We always prefer the stored snapshot strings (productName, categoryName,
+// productDescription) that were saved at order-completion time, and only
+// fall back to the live populated object when the snapshot is absent.
+// This guarantees receipt/history details are always intact regardless of
+// whether the product was soft-deleted or permanently deleted afterwards.
+// ─────────────────────────────────────────────────────────────────────────────
+const normalizeProductList = (productList = []) =>
+  productList.map((item) => {
+    const snap = item.toObject ? item.toObject() : { ...item };
+    const live = snap.productId; // populated Product doc or null
+    return {
+      ...snap,
+      productName:        snap.productName        || live?.name         || "Unknown Product",
+      categoryName:       snap.categoryName       || live?.categoryId?.name || "Unknown Category",
+      productDescription: snap.productDescription || live?.description  || "",
+      // Keep productId as a plain object for any fields the frontend may use,
+      // but inject the resolved strings so the UI never sees nulls.
+      productId: live
+        ? {
+            ...( live.toObject ? live.toObject() : live ),
+            name:        snap.productName        || live.name         || "Unknown Product",
+            description: snap.productDescription || live.description  || "",
+            categoryId:  live.categoryId
+              ? {
+                  ...(live.categoryId.toObject ? live.categoryId.toObject() : live.categoryId),
+                  name: snap.categoryName || live.categoryId?.name || "Unknown Category",
+                }
+              : { name: snap.categoryName || "Unknown Category" },
+          }
+        : {
+            // Product was hard-deleted — reconstruct a minimal object from snapshot
+            _id:         snap.productId,   // may be an ObjectId string
+            name:        snap.productName        || "Unknown Product",
+            description: snap.productDescription || "",
+            categoryId:  { name: snap.categoryName || "Unknown Category" },
+          },
+    };
+  });
+
+// ─────────────────────────────────────────────────────────────────────────────
 // GET /completed-history
 // Admin: sees all non-adminHidden orders
 // Customer/Wholesale:
@@ -39,12 +82,19 @@ export const getCompletedHistory = async (req, res) => {
       .populate("userOrdering", "name email role")
       .populate({
         path: "productList.productId",
-        select: "name categoryId description",
+        select: "name categoryId description isDeleted",
         populate: { path: "categoryId", select: "name" },
       })
       .sort({ createdAt: -1 });
 
-    return sendResponse(res, 200, { orders }, "Completed history retrieved successfully");
+    // Normalize each order so deleted products never show as "unknown"
+    const normalized = orders.map((o) => {
+      const obj = o.toObject();
+      obj.productList = normalizeProductList(obj.productList);
+      return obj;
+    });
+
+    return sendResponse(res, 200, { orders: normalized }, "Completed history retrieved successfully");
   } catch (error) {
     console.error("getCompletedHistory error:", error);
     return sendError(res, 500, "Error fetching completed history");
@@ -69,12 +119,18 @@ export const getCancelledPendingRefund = async (req, res) => {
       .populate("userOrdering", "name email role")
       .populate({
         path: "productList.productId",
-        select: "name categoryId description",
+        select: "name categoryId description isDeleted",
         populate: { path: "categoryId", select: "name" },
       })
       .sort({ createdAt: -1 });
 
-    return sendResponse(res, 200, { orders }, "Cancelled pending refund orders retrieved");
+    const normalized = orders.map((o) => {
+      const obj = o.toObject();
+      obj.productList = normalizeProductList(obj.productList);
+      return obj;
+    });
+
+    return sendResponse(res, 200, { orders: normalized }, "Cancelled pending refund orders retrieved");
   } catch (error) {
     console.error("getCancelledPendingRefund error:", error);
     return sendError(res, 500, "Error fetching cancelled orders");
@@ -133,6 +189,14 @@ export const deleteCompletedOrder = async (req, res) => {
     if (!order) return sendError(res, 404, "Order not found");
 
     if (role === "admin") {
+      // Block deletion of cancelled orders that haven't been refunded yet.
+      // The admin must mark the refund first so the buyer gets proper closure.
+      if (order.cancelled && !order.refundMade) {
+        return sendError(
+          res, 403,
+          "This order cannot be removed yet. Please mark the refund as completed first — the buyer is still waiting for their refund confirmation."
+        );
+      }
       order.adminHidden = true;
       await order.save();
       return sendResponse(res, 200, null, "Order hidden from admin view");

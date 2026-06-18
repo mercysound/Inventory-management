@@ -212,7 +212,8 @@ const SettingsPage = () => {
           Admin Notification Email
         </h2>
         <p className="text-xs text-gray-400 mb-4">
-          Expiry alerts will be sent here. Leave blank to use your admin account email.
+          All admin notifications are sent here — new customer/wholesale orders placed, order expiry alerts, and expiry reminders.
+          Leave blank to use your admin account email.
         </p>
         <input
           type="email"
@@ -221,6 +222,9 @@ const SettingsPage = () => {
           placeholder="admin@yourdomain.com"
           className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50"
         />
+        <p className="text-xs text-gray-400 mt-1.5">
+          💡 Covers: new order alerts, expiry alerts, and repeat reminders.
+        </p>
       </motion.div>
 
       {/* Product Draft Info */}

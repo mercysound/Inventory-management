@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -7,10 +7,11 @@ import {
 import axiosInstance from "../../../utils/axiosInstance";
 import CustomerOrderTable from "./CustomerOrderTable";
 import PaystackButton from "./PaystackButton";
-import { useAuth } from "../../../context/AuthContext";
+import CartSkeleton from "./Cartskeleton";
 import PendingOrdersModal from "./PendingOrdersModal";
 import ReceiptModal from "../../share-component/receipt/ReceiptModal";
-import CartSkeleton from "./Cartskeleton";
+import { useAuth } from "../../../context/AuthContext";
+import { useCart } from "../../../context/CartContext";
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 const StatCard = ({ icon: Icon, label, value, color }) => (
@@ -72,9 +73,12 @@ const parseOrderError = (err) => {
 // ── Main component ────────────────────────────────────────────────────────────
 const CustomerOrderPortal = () => {
   const { user } = useAuth();
+  const { resetCart } = useCart();
 
   const [orders,         setOrders]         = useState([]);
   const [priceMode,      setPriceMode]      = useState(() => {
+    // Wholesale-role users are always in wholesale pricing mode
+    if (user?.role === "wholesale") return "wholesale";
     try {
       return localStorage.getItem("melech_staff_price_mode") === "wholesale" ? "wholesale" : "retail";
     } catch {
@@ -112,10 +116,22 @@ const CustomerOrderPortal = () => {
         total: o.total ?? o.quantity * o.price,
       }));
       setOrders(normalized);
-      // initialize price mode from cart if possible, otherwise preserve the locally selected preference
-      const storedMode = localStorage.getItem("melech_staff_price_mode");
-      const detected = normalized.find((o) => o.priceMode === "wholesale");
-      setPriceMode(detected ? "wholesale" : storedMode === "wholesale" ? "wholesale" : "retail");
+
+      // Always keep CartContext in sync — dispatch the real total so the
+      // floating cart button count is always accurate on every fetch
+      const realTotal = normalized.reduce((sum, o) => sum + (o.quantity || 0), 0);
+      try {
+        window.dispatchEvent(new CustomEvent("ordersUpdated", { detail: { total: realTotal } }));
+      } catch (_) {}
+      // Wholesale-role users are always in wholesale mode.
+      // For others: detect from cart orders, then fall back to localStorage preference.
+      if (user?.role === "wholesale") {
+        setPriceMode("wholesale");
+      } else {
+        const storedMode = localStorage.getItem("melech_staff_price_mode");
+        const detected = normalized.find((o) => o.priceMode === "wholesale");
+        setPriceMode(detected ? "wholesale" : storedMode === "wholesale" ? "wholesale" : "retail");
+      }
 
       // Active pending/processing orders for the modal
       const history = historyRes.data.orders || [];
@@ -130,7 +146,7 @@ const CustomerOrderPortal = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     fetchOrders();
@@ -139,6 +155,39 @@ const CustomerOrderPortal = () => {
     window.addEventListener("ordersUpdated", onExternalUpdate);
     return () => window.removeEventListener("ordersUpdated", onExternalUpdate);
   }, [fetchOrders]);
+
+  // ── SSE: listen for real-time order status changes from admin ─────────────
+  // Stays alive the whole time the user is on the cart page so the pending
+  // badge, stats row, and modal all update instantly without a page reload.
+  useEffect(() => {
+    const token = localStorage.getItem("pos-token");
+    if (!token) return;
+
+    const base = import.meta.env.VITE_API_URL || "/api";
+    const url  = `${base}/placed-orders/stream?token=${encodeURIComponent(token)}`;
+    const es   = new EventSource(url);
+
+    es.addEventListener("placedOrderUpdated", () => {
+      // Silent re-fetch — no spinner, just updates badge + stats instantly
+      fetchOrders(true);
+    });
+
+    es.addEventListener("error", () => {
+      es.close();
+    });
+
+    return () => es.close();
+  }, [fetchOrders]);
+
+  // ── For wholesale users: ensure all existing cart items use wholesale pricing ──
+  // This fixes any orders that were created before the pricing fix (retail price stored).
+  useEffect(() => {
+    if (user?.role !== "wholesale") return;
+    axiosInstance
+      .post("/orders/set-price-mode/wholesale")
+      .then(() => fetchOrders(true))
+      .catch(() => {}); // silent — non-critical
+  }, [user, fetchOrders]);
 
   // Cleanup blob URLs on unmount
 
@@ -280,6 +329,13 @@ const CustomerOrderPortal = () => {
       }
       toast.success("Payment successful! 🎉");
 
+      // Immediately clear the floating cart button — don't wait for re-fetch
+      setOrders([]);
+      resetCart();
+      try {
+        window.dispatchEvent(new CustomEvent("ordersUpdated", { detail: { total: 0 } }));
+      } catch (_) {}
+
       const query = new URLSearchParams({
         customerName:  user?.name || "Customer",
         paymentMethod: "Paystack",
@@ -290,7 +346,6 @@ const CustomerOrderPortal = () => {
       const res = await axiosInstance.get(`/orders/invoice?${query}`, { responseType: "blob" });
       setReceiptBlob(res.data);
       setShowReceiptPrompt(true);
-      setOrders([]);
       fetchOrders(true);
     } catch (err) {
       console.error("Order completion failed:", err);
@@ -500,6 +555,7 @@ const CustomerOrderPortal = () => {
         isOpen={showPendingModal}
         onClose={() => setShowPendingModal(false)}
         pendingOrders={pendingOrders}
+        onRefresh={() => fetchOrders(true)}
       />
 
       {/* Final receipt modal */}
@@ -508,15 +564,15 @@ const CustomerOrderPortal = () => {
         onClose={handleCloseReceiptModal}
         blob={receiptBlob}
         mode="final"
-        role="customer"
+        role={user?.role || "customer"}
       />
 
       {/* Preview invoice modal */}
       <ReceiptModal
         open={showPreviewModal}
         onClose={handleClosePreview}
-        invoiceParams={{ mode: "preview" }}
-        role="customer"
+        invoiceParams={{ mode: "preview", orderSource: user?.role || "customer" }}
+        role={user?.role || "customer"}
         mode="preview"
       />
     </div>

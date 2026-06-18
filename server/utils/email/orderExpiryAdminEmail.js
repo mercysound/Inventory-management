@@ -1,5 +1,5 @@
 // server/utils/email/orderExpiryAdminEmail.js
-import { transporter } from "./mailer.js";
+import { sendWithRetry } from "./sendWithRetry.js";
 
 /**
  * Sends an email to the admin notifying them that an order has expired
@@ -14,9 +14,8 @@ export const sendOrderExpiryAdminEmail = async ({
   hoursElapsed,
   expiryHours,
 }) => {
-  await transporter.sendMail({
-    from: `"Melech Store System" <${process.env.MAIL_USER}>`,
-    to: adminEmail,
+  await sendWithRetry({
+    to:      adminEmail,
     subject: `⏰ Order Pickup Overdue — ${buyerName} (${hoursElapsed}h elapsed)`,
     html: `
       <div style="font-family:'Segoe UI',Arial,sans-serif;background:#f8fafc;padding:32px 0;">

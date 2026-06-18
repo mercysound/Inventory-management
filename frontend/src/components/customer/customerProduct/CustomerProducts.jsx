@@ -83,10 +83,8 @@ const QuickAddButton = ({ product, cartItem, onAdd, onIncrease, onDecrease }) =>
     // Show only + button when not in cart
     return (
       <motion.button
-        onMouseEnter={(e) => { try { window.dispatchEvent(new CustomEvent('hideFloatingCart', { detail: { hide: true } })); } catch (e) {} }}
-        onMouseLeave={(e) => { try { window.dispatchEvent(new CustomEvent('hideFloatingCart', { detail: { hide: false } })); } catch (e) {} }}
-        onTouchStart={(e) => { try { window.dispatchEvent(new CustomEvent('hideFloatingCart', { detail: { hide: true } })); } catch (e) {} }}
-        onTouchEnd={(e) => { try { window.dispatchEvent(new CustomEvent('hideFloatingCart', { detail: { hide: false } })); } catch (e) {} }}
+        onPointerEnter={() => { try { window.dispatchEvent(new CustomEvent('hideFloatingCart', { detail: { hide: true } })); } catch (_) {} }}
+        onPointerLeave={() => { try { window.dispatchEvent(new CustomEvent('hideFloatingCart', { detail: { hide: false } })); } catch (_) {} }}
         onClick={(e) => {
           e.stopPropagation();
           onAdd();
@@ -108,10 +106,8 @@ const QuickAddButton = ({ product, cartItem, onAdd, onIncrease, onDecrease }) =>
   return (
     <div
       className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-2 py-1"
-      onMouseEnter={() => { try { window.dispatchEvent(new CustomEvent('hideFloatingCart', { detail: { hide: true } })); } catch (e) {} }}
-      onMouseLeave={() => { try { window.dispatchEvent(new CustomEvent('hideFloatingCart', { detail: { hide: false } })); } catch (e) {} }}
-      onTouchStart={() => { try { window.dispatchEvent(new CustomEvent('hideFloatingCart', { detail: { hide: true } })); } catch (e) {} }}
-      onTouchEnd={() => { try { window.dispatchEvent(new CustomEvent('hideFloatingCart', { detail: { hide: false } })); } catch (e) {} }}
+      onPointerEnter={() => { try { window.dispatchEvent(new CustomEvent('hideFloatingCart', { detail: { hide: true } })); } catch (_) {} }}
+      onPointerLeave={() => { try { window.dispatchEvent(new CustomEvent('hideFloatingCart', { detail: { hide: false } })); } catch (_) {} }}
     >
       <motion.button
         type="button"
@@ -226,6 +222,79 @@ const CustomerProducts = () => {
     fetchAll();
   }, [fetchAll]); // Properly depends on fetchAll
 
+  // ── SSE: refresh cart map when admin changes order status ─────────────────
+  // Keeps the product page cart pill and +/- quantities in sync in real time.
+  useEffect(() => {
+    const token = localStorage.getItem("pos-token");
+    if (!token) return;
+
+    const base = import.meta.env.VITE_API_URL || "/api";
+    const url  = `${base}/placed-orders/stream?token=${encodeURIComponent(token)}`;
+    const es   = new EventSource(url);
+
+    es.addEventListener("placedOrderUpdated", () => {
+      fetchAll();
+    });
+
+    es.addEventListener("error", () => {
+      es.close();
+    });
+
+    return () => es.close();
+  }, [fetchAll]);
+
+  // ── For wholesale users: lock server-side cart to wholesale pricing on load ──
+  useEffect(() => {
+    if (user?.role !== "wholesale") return;
+    axiosInstance.post("/orders/set-price-mode/wholesale").catch(() => {});
+  }, [user]);
+
+  useEffect(() => {
+    const handlePriceUpdate = (e) => {
+      if (e?.detail?.priceChanged) {
+        fetchAll();
+      }
+    };
+    window.addEventListener("ordersUpdated", handlePriceUpdate);
+    return () => window.removeEventListener("ordersUpdated", handlePriceUpdate);
+  }, [fetchAll]);
+
+  useEffect(() => {
+    if (!openModal || !orderData.productId) return;
+    const updatedProduct = products.find((p) => p._id === orderData.productId);
+    if (!updatedProduct) return;
+
+    const storedMode = (() => {
+      try { return localStorage.getItem("melech_staff_price_mode"); } catch { return null; }
+    })();
+    // Wholesale-role users always get wholesale pricing regardless of the staff toggle
+    const isWholesale = user?.role === "wholesale" || storedMode === "wholesale";
+    const retailPrice = updatedProduct.price;
+    const wholesalePrice = updatedProduct.wholesalePrice ?? null;
+    const newPrice = isWholesale ? (wholesalePrice ?? retailPrice) : retailPrice;
+    const newTotal = (Number(orderData.quantity) || 0) * newPrice;
+
+    setOrderData((prev) => {
+      if (
+        prev.price === newPrice &&
+        prev.retailPrice === retailPrice &&
+        prev.wholesalePrice === wholesalePrice &&
+        prev.total === newTotal &&
+        prev.priceMode === (isWholesale ? "wholesale" : "retail")
+      ) {
+        return prev;
+      }
+      return {
+        ...prev,
+        price: wholesalePrice !== null ? newPrice : retailPrice,
+        total: newTotal,
+        retailPrice,
+        wholesalePrice,
+        priceMode: isWholesale ? "wholesale" : "retail",
+      };
+    });
+  }, [products, openModal, orderData.productId, orderData.quantity]);
+
   useEffect(() => {
     cartMapRef.current = cartMap;
   }, [cartMap]);
@@ -251,7 +320,8 @@ const CustomerProducts = () => {
     const storedMode = (() => {
       try { return localStorage.getItem("melech_staff_price_mode"); } catch { return null; }
     })();
-    const isWholesale = storedMode === "wholesale";
+    // Wholesale-role users always get wholesale pricing regardless of the staff toggle
+    const isWholesale = user?.role === "wholesale" || storedMode === "wholesale";
     const unitPrice = isWholesale ? (product.wholesalePrice ?? product.price) : product.price;
 
     const previousState = { ...cartMapRef.current };
@@ -271,6 +341,7 @@ const CustomerProducts = () => {
         productId: product._id,
         quantity: 1,
         price: unitPrice,
+        priceMode: isWholesale ? "wholesale" : "retail",
         isWholesale,
       })
       .then((res) => {
@@ -446,8 +517,13 @@ const CustomerProducts = () => {
   const applyFilters = useCallback(
     (query, catId) => {
       let result = products;
-      if (catId)  result = result.filter((p) => p.categoryId._id === catId);
-      if (query)  result = result.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()));
+      // catId === "" means "All Categories" — skip the category filter entirely
+      if (catId) result = result.filter((p) =>
+        (p.categoryId?._id ?? p.categoryId) === catId
+      );
+      if (query) result = result.filter((p) =>
+        p.name.toLowerCase().includes(query.toLowerCase())
+      );
       setFilteredProducts(result);
     },
     [products]
@@ -465,7 +541,8 @@ const CustomerProducts = () => {
     const storedMode = (() => {
       try { return localStorage.getItem("melech_staff_price_mode"); } catch { return null; }
     })();
-    const useWholesale = storedMode === "wholesale";
+    // Wholesale-role users always get wholesale pricing regardless of the staff toggle
+    const useWholesale = user?.role === "wholesale" || storedMode === "wholesale";
 
     const basePrice = useWholesale ? (product.wholesalePrice ?? product.price) : product.price;
     const localCartItem = cartMap[product._id];
@@ -711,11 +788,17 @@ const CustomerProducts = () => {
                           </span>
                         </td>
 
-                        {/* Price */}
+                        {/* Price — wholesale users see their wholesale price */}
                         <td className="px-5 py-4">
-                          <span className="font-bold text-gray-800 text-sm">
-                            ₦{Number(product.price).toLocaleString()}
-                          </span>
+                          {user?.role === "wholesale" ? (
+                            <span className="font-bold text-gray-800 text-sm">
+                              ₦{Number(product.wholesalePrice ?? product.price).toLocaleString()}
+                            </span>
+                          ) : (
+                            <span className="font-bold text-gray-800 text-sm">
+                              ₦{Number(product.price).toLocaleString()}
+                            </span>
+                          )}
                         </td>
                         {user?.role === "staff" && showWholesaleCol && (
                           <td className="px-5 py-4">
@@ -822,7 +905,10 @@ const CustomerProducts = () => {
                               {product.categoryId?.name}
                             </span>
                             <p className="text-lg font-bold text-green-600 leading-none">
-                              ₦{product.price.toLocaleString()}
+                              ₦{(user?.role === "wholesale"
+                                ? (product.wholesalePrice ?? product.price)
+                                : product.price
+                              ).toLocaleString()}
                             </p>
                             {user?.role === "staff" && showWholesaleCol && (
                               <p className="text-xs text-amber-700 font-semibold mt-2">

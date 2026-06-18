@@ -106,24 +106,6 @@ const PlacedOrders = () => {
     }
   }, [orders]);
 
-  const handleDeleteOrder = useCallback(async (id) => {
-    if (!window.confirm("Are you sure you want to delete this order?")) return;
-    const previousOrders = orders;
-    setOrders((prev) => prev.filter((o) => o._id !== id));
-    toast.success("Order deleted!");
-    lastFetchedAt.current = null;
-    try {
-      const res = await axiosInstance.delete(`/placed-orders/${id}`);
-      if (!res.data.success) {
-        setOrders(previousOrders);
-        toast.error(res.data.message || "Failed to delete order");
-      }
-    } catch {
-      setOrders(previousOrders);
-      toast.error("Error deleting order");
-    }
-  }, [orders]);
-
   const filtered = useMemo(() => {
     return orders.filter((o) => {
       const idMatch    = searchOrderId ? String(o._id).toLowerCase().includes(searchOrderId.toLowerCase()) : true;
@@ -161,7 +143,7 @@ const PlacedOrders = () => {
     const headers = ["Order ID", "Buyer", "User Role", "Products", "Total", "Payment", "Status", "Date"];
     const rows = sorted.map((o) => [
       String(o._id), o.buyerName || "Unknown", o.userOrdering?.role || "—",
-      o.productList?.map((i) => `${i.productId?.name} x${i.quantity}`).join(" | ") || "",
+      o.productList?.map((i) => `${i.productName || i.productId?.name || "Unknown Product"} x${i.quantity}`).join(" | ") || "",
       o.totalPrice || 0, o.paymentMethod || "", o.deliveryStatus || "",
       new Date(o.createdAt).toLocaleDateString(),
     ]);
@@ -264,7 +246,6 @@ const PlacedOrders = () => {
                 orders={paginated}
                 allOrders={orders}
                 updateDeliveryStatus={updateDeliveryStatus}
-                deleteOrder={handleDeleteOrder}
                 updatingId={updatingId}
                 sortField={sortField}
                 sortDir={sortDir}
