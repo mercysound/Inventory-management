@@ -65,6 +65,10 @@ export const AuthProvider = ({ children }) => {
     setToken(tokenData);
     localStorage.setItem("pos-user", JSON.stringify(userData));
     localStorage.setItem("pos-token", tokenData);
+    // Persist the email so the login form can pre-fill it after logout
+    if (userData?.email) {
+      localStorage.setItem("pos-last-email", userData.email);
+    }
     scheduleAutoLogout(tokenData);
   };
 
@@ -77,6 +81,7 @@ export const AuthProvider = ({ children }) => {
       setToken("");
       localStorage.removeItem("pos-user");
       localStorage.removeItem("pos-token");
+      // ← intentionally keep "pos-last-email" so the login form is pre-filled
     }
   };
 
