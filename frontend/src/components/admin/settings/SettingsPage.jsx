@@ -4,19 +4,23 @@ import { motion, AnimatePresence } from "framer-motion";
 import axiosInstance from "../../../utils/axiosInstance";
 import {
   Clock, Mail, RefreshCw, Save, AlertTriangle, CheckCircle2,
-  Users, ShieldCheck, X, UserCheck, Loader2,
+  Users, ShieldCheck, X, UserCheck, Loader2, Palette, Moon, Sun,
 } from "lucide-react";
+import { useTheme, GLOBAL_THEMES } from "../../../context/ThemeContext";
 
 const SettingsPage = () => {
   const [loading,  setLoading]  = useState(true);
   const [saving,   setSaving]   = useState(false);
   const [saved,    setSaved]    = useState(false);
+  const { globalTheme, setGlobalTheme } = useTheme();
   const [settings, setSettings] = useState({
-    orderExpiryHours:       48,
-    reminderMode:           "repeat",
-    reminderIntervalHours:  6,
-    storeName:              "Melech Store",
-    adminNotificationEmail: "",
+    orderExpiryHours:           48,
+    reminderMode:               "repeat",
+    reminderIntervalHours:      6,
+    storeName:                  "Melech Store",
+    adminNotificationEmail:     "",
+    lowStockThreshold:          10,
+    productExpiryWarningWeeks:  3,
   });
 
   // ── Delegation state ──────────────────────────────────────────────────────
@@ -37,11 +41,13 @@ const SettingsPage = () => {
       if (res.data.success) {
         const s = res.data.settings;
         setSettings({
-          orderExpiryHours:       s.orderExpiryHours       ?? 48,
-          reminderMode:           s.reminderMode           ?? "repeat",
-          reminderIntervalHours:  s.reminderIntervalHours  ?? 6,
-          storeName:              s.storeName              ?? "Melech Store",
-          adminNotificationEmail: s.adminNotificationEmail ?? "",
+          orderExpiryHours:           s.orderExpiryHours           ?? 48,
+          reminderMode:               s.reminderMode               ?? "repeat",
+          reminderIntervalHours:      s.reminderIntervalHours      ?? 6,
+          storeName:                  s.storeName                  ?? "Melech Store",
+          adminNotificationEmail:     s.adminNotificationEmail     ?? "",
+          lowStockThreshold:          s.lowStockThreshold          ?? 10,
+          productExpiryWarningWeeks:  s.productExpiryWarningWeeks  ?? 3,
         });
       }
     } catch {
@@ -144,6 +150,14 @@ const SettingsPage = () => {
       toast.error("Reminder interval must be at least 1 hour");
       return;
     }
+    if (!settings.lowStockThreshold || settings.lowStockThreshold < 1) {
+      toast.error("Low stock threshold must be at least 1");
+      return;
+    }
+    if (!settings.productExpiryWarningWeeks || settings.productExpiryWarningWeeks < 1) {
+      toast.error("Expiry warning must be at least 1 week");
+      return;
+    }
     setSaving(true);
     try {
       const res = await axiosInstance.put("/settings", settings);
@@ -218,7 +232,18 @@ const SettingsPage = () => {
               <input
                 type="number" min={1} max={720}
                 value={settings.orderExpiryHours}
-                onChange={(e) => handleChange("orderExpiryHours", Number(e.target.value))}
+                onWheel={(e) => e.currentTarget.blur()}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === "") { handleChange("orderExpiryHours", ""); return; }
+                  const n = parseInt(raw, 10);
+                  if (isNaN(n) || n < 0) return;
+                  handleChange("orderExpiryHours", n);
+                }}
+                onBlur={(e) => {
+                  const n = parseInt(e.target.value, 10);
+                  if (isNaN(n) || n < 1) handleChange("orderExpiryHours", 1);
+                }}
                 className="w-32 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 bg-gray-50 text-center font-semibold"
               />
               <span className="text-sm text-gray-500">hours after order placement</span>
@@ -280,7 +305,18 @@ const SettingsPage = () => {
                 <input
                   type="number" min={1} max={168}
                   value={settings.reminderIntervalHours}
-                  onChange={(e) => handleChange("reminderIntervalHours", Number(e.target.value))}
+                  onWheel={(e) => e.currentTarget.blur()}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "") { handleChange("reminderIntervalHours", ""); return; }
+                    const n = parseInt(raw, 10);
+                    if (isNaN(n) || n < 0) return;
+                    handleChange("reminderIntervalHours", n);
+                  }}
+                  onBlur={(e) => {
+                    const n = parseInt(e.target.value, 10);
+                    if (isNaN(n) || n < 1) handleChange("reminderIntervalHours", 1);
+                  }}
                   className="w-32 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 bg-gray-50 text-center font-semibold"
                 />
                 <span className="text-sm text-gray-500">hours between each reminder</span>
@@ -499,6 +535,131 @@ const SettingsPage = () => {
             )}
           </div>
         )}
+      </motion.div>
+
+      {/* ── Inventory Alerts ── */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.13 }}
+        className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <h2 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
+          <AlertTriangle size={16} className="text-red-500" />
+          Inventory Alerts
+        </h2>
+        <p className="text-xs text-gray-400 mb-5">
+          Configure the thresholds that trigger notifications so you always know when to restock or pull expiring items.
+        </p>
+
+        <div className="space-y-5">
+          {/* Low stock threshold */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+              Low Stock Alert Threshold (units)
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="number" min={1} max={10000}
+                value={settings.lowStockThreshold}
+                onWheel={(e) => e.currentTarget.blur()}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === "") { handleChange("lowStockThreshold", ""); return; }
+                  const n = parseInt(raw, 10);
+                  if (isNaN(n) || n < 0) return;
+                  handleChange("lowStockThreshold", n);
+                }}
+                onBlur={(e) => {
+                  const n = parseInt(e.target.value, 10);
+                  if (isNaN(n) || n < 1) handleChange("lowStockThreshold", 1);
+                }}
+                className="w-32 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 bg-gray-50 text-center font-semibold"
+              />
+              <span className="text-sm text-gray-500">units remaining</span>
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              Minimum is 1. The dashboard and product list will highlight products at or below this count.
+            </p>
+          </div>
+
+          {/* Product expiry warning */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+              Product Expiry Warning (weeks before)
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="number" min={1} max={52}
+                value={settings.productExpiryWarningWeeks}
+                onWheel={(e) => e.currentTarget.blur()}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === "") { handleChange("productExpiryWarningWeeks", ""); return; }
+                  const n = parseInt(raw, 10);
+                  if (isNaN(n) || n < 0) return;
+                  handleChange("productExpiryWarningWeeks", n);
+                }}
+                onBlur={(e) => {
+                  const n = parseInt(e.target.value, 10);
+                  if (isNaN(n) || n < 1) handleChange("productExpiryWarningWeeks", 1);
+                }}
+                className="w-32 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 bg-gray-50 text-center font-semibold"
+              />
+              <span className="text-sm text-gray-500">weeks before expiry date</span>
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              Default is 3 weeks. You receive a daily digest email listing all products expiring within this window.
+            </p>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ── Appearance ── */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}
+        className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <h2 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
+          <Palette size={16} className="text-indigo-500" />
+          Global App Theme
+        </h2>
+        <p className="text-xs text-gray-400 mb-5">
+          Chose a colour palette that applies to every user in the store — staff, customers and wholesale partners
+          all see the same brand colours. Changes take effect immediately for everyone on their next page load.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {GLOBAL_THEMES.map((t) => {
+            const active = globalTheme === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setGlobalTheme(t.id)}
+                className={`flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all ${
+                  active
+                    ? "border-indigo-500 bg-indigo-50"
+                    : "border-gray-200 hover:border-gray-300 bg-white"
+                }`}
+              >
+                {/* Colour swatch */}
+                <span
+                  className="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center shadow-sm"
+                  style={{ background: t.color }}
+                >
+                  {active && <CheckCircle2 size={16} className="text-white" />}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-bold ${active ? "text-indigo-700" : "text-gray-800"}`}>
+                    {t.label}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{t.description}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-4 flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-2.5 text-xs text-indigo-700">
+          <Palette size={13} />
+          Currently active: <strong className="ml-1">{GLOBAL_THEMES.find((t) => t.id === globalTheme)?.label}</strong>
+          <span className="ml-1 text-indigo-400">— theme saves automatically when you click a swatch</span>
+        </div>
       </motion.div>
 
       {/* Product Draft Info */}

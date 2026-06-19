@@ -1,2 +1,150 @@
-/* Global styles entrypoint */
-/* This file exists to satisfy main.jsx and can be extended with global styles if needed. */
+/* ── Global styles ─────────────────────────────────────────────────────────── */
+
+/* ── Theme CSS custom properties ────────────────────────────────────────────
+   Applied via data-theme="<name>" on <html>.
+   Five global themes the admin can set for everyone:
+     default   — clean slate gray (existing look)
+     ocean     — deep teal / cyan
+     forest    — earthy green
+     royal     — rich indigo / violet
+     sunset    — warm amber / orange
+   Two personal modes applied via data-mode="<name>" on <html>:
+     light  — default bright UI
+     dark   — dark background, light text
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* ── Default (light) ── */
+:root,
+[data-theme="default"][data-mode="light"],
+[data-theme="default"] {
+  --bg-page:        #f8fafc;
+  --bg-sidebar:     linear-gradient(to bottom, #111827, #1f2937);
+  --bg-card:        #ffffff;
+  --bg-card-hover:  #f9fafb;
+  --border-card:    #e5e7eb;
+  --text-primary:   #111827;
+  --text-secondary: #6b7280;
+  --text-muted:     #9ca3af;
+  --accent:         #4f46e5;
+  --accent-light:   #eef2ff;
+  --accent-text:    #4338ca;
+  --topbar-bg:      #ffffff;
+  --topbar-border:  #f1f5f9;
+}
+
+/* ── Ocean theme ── */
+[data-theme="ocean"],
+[data-theme="ocean"][data-mode="light"] {
+  --bg-page:        #f0fdfa;
+  --bg-sidebar:     linear-gradient(to bottom, #0f4c5c, #0e7490);
+  --bg-card:        #ffffff;
+  --bg-card-hover:  #f0fdfa;
+  --border-card:    #ccfbf1;
+  --text-primary:   #134e4a;
+  --text-secondary: #0d9488;
+  --text-muted:     #5eead4;
+  --accent:         #0891b2;
+  --accent-light:   #cffafe;
+  --accent-text:    #0e7490;
+  --topbar-bg:      #f0fdfa;
+  --topbar-border:  #99f6e4;
+}
+
+/* ── Forest theme ── */
+[data-theme="forest"],
+[data-theme="forest"][data-mode="light"] {
+  --bg-page:        #f7fdf4;
+  --bg-sidebar:     linear-gradient(to bottom, #14532d, #166534);
+  --bg-card:        #ffffff;
+  --bg-card-hover:  #f0fdf4;
+  --border-card:    #bbf7d0;
+  --text-primary:   #14532d;
+  --text-secondary: #16a34a;
+  --text-muted:     #4ade80;
+  --accent:         #16a34a;
+  --accent-light:   #dcfce7;
+  --accent-text:    #15803d;
+  --topbar-bg:      #f0fdf4;
+  --topbar-border:  #bbf7d0;
+}
+
+/* ── Royal theme ── */
+[data-theme="royal"],
+[data-theme="royal"][data-mode="light"] {
+  --bg-page:        #faf5ff;
+  --bg-sidebar:     linear-gradient(to bottom, #3b0764, #4c1d95);
+  --bg-card:        #ffffff;
+  --bg-card-hover:  #faf5ff;
+  --border-card:    #e9d5ff;
+  --text-primary:   #3b0764;
+  --text-secondary: #7c3aed;
+  --text-muted:     #c4b5fd;
+  --accent:         #7c3aed;
+  --accent-light:   #f3e8ff;
+  --accent-text:    #6d28d9;
+  --topbar-bg:      #faf5ff;
+  --topbar-border:  #e9d5ff;
+}
+
+/* ── Sunset theme ── */
+[data-theme="sunset"],
+[data-theme="sunset"][data-mode="light"] {
+  --bg-page:        #fff7ed;
+  --bg-sidebar:     linear-gradient(to bottom, #7c2d12, #9a3412);
+  --bg-card:        #ffffff;
+  --bg-card-hover:  #fff7ed;
+  --border-card:    #fed7aa;
+  --text-primary:   #7c2d12;
+  --text-secondary: #ea580c;
+  --text-muted:     #fb923c;
+  --accent:         #ea580c;
+  --accent-light:   #ffedd5;
+  --accent-text:    #c2410c;
+  --topbar-bg:      #fff7ed;
+  --topbar-border:  #fed7aa;
+}
+
+/* ── Dark mode overlay — applies ON TOP of any theme ──────────────────────── */
+[data-mode="dark"] {
+  --bg-page:        #0f1117;
+  --bg-card:        #1e2130;
+  --bg-card-hover:  #252840;
+  --border-card:    #2d3148;
+  --text-primary:   #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted:     #475569;
+  --topbar-bg:      #1a1d2e;
+  --topbar-border:  #2d3148;
+  /* Keep accent + sidebar from the active theme */
+}
+
+/* Ensure dark sidebar labels stay readable regardless of theme */
+[data-mode="dark"] [data-sidebar] {
+  color: #e2e8f0;
+}
+
+/* ── Utility classes driven by CSS vars ─────────────────────────────────────
+   Use these in Tailwind's arbitrary-value syntax or directly in className.
+   We expose them as global classes so any component can apply them.        */
+.theme-page     { background: var(--bg-page); color: var(--text-primary); }
+.theme-card     { background: var(--bg-card); border-color: var(--border-card); }
+.theme-card-hover:hover { background: var(--bg-card-hover); }
+.theme-text     { color: var(--text-primary); }
+.theme-text-sec { color: var(--text-secondary); }
+.theme-text-mut { color: var(--text-muted); }
+.theme-accent   { color: var(--accent); }
+.theme-accent-bg { background: var(--accent-light); color: var(--accent-text); }
+.theme-topbar   { background: var(--topbar-bg); border-color: var(--topbar-border); }
+.theme-sidebar  { background: var(--bg-sidebar); }
+
+/* ── Smooth transitions when switching themes / modes ──────────────────────── */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
+}
+/* But don't animate transforms/opacity — that would break all animations */
+.no-theme-transition,
+.no-theme-transition * {
+  transition: none !important;
+}

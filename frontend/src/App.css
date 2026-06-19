@@ -1,4 +1,18 @@
 @import "tailwindcss";
+
+/* ── Hide spinner arrows on all number inputs app-wide ───────────────────────
+   Prevents accidental value changes when scrolling over an input field.
+   The actual wheel-scroll-to-change behaviour is disabled via a global
+   event listener in main.jsx.                                              */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .input-field {
   @apply w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-400 transition-all duration-200;
 }
