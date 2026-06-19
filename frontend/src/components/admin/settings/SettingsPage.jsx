@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+﻿import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import axiosInstance from "../../../utils/axiosInstance";
@@ -6,13 +6,13 @@ import {
   Clock, Mail, RefreshCw, Save, AlertTriangle, CheckCircle2,
   Users, ShieldCheck, X, UserCheck, Loader2, Palette, Moon, Sun,
 } from "lucide-react";
-import { useTheme, GLOBAL_THEMES } from "../../../context/ThemeContext";
+import { useTheme, GLOBAL_THEMES, PERSONAL_MODES } from "../../../context/ThemeContext";
 
 const SettingsPage = () => {
   const [loading,  setLoading]  = useState(true);
   const [saving,   setSaving]   = useState(false);
   const [saved,    setSaved]    = useState(false);
-  const { globalTheme, setGlobalTheme } = useTheme();
+  const { globalTheme, setGlobalTheme, personalMode, setPersonalMode } = useTheme();
   const [settings, setSettings] = useState({
     orderExpiryHours:           48,
     reminderMode:               "repeat",
@@ -23,7 +23,7 @@ const SettingsPage = () => {
     productExpiryWarningWeeks:  3,
   });
 
-  // ── Delegation state ──────────────────────────────────────────────────────
+  // â”€â”€ Delegation state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [delegation,       setDelegation]       = useState({ delegateToAllStaff: false, delegatedStaffIds: [] });
   const [delegationLoading, setDelegationLoading] = useState(true);
   const [delegationSaving,  setDelegationSaving]  = useState(false);
@@ -68,7 +68,7 @@ const SettingsPage = () => {
         });
       }
     } catch {
-      // silently fail — delegation panel shows empty state
+      // silently fail â€” delegation panel shows empty state
     } finally {
       setDelegationLoading(false);
     }
@@ -99,7 +99,7 @@ const SettingsPage = () => {
     setSaved(false);
   };
 
-  // ── Delegation helpers ────────────────────────────────────────────────────
+  // â”€â”€ Delegation helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleDelegationSave = async (patch) => {
     setDelegationSaving(true);
     try {
@@ -185,7 +185,7 @@ const SettingsPage = () => {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">⚙️ App Settings</h1>
+        <h1 className="text-2xl font-bold text-gray-900">âš™ï¸ App Settings</h1>
         <p className="text-sm text-gray-500 mt-1">
           Configure global preferences. Settings are saved per admin account and persist across all devices.
         </p>
@@ -194,7 +194,7 @@ const SettingsPage = () => {
       {/* Store Info */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
         className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <h2 className="text-base font-semibold text-gray-800 mb-4">🏪 Store Information</h2>
+        <h2 className="text-base font-semibold text-gray-800 mb-4">ðŸª Store Information</h2>
         <div>
           <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
             Store Name
@@ -264,13 +264,13 @@ const SettingsPage = () => {
                   value: "once",
                   label: "One-time only",
                   desc:  "Send a single email when the order first expires. No further reminders.",
-                  icon:  "📧",
+                  icon:  "ðŸ“§",
                 },
                 {
                   value: "repeat",
                   label: "Repeat reminders",
                   desc:  "Keep sending reminder emails every X hours until the order is resolved.",
-                  icon:  "🔁",
+                  icon:  "ðŸ”",
                 },
               ].map((opt) => (
                 <button key={opt.value} type="button"
@@ -295,7 +295,7 @@ const SettingsPage = () => {
             </div>
           </div>
 
-          {/* Reminder interval — repeat mode only */}
+          {/* Reminder interval â€” repeat mode only */}
           {settings.reminderMode === "repeat" && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
               <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
@@ -337,7 +337,7 @@ const SettingsPage = () => {
           Admin Notification Email
         </h2>
         <p className="text-xs text-gray-400 mb-4">
-          All admin notifications are sent here — new customer/wholesale orders placed, order expiry alerts, and expiry reminders.
+          All admin notifications are sent here â€” new customer/wholesale orders placed, order expiry alerts, and expiry reminders.
           Leave blank to use your admin account email.
         </p>
         <input
@@ -348,11 +348,11 @@ const SettingsPage = () => {
           className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50"
         />
         <p className="text-xs text-gray-400 mt-1.5">
-          💡 Covers: new order alerts, expiry alerts, and repeat reminders.
+          ðŸ’¡ Covers: new order alerts, expiry alerts, and repeat reminders.
         </p>
       </motion.div>
 
-      {/* ── Staff Order Delegation ── */}
+      {/* â”€â”€ Staff Order Delegation â”€â”€ */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
         className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         <h2 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
@@ -367,7 +367,7 @@ const SettingsPage = () => {
 
         {delegationLoading ? (
           <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
-            <Loader2 size={15} className="animate-spin" /> Loading delegation settings…
+            <Loader2 size={15} className="animate-spin" /> Loading delegation settingsâ€¦
           </div>
         ) : (
           <div className="space-y-5">
@@ -378,13 +378,13 @@ const SettingsPage = () => {
                   value: true,
                   label: "All Staff",
                   desc:  "Every active staff member can manage placed orders.",
-                  icon:  "👥",
+                  icon:  "ðŸ‘¥",
                 },
                 {
                   value: false,
                   label: "Specific Staff Only",
                   desc:  "You choose which staff members have access.",
-                  icon:  "🎯",
+                  icon:  "ðŸŽ¯",
                 },
               ].map((opt) => (
                 <button key={String(opt.value)} type="button"
@@ -412,7 +412,7 @@ const SettingsPage = () => {
               ))}
             </div>
 
-            {/* Specific staff list — only shown when NOT delegating to all */}
+            {/* Specific staff list â€” only shown when NOT delegating to all */}
             {!delegation.delegateToAllStaff && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -476,7 +476,7 @@ const SettingsPage = () => {
                         <input
                           autoFocus
                           type="text"
-                          placeholder="Search staff by name or email…"
+                          placeholder="Search staff by name or emailâ€¦"
                           value={pickerSearch}
                           onChange={(e) => setPickerSearch(e.target.value)}
                           className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
@@ -485,7 +485,7 @@ const SettingsPage = () => {
                       <div className="max-h-48 overflow-y-auto">
                         {staffLoading ? (
                           <div className="flex items-center gap-2 p-3 text-gray-400 text-xs">
-                            <Loader2 size={13} className="animate-spin" /> Loading staff…
+                            <Loader2 size={13} className="animate-spin" /> Loading staffâ€¦
                           </div>
                         ) : (
                           (() => {
@@ -537,7 +537,7 @@ const SettingsPage = () => {
         )}
       </motion.div>
 
-      {/* ── Inventory Alerts ── */}
+      {/* â”€â”€ Inventory Alerts â”€â”€ */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.13 }}
         className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         <h2 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
@@ -611,7 +611,7 @@ const SettingsPage = () => {
         </div>
       </motion.div>
 
-      {/* ── Appearance ── */}
+      {/* â”€â”€ Appearance â”€â”€ */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}
         className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         <h2 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
@@ -619,7 +619,7 @@ const SettingsPage = () => {
           Global App Theme
         </h2>
         <p className="text-xs text-gray-400 mb-5">
-          Chose a colour palette that applies to every user in the store — staff, customers and wholesale partners
+          Chose a colour palette that applies to every user in the store â€” staff, customers and wholesale partners
           all see the same brand colours. Changes take effect immediately for everyone on their next page load.
         </p>
 
@@ -658,19 +658,55 @@ const SettingsPage = () => {
         <div className="mt-4 flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-2.5 text-xs text-indigo-700">
           <Palette size={13} />
           Currently active: <strong className="ml-1">{GLOBAL_THEMES.find((t) => t.id === globalTheme)?.label}</strong>
-          <span className="ml-1 text-indigo-400">— theme saves automatically when you click a swatch</span>
+          <span className="ml-1 text-indigo-400">â€” theme saves automatically when you click a swatch</span>
+        </div>
+      </motion.div>
+
+      {/* Personal Display Mode */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.145 }}
+        className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <h2 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
+          {personalMode === "dark" ? <Moon size={16} className="text-indigo-400" /> : <Sun size={16} className="text-amber-400" />}
+          My Display Mode
+        </h2>
+        <p className="text-xs text-gray-400 mb-5">
+          Your personal light or dark preference. This only affects your admin view — it does not change what other users see.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          {PERSONAL_MODES.map((m) => {
+            const active = personalMode === m.id;
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setPersonalMode(m.id)}
+                className={`flex-1 flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all ${
+                  active ? "border-indigo-500 bg-indigo-50" : "border-gray-200 hover:border-gray-300 bg-white"
+                }`}
+              >
+                <span className="text-2xl">{m.icon}</span>
+                <div className="flex-1">
+                  <p className={`text-sm font-bold flex items-center gap-2 ${active ? "text-indigo-700" : "text-gray-800"}`}>
+                    {m.label}
+                    {active && <CheckCircle2 size={14} className="text-indigo-500" />}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{m.description}</p>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </motion.div>
 
       {/* Product Draft Info */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
         className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex gap-3">
-        <span className="text-xl">📋</span>
+        <span className="text-xl">ðŸ“‹</span>
         <div className="text-xs text-amber-800 leading-relaxed">
           <p className="font-semibold mb-0.5">Product form draft</p>
           <p>
             When you start filling the Add Product form and close it without saving,
-            your progress is automatically saved to your account — not just this device.
+            your progress is automatically saved to your account â€” not just this device.
             You can continue on any device you log into as admin.
             The draft is cleared automatically when you successfully add the product.
           </p>
@@ -709,3 +745,4 @@ const SettingsPage = () => {
 };
 
 export default SettingsPage;
+
