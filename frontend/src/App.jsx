@@ -1,5 +1,5 @@
 import "./App.css";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./utils/ProtectedRoute.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Categories from "./components/admin/category/Category.jsx";
@@ -74,9 +74,8 @@ function App() {
             <Route path="suppliers"         element={<Suppliers />} />
             <Route path="placed-orders"     element={<PlacedOrders />} />
             <Route path="completed-history" element={<AdminCompletedHistory />} />
-            <Route path="profile"           element={<Profile />} />
+            <Route path="profile"           element={<Navigate to="/admin-dashboard/settings" replace />} />
             <Route path="users"             element={<Users />} />
-            {/* ✅ New admin routes */}
             <Route path="expiring-orders"   element={<ExpiringOrders />} />
             <Route path="settings"          element={<SettingsPage />} />
             <Route path="logout"            element={<Logout />} />
@@ -95,7 +94,7 @@ function App() {
             <Route path="orders"            element={<StaffOrders />} />
             <Route path="placed-orders"     element={<StaffPlacedOrders />} />
             <Route path="completed-history" element={<StaffCompletedHistory />} />
-            <Route path="profile"           element={<Profile />} />
+            <Route path="profile"           element={<Navigate to="/customer-dashboard/settings" replace />} />
             <Route path="settings"          element={<UserSettingsPage />} />
             <Route path="logout"            element={<Logout />} />
           </Route>
@@ -112,13 +111,12 @@ function App() {
             <Route index                    element={<CustomerProducts />} />
             <Route path="orders"            element={<CustomerOrderPortal />} />
             <Route path="completed-history" element={<CustomerCompletedHistory />} />
-            <Route path="profile"           element={<Profile />} />
+            <Route path="profile"           element={<Navigate to="/user-dashboard/settings" replace />} />
             <Route path="settings"          element={<UserSettingsPage />} />
             <Route path="logout"            element={<Logout />} />
           </Route>
 
           {/* ── Wholesale Dashboard ── */}
-          {/* Uses the same components as customer — pricing is role-filtered server-side */}
           <Route
             path="/wholesale-dashboard/*"
             element={
@@ -130,7 +128,7 @@ function App() {
             <Route index                    element={<CustomerProducts />} />
             <Route path="orders"            element={<CustomerOrderPortal />} />
             <Route path="completed-history" element={<CustomerCompletedHistory />} />
-            <Route path="profile"           element={<Profile />} />
+            <Route path="profile"           element={<Navigate to="/wholesale-dashboard/settings" replace />} />
             <Route path="settings"          element={<UserSettingsPage />} />
             <Route path="logout"            element={<Logout />} />
           </Route>

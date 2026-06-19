@@ -24,7 +24,6 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     { name: "Users",           path: "/admin-dashboard/users",             icon: <FaUsers /> },
     { name: "Expiring Orders", path: "/admin-dashboard/expiring-orders",   icon: <Clock size={16} className="text-amber-400" />, highlight: true },
     { name: "Settings",        path: "/admin-dashboard/settings",          icon: <FaCog /> },
-    { name: "Profile",         path: "/admin-dashboard/profile",           icon: <FaCog /> },
     { name: "Logout",          path: "/logout",                            icon: <FaSignOutAlt /> },
   ];
 
@@ -33,7 +32,6 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     { name: "Cart",      path: "/customer-dashboard/orders",            icon: <FaShoppingCart /> },
     { name: "History",   path: "/customer-dashboard/completed-history", icon: <FaHistory /> },
     { name: "Settings",  path: "/customer-dashboard/settings",          icon: <FaCog /> },
-    { name: "Profile",   path: "/customer-dashboard/profile",           icon: <FaCog /> },
     { name: "Logout",    path: "/logout",                               icon: <FaSignOutAlt /> },
   ];
 
@@ -44,7 +42,6 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         { name: "Placed Orders", path: "/customer-dashboard/placed-orders",     icon: <FaClipboardList />, highlight: true },
         { name: "History",       path: "/customer-dashboard/completed-history", icon: <FaHistory /> },
         { name: "Settings",      path: "/customer-dashboard/settings",          icon: <FaCog /> },
-        { name: "Profile",       path: "/customer-dashboard/profile",           icon: <FaCog /> },
         { name: "Logout",        path: "/logout",                               icon: <FaSignOutAlt /> },
       ]
     : staffMenuBase;
@@ -54,7 +51,6 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     { name: "Cart",     path: "/user-dashboard/orders",            icon: <FaShoppingCart /> },
     { name: "History",  path: "/user-dashboard/completed-history", icon: <FaHistory /> },
     { name: "Settings", path: "/user-dashboard/settings",          icon: <FaCog /> },
-    { name: "Profile",  path: "/user-dashboard/profile",           icon: <FaCog /> },
     { name: "Logout",   path: "/logout",                           icon: <FaSignOutAlt /> },
   ];
 
@@ -63,7 +59,6 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     { name: "Cart",     path: "/wholesale-dashboard/orders",            icon: <FaShoppingCart /> },
     { name: "History",  path: "/wholesale-dashboard/completed-history", icon: <FaHistory /> },
     { name: "Settings", path: "/wholesale-dashboard/settings",          icon: <FaCog /> },
-    { name: "Profile",  path: "/wholesale-dashboard/profile",           icon: <FaCog /> },
     { name: "Logout",   path: "/logout",                                icon: <FaSignOutAlt /> },
   ];
 

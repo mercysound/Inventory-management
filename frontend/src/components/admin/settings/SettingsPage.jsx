@@ -5,7 +5,8 @@ import axiosInstance from "../../../utils/axiosInstance";
 import {
   Clock, Mail, RefreshCw, Save, AlertTriangle, CheckCircle2,
   Users, ShieldCheck, X, UserCheck, Loader2, Palette, Moon, Sun,
-  Store, Package, Settings2,
+  Store, Package, Settings2, User, Phone, MapPin, Lock, Eye, EyeOff,
+  Pencil,
 } from "lucide-react";
 import { useTheme, GLOBAL_THEMES, PERSONAL_MODES } from "../../../context/ThemeContext";
 
@@ -32,6 +33,17 @@ const SettingsPage = () => {
   const [staffLoading,      setStaffLoading]      = useState(false);
   const [showPicker,        setShowPicker]        = useState(false);
   const [pickerSearch,      setPickerSearch]      = useState("");
+
+  // ── Profile state ─────────────────────────────────────────────────────────
+  const [profile,        setProfile]        = useState({ name: "", email: "", phone: "", address: "" });
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [editProfile,    setEditProfile]    = useState(false);
+  const [savingProfile,  setSavingProfile]  = useState(false);
+  const [changePwd,      setChangePwd]      = useState(false);
+  const [pwdData,        setPwdData]        = useState({ oldPassword: "", newPassword: "", confirmPassword: "" });
+  const [showOld,        setShowOld]        = useState(false);
+  const [showNew,        setShowNew]        = useState(false);
+  const [showConf,       setShowConf]       = useState(false);
 
   const fetchSettings = async () => {
     try {
@@ -77,6 +89,41 @@ const SettingsPage = () => {
   }, [allStaff.length]);
 
   useEffect(() => { fetchSettings(); fetchDelegation(); }, []);
+
+  // ── Profile fetch + save ──────────────────────────────────────────────────
+  useEffect(() => {
+    axiosInstance.get("/users/profile")
+      .then((res) => {
+        if (res.data.success) {
+          const d = res.data._doc;
+          setProfile({ name: d?.name || "", email: d?.email || "", phone: d?.phone || "", address: d?.address || "" });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingProfile(false));
+  }, []);
+
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    if (changePwd) {
+      if (!pwdData.oldPassword) { toast.error("Enter your current password"); return; }
+      if (!pwdData.newPassword)  { toast.error("Enter a new password"); return; }
+      if (pwdData.newPassword.length < 6) { toast.error("Min 6 characters for new password"); return; }
+      if (pwdData.newPassword !== pwdData.confirmPassword) { toast.error("Passwords do not match"); return; }
+    }
+    setSavingProfile(true);
+    try {
+      const payload = { ...profile };
+      if (changePwd) { payload.oldPassword = pwdData.oldPassword; payload.password = pwdData.newPassword; }
+      const res = await axiosInstance.put("/users/profile", payload);
+      if (res.data.success) {
+        toast.success("Profile updated");
+        setEditProfile(false); setChangePwd(false);
+        setPwdData({ oldPassword: "", newPassword: "", confirmPassword: "" });
+      } else { toast.error("Failed to update profile"); }
+    } catch (err) { toast.error(err?.response?.data?.message || "Error updating profile"); }
+    finally { setSavingProfile(false); }
+  };
 
   const handleChange = (field, value) => { setSettings((p) => ({ ...p, [field]: value })); setSaved(false); };
 
@@ -159,6 +206,114 @@ const SettingsPage = () => {
           Configure global preferences. Settings are saved per admin account and persist across all devices.
         </p>
       </div>
+
+      {/* ── Account / Profile ─────────────────────────────────────────────── */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+          <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+            <User size={16} className="text-indigo-500" /> My Account
+          </h2>
+          {!editProfile && !loadingProfile && (
+            <button onClick={() => setEditProfile(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400
+                hover:text-indigo-800 border border-indigo-200 dark:border-indigo-700 px-3 py-1.5 rounded-lg transition">
+              <Pencil size={12} /> Edit
+            </button>
+          )}
+        </div>
+        <div className="px-6 py-5">
+          {loadingProfile ? (
+            <div className="flex items-center gap-2 text-gray-400 text-sm">
+              <Loader2 size={15} className="animate-spin" /> Loading...
+            </div>
+          ) : (
+            <form onSubmit={handleSaveProfile} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  { label: "Full Name",   icon: User,   field: "name",    type: "text",  placeholder: "Admin name" },
+                  { label: "Phone",       icon: Phone,  field: "phone",   type: "tel",   placeholder: "Phone number" },
+                  { label: "Address",     icon: MapPin, field: "address", type: "text",  placeholder: "Address" },
+                ].map(({ label, icon: Icon, field, type, placeholder }) => (
+                  <div key={field} className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+                      <Icon size={11} className="text-gray-400" /> {label}
+                    </label>
+                    <input type={type} value={profile[field]}
+                      onChange={(e) => setProfile((p) => ({ ...p, [field]: e.target.value }))}
+                      disabled={!editProfile} placeholder={placeholder}
+                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all ${
+                        !editProfile
+                          ? "bg-gray-100 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-400 cursor-not-allowed"
+                          : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200"
+                      }`} />
+                  </div>
+                ))}
+                {/* Email always disabled */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+                    <Mail size={11} className="text-gray-400" /> Email
+                  </label>
+                  <input type="email" value={profile.email} disabled
+                    className="w-full border rounded-xl px-3.5 py-2.5 text-sm bg-gray-100 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-400 cursor-not-allowed" />
+                  <p className="text-[10px] text-gray-400">Email cannot be changed</p>
+                </div>
+              </div>
+
+              {/* Password change */}
+              {editProfile && (
+                <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+                  <button type="button" onClick={() => setChangePwd((p) => !p)}
+                    className="text-sm text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-1.5">
+                    <Lock size={13} /> {changePwd ? "Cancel password change" : "Change password"}
+                  </button>
+                  {changePwd && (
+                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {[
+                        { label: "Current Password", field: "oldPassword", show: showOld, setShow: setShowOld },
+                        { label: "New Password",      field: "newPassword", show: showNew, setShow: setShowNew },
+                        { label: "Confirm Password",  field: "confirmPassword", show: showConf, setShow: setShowConf },
+                      ].map(({ label, field, show, setShow }) => (
+                        <div key={field} className="space-y-1.5">
+                          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</label>
+                          <div className="relative">
+                            <input type={show ? "text" : "password"} placeholder={label}
+                              value={pwdData[field]}
+                              onChange={(e) => setPwdData((p) => ({ ...p, [field]: e.target.value }))}
+                              className="w-full border border-gray-200 dark:border-gray-600 rounded-xl px-3.5 py-2.5 text-sm pr-10
+                                focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white dark:bg-gray-900 dark:text-gray-200" />
+                            <button type="button" onClick={() => setShow((s) => !s)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
+                              {show ? <EyeOff size={14} /> : <Eye size={14} />}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {editProfile && (
+                <div className="flex gap-2 pt-1">
+                  <button type="submit" disabled={savingProfile}
+                    className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700
+                      disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition shadow-sm">
+                    {savingProfile ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                    {savingProfile ? "Saving..." : "Save Profile"}
+                  </button>
+                  <button type="button" disabled={savingProfile}
+                    onClick={() => { setEditProfile(false); setChangePwd(false); setPwdData({ oldPassword: "", newPassword: "", confirmPassword: "" }); }}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 border border-gray-200 dark:border-gray-600
+                      text-gray-600 dark:text-gray-300 text-sm font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                    <X size={14} /> Cancel
+                  </button>
+                </div>
+              )}
+            </form>
+          )}
+        </div>
+      </motion.div>
 
       {/* Store Information */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
