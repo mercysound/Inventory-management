@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 import {
   AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
   Minus,
   Package,
   Plus,
@@ -54,7 +56,86 @@ const StepBtn = ({ onClick, disabled, children }) => (
   </motion.button>
 );
 
-// ─── Main modal ──────────────────────────────────────────────────────────────
+// ─── Image carousel ──────────────────────────────────────────────────────────
+const ImageCarousel = ({ images = [], productName = "" }) => {
+  const [idx, setIdx] = useState(0);
+  const imgs = images.filter(Boolean);
+
+  if (imgs.length === 0) {
+    return (
+      <div className="w-full h-56 bg-gradient-to-br from-gray-100 to-gray-200
+        flex items-center justify-center">
+        <Package size={48} className="text-gray-300" />
+      </div>
+    );
+  }
+
+  const prev = () => setIdx((i) => (i - 1 + imgs.length) % imgs.length);
+  const next = () => setIdx((i) => (i + 1) % imgs.length);
+
+  return (
+    <div className="relative w-full select-none">
+      {/* Main image — taller, flush to top of modal */}
+      <div className="w-full h-56 relative overflow-hidden bg-gray-100">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.img
+            key={idx}
+            src={imgs[idx]}
+            alt={`${productName} ${idx + 1}`}
+            className="w-full h-full object-cover"
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -40 }}
+            transition={{ duration: 0.2 }}
+          />
+        </AnimatePresence>
+
+        {/* Gradient fade at bottom for text legibility */}
+        <div className="absolute bottom-0 left-0 right-0 h-16
+          bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
+
+        {/* Prev / Next */}
+        {imgs.length > 1 && (
+          <>
+            <button type="button" onClick={prev}
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full
+                bg-black/40 hover:bg-black/65 text-white flex items-center justify-center
+                transition" aria-label="Previous">
+              <ChevronLeft size={16} />
+            </button>
+            <button type="button" onClick={next}
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full
+                bg-black/40 hover:bg-black/65 text-white flex items-center justify-center
+                transition" aria-label="Next">
+              <ChevronRight size={16} />
+            </button>
+          </>
+        )}
+
+        {/* Counter */}
+        {imgs.length > 1 && (
+          <span className="absolute bottom-2.5 right-3 text-[11px] font-bold
+            bg-black/50 text-white px-2 py-0.5 rounded-full">
+            {idx + 1}/{imgs.length}
+          </span>
+        )}
+      </div>
+
+      {/* Dot indicators */}
+      {imgs.length > 1 && (
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
+          {imgs.map((_, i) => (
+            <button key={i} type="button" onClick={() => setIdx(i)}
+              className={`rounded-full transition-all ${
+                i === idx ? "w-4 h-1.5 bg-white" : "w-1.5 h-1.5 bg-white/50"
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock, showStockText = true }) => {
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
@@ -294,240 +375,267 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
 
   return (
     <AnimatePresence>
-      {/*
-        Backdrop — no initial animation delay.
-        duration: 0.12 is fast enough to feel snappy without being jarring.
-      */}
       <motion.div
         className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-        style={{ backgroundColor: "rgba(0,0,0,0.48)" }}
+        style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.12 }}
+        transition={{ duration: 0.15 }}
         onClick={closeModal}
       >
-        {/*
-          Modal panel.
-          Mobile: slides up from bottom (sheet pattern — familiar on phones).
-          Desktop: pops in from center with a very short spring.
-          No delay — duration values are kept ≤ 150ms so it feels instant.
-        */}
         <motion.div
-          className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
+          className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl
+            flex flex-col max-h-[92vh] sm:max-h-[88vh] overflow-hidden"
           initial={{ y: "100%", opacity: 0 }}
           animate={{ y: 0,      opacity: 1 }}
           exit={{   y: "100%", opacity: 0 }}
-          transition={{ type: "spring", stiffness: 480, damping: 36, mass: 0.8 }}
+          transition={{ type: "spring", stiffness: 420, damping: 38, mass: 0.9 }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* ── Header ──────────────────────────────────────────────── */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-                <ShoppingCart size={16} className="text-green-600" />
-              </div>
-              <h2 className="font-bold text-gray-900 text-base">
-                {isUpdate ? "Update Order" : "Place Order"}
-              </h2>
-            </div>
+          {/* ── Image carousel — flush to top, rounded top corners ── */}
+          <div className="relative flex-shrink-0">
+            {/* Close button floats over the image */}
             <button
               onClick={closeModal}
-              className="w-8 h-8 flex items-center justify-center rounded-full
-                text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"
+              className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center
+                rounded-full bg-black/40 hover:bg-black/60 text-white transition backdrop-blur-sm"
               aria-label="Close"
             >
-              <X size={18} />
+              <X size={16} />
             </button>
+
+            {/* Cart badge — shows if item already in cart */}
+            {isUpdate && (
+              <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5
+                bg-green-600/90 text-white text-xs font-semibold px-2.5 py-1.5
+                rounded-full backdrop-blur-sm">
+                <ShoppingCart size={12} />
+                In cart
+              </div>
+            )}
+
+            {/* Image / carousel */}
+            {(() => {
+              const imgs = (
+                Array.isArray(orderData.images) && orderData.images.length > 0
+                  ? orderData.images
+                  : orderData.productImage ? [orderData.productImage] : []
+              ).filter(Boolean);
+
+              if (imgs.length === 0) {
+                return (
+                  <div className="w-full h-52 bg-gradient-to-br from-gray-100 to-gray-200
+                    flex items-center justify-center">
+                    <Package size={48} className="text-gray-300" />
+                  </div>
+                );
+              }
+
+              return (
+                <ImageCarousel
+                  images={imgs}
+                  productName={orderData.productName}
+                />
+              );
+            })()}
           </div>
 
-          {/* ── Product card ─────────────────────────────────────────── */}
-          <div className="px-5 pt-5">
-            <div className="flex gap-4 bg-gray-50 rounded-xl p-4 border border-gray-100">
-              <div className="w-20 h-20 rounded-xl overflow-hidden border border-gray-200 bg-white flex-shrink-0 shadow-sm">
-                {orderData.productImage ? (
-                  <img
-                    src={orderData.productImage}
-                    alt={orderData.productName}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-300">
-                    <Package size={24} />
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-gray-900 text-base leading-tight truncate">
-                  {orderData.productName}
-                </h3>
-                <div className="flex items-center gap-1.5 mt-0.5 mb-2">
+          {/* ── Scrollable body ──────────────────────────────────────── */}
+          <div className="flex-1 overflow-y-auto overscroll-contain">
+
+            {/* Product name + category + stock */}
+            <div className="px-5 pt-4 pb-3 border-b border-gray-100">
+              <h2 className="font-bold text-gray-900 text-lg leading-tight">
+                {orderData.productName}
+              </h2>
+              <div className="flex items-center justify-between mt-1">
+                <div className="flex items-center gap-1.5">
                   <Tag size={11} className="text-gray-400" />
                   <span className="text-xs text-gray-500">{orderData.productCategory}</span>
                 </div>
                 <StockBadge stock={orderData.stock} showStock={showStock} />
               </div>
-            </div>
+              {orderData.productDescription && (
+                <p className="text-xs text-gray-400 mt-2 line-clamp-2 leading-relaxed">
+                  {orderData.productDescription}
+                </p>
+              )}
 
-            {orderData.productDescription && (
-              <p className="text-xs text-gray-500 mt-3 line-clamp-2 leading-relaxed">
-                {orderData.productDescription}
-              </p>
-            )}
-          </div>
-
-          {/* ── Price row ────────────────────────────────────────────── */}
-          <div className="px-5 mt-4">
-            <div className="flex items-center justify-between py-3 border-t border-b border-gray-100">
-              <span className="text-sm text-gray-500">Unit price</span>
-              <span className="font-semibold text-gray-800">
-                ₦{Number(currentPrice || 0).toLocaleString()}
-              </span>
-            </div>
-          </div>
-
-          {/* Debug info for staff: shows current stored mode and raw prices */}
-          {showStock && (
-            <div className="px-5 mt-2 text-xs text-gray-500">
-              <div>Mode: {_dbg_currentMode || 'unset'}</div>
-              <div>Retail: ₦{Number(_dbg_retail).toLocaleString()}</div>
-              <div>Wholesale: {_dbg_wholesale != null ? `₦${Number(_dbg_wholesale).toLocaleString()}` : '—'}</div>
-            </div>
-          )}
-
-          {/* ── Form ─────────────────────────────────────────────────── */}
-          <form onSubmit={handleSubmit} className="px-5 py-5 space-y-5">
-            {/* Quantity stepper */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                Quantity
-              </label>
-              <div className="flex items-center gap-3">
-                <StepBtn onClick={() => setQty(qty - 1)} disabled={qty <= 0}>
-                  <Minus size={14} />
-                </StepBtn>
-
-                <input
-                  ref={inputRef}
-                  type="number"
-                  inputMode="numeric"
-                  value={orderData.quantity}
-                  onChange={handleInputChange}
-                  min={0}
-                  max={orderData.stock}
-                  className={`flex-1 text-center border rounded-lg py-2 font-semibold text-lg
-                    focus:outline-none focus:ring-2 focus:border-transparent transition
-                    [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none
-                    [&::-webkit-inner-spin-button]:appearance-none
-                    ${isUpdate && qty === 0
-                      ? "border-red-300 text-red-500 focus:ring-red-300"
-                      : "border-gray-300 text-gray-800 focus:ring-green-400"
-                    }`}
-                />
-
-                <StepBtn onClick={() => setQty(qty + 1)} disabled={qty >= orderData.stock}>
-                  <Plus size={14} />
-                </StepBtn>
-              </div>
-
-              {/* Stock progress bar */}
-              {orderData.stock > 0 && (
-                <div className="mt-2">
-                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <motion.div
-                      className={`h-full rounded-full ${
-                        qty / orderData.stock > 0.8 ? "bg-red-400"
-                        : qty / orderData.stock > 0.5 ? "bg-amber-400"
-                        : "bg-green-400"
-                      }`}
-                      animate={{ width: `${Math.min((qty / orderData.stock) * 100, 100)}%` }}
-                      transition={{ duration: 0.15 }}
-                    />
-                  </div>
-                  {showStockText && (
-                    <p className="text-xs text-gray-400 mt-1 text-right">
-                      {qty} of {orderData.stock} available
-                    </p>
+              {/* Admin/staff only: batch number + expiry date */}
+              {showStock && (orderData.batchNumber || orderData.expiryDate) && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {orderData.batchNumber && (
+                    <span className="inline-flex items-center gap-1 text-xs bg-indigo-50
+                      border border-indigo-100 text-indigo-700 px-2.5 py-1 rounded-lg font-medium">
+                      📦 Batch: {orderData.batchNumber}
+                    </span>
                   )}
+                  {orderData.expiryDate && (() => {
+                    const days = Math.ceil(
+                      (new Date(orderData.expiryDate) - new Date()) / (1000 * 60 * 60 * 24)
+                    );
+                    const dateStr = new Date(orderData.expiryDate).toLocaleDateString("en-NG", {
+                      day: "numeric", month: "short", year: "numeric",
+                    });
+                    if (days <= 0) return (
+                      <span className="inline-flex items-center gap-1 text-xs bg-red-50
+                        border border-red-200 text-red-700 px-2.5 py-1 rounded-lg font-semibold">
+                        ⚠️ EXPIRED · {dateStr}
+                      </span>
+                    );
+                    if (days <= 21) return (
+                      <span className="inline-flex items-center gap-1 text-xs bg-amber-50
+                        border border-amber-200 text-amber-700 px-2.5 py-1 rounded-lg font-semibold">
+                        ⏳ Expires in {days}d · {dateStr}
+                      </span>
+                    );
+                    return (
+                      <span className="inline-flex items-center gap-1 text-xs bg-green-50
+                        border border-green-100 text-green-700 px-2.5 py-1 rounded-lg font-medium">
+                        ✅ Exp: {dateStr}
+                      </span>
+                    );
+                  })()}
                 </div>
               )}
             </div>
 
-            {/* Total / Remove warning */}
-            <AnimatePresence mode="wait">
-              {isUpdate && qty === 0 ? (
-                <motion.div
-                  key="remove-warning"
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  transition={{ duration: 0.1 }}
-                  className="flex items-center justify-between bg-red-50 rounded-xl px-4 py-3 border border-red-100"
-                >
-                  <span className="text-sm font-medium text-red-600 flex items-center gap-1.5">
-                    <Trash2 size={14} /> Remove from cart
-                  </span>
-                  <span className="text-sm font-semibold text-red-400">Item will be deleted</span>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="total"
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  transition={{ duration: 0.1 }}
-                  className="flex items-center justify-between bg-green-50 rounded-xl px-4 py-3 border border-green-100"
-                >
-                  <span className="text-sm font-medium text-green-700">Total</span>
-                  <motion.span
-                    key={total}
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1,   opacity: 1 }}
-                    transition={{ duration: 0.1 }}
-                    className="text-xl font-bold text-green-700"
-                  >
-                    ₦{Number(total || 0).toLocaleString()}
-                  </motion.span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Action buttons */}
-            <div className="flex gap-3 pt-1">
-              <button
-                type="button"
-                onClick={closeModal}
-                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600
-                  text-sm font-semibold hover:bg-gray-50 transition"
-              >
-                Cancel
-              </button>
-
-              <motion.button
-                type="submit"
-                disabled={orderData.stock === 0 || (!isUpdate && qty < 1)}
-                whileTap={!loading ? { scale: 0.96 } : {}}
-                transition={{ duration: 0.07 }}
-                className={`flex-1 py-2.5 rounded-xl text-white text-sm font-semibold
-                  flex items-center justify-center gap-2 transition shadow-sm
-                  ${
-                    orderData.stock === 0 || (!isUpdate && qty < 1)
-                      ? "bg-gray-300 cursor-not-allowed"
-                      : isUpdate && qty === 0
-                      ? "bg-red-500 hover:bg-red-600 shadow-red-200"
-                      : "bg-green-600 hover:bg-green-700 shadow-green-200"
-                  }`}
-              >
-                {isUpdate && qty === 0 ? (
-                  <><Trash2 size={14} /> Remove from Cart</>
-                ) : isUpdate ? (
-                  <><RefreshCw size={14} /> Update Cart</>
-                ) : (
-                  <><ShoppingCart size={14} /> Add to Cart</>
-                )}
-              </motion.button>
+            {/* Unit price */}
+            <div className="px-5 py-3 flex items-center justify-between
+              border-b border-gray-100 bg-gray-50/60">
+              <span className="text-sm font-medium text-gray-500">Unit price</span>
+              <span className="text-base font-bold text-gray-800">
+                ₦{Number(currentPrice || 0).toLocaleString()}
+              </span>
             </div>
-          </form>
+
+            {/* ── Form ──────────────────────────────────────────────── */}
+            <form onSubmit={handleSubmit} className="px-5 py-5 space-y-4">
+
+              {/* Quantity stepper */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500
+                  uppercase tracking-wide mb-2.5">
+                  Quantity
+                </label>
+                <div className="flex items-center gap-3">
+                  <StepBtn onClick={() => setQty(qty - 1)} disabled={qty <= 0}>
+                    <Minus size={14} />
+                  </StepBtn>
+                  <input
+                    ref={inputRef}
+                    type="number"
+                    inputMode="numeric"
+                    value={orderData.quantity}
+                    onChange={handleInputChange}
+                    min={0}
+                    max={orderData.stock}
+                    className={`flex-1 text-center border rounded-xl py-2.5 font-bold text-xl
+                      focus:outline-none focus:ring-2 focus:border-transparent transition
+                      [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none
+                      [&::-webkit-inner-spin-button]:appearance-none
+                      ${isUpdate && qty === 0
+                        ? "border-red-300 text-red-500 focus:ring-red-300 bg-red-50"
+                        : "border-gray-200 text-gray-800 focus:ring-green-400 bg-white"
+                      }`}
+                  />
+                  <StepBtn onClick={() => setQty(qty + 1)} disabled={qty >= orderData.stock}>
+                    <Plus size={14} />
+                  </StepBtn>
+                </div>
+
+                {/* Stock progress bar */}
+                {orderData.stock > 0 && (
+                  <div className="mt-3">
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <motion.div
+                        className={`h-full rounded-full ${
+                          qty / orderData.stock > 0.8 ? "bg-red-400"
+                          : qty / orderData.stock > 0.5 ? "bg-amber-400"
+                          : "bg-green-400"
+                        }`}
+                        animate={{ width: `${Math.min((qty / orderData.stock) * 100, 100)}%` }}
+                        transition={{ duration: 0.15 }}
+                      />
+                    </div>
+                    {showStockText && (
+                      <p className="text-xs text-gray-400 mt-1 text-right">
+                        {qty} of {orderData.stock} available
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Total / remove warning */}
+              <AnimatePresence mode="wait">
+                {isUpdate && qty === 0 ? (
+                  <motion.div key="remove-warning"
+                    initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.1 }}
+                    className="flex items-center justify-between bg-red-50
+                      rounded-2xl px-4 py-3.5 border border-red-100">
+                    <span className="text-sm font-semibold text-red-600 flex items-center gap-2">
+                      <Trash2 size={14} /> Remove from cart
+                    </span>
+                    <span className="text-xs font-medium text-red-400">Will be deleted</span>
+                  </motion.div>
+                ) : (
+                  <motion.div key="total"
+                    initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.1 }}
+                    className="flex items-center justify-between bg-gradient-to-r
+                      from-green-50 to-emerald-50 rounded-2xl px-4 py-3.5
+                      border border-green-100">
+                    <span className="text-sm font-semibold text-green-700">Total</span>
+                    <motion.span key={total}
+                      initial={{ scale: 0.88, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ duration: 0.12 }}
+                      className="text-2xl font-extrabold text-green-700">
+                      ₦{Number(total || 0).toLocaleString()}
+                    </motion.span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Action buttons */}
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="flex-1 py-3 rounded-2xl border border-gray-200 text-gray-600
+                    text-sm font-semibold hover:bg-gray-50 active:bg-gray-100 transition"
+                >
+                  Cancel
+                </button>
+                <motion.button
+                  type="submit"
+                  disabled={orderData.stock === 0 || (!isUpdate && qty < 1)}
+                  whileTap={!(orderData.stock === 0) ? { scale: 0.96 } : {}}
+                  transition={{ duration: 0.07 }}
+                  className={`flex-1 py-3 rounded-2xl text-white text-sm font-bold
+                    flex items-center justify-center gap-2 transition shadow-md
+                    ${
+                      orderData.stock === 0 || (!isUpdate && qty < 1)
+                        ? "bg-gray-300 cursor-not-allowed shadow-none"
+                        : isUpdate && qty === 0
+                        ? "bg-red-500 hover:bg-red-600 shadow-red-200"
+                        : "bg-green-600 hover:bg-green-700 shadow-green-200"
+                    }`}
+                >
+                  {isUpdate && qty === 0 ? (
+                    <><Trash2 size={14} /> Remove</>
+                  ) : isUpdate ? (
+                    <><RefreshCw size={14} /> Update Cart</>
+                  ) : (
+                    <><ShoppingCart size={14} /> Add to Cart</>
+                  )}
+                </motion.button>
+              </div>
+            </form>
+          </div>
         </motion.div>
       </motion.div>
     </AnimatePresence>
