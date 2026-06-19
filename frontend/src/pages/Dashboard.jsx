@@ -83,22 +83,26 @@ const Dashboard = () => {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        {/* Mobile top bar */}
-        <div className="md:hidden flex items-center justify-between p-4 shadow-md theme-topbar text-white"
-          style={{ background: "var(--bg-sidebar)" }}>
-          <button onClick={toggleSidebar} className="p-2 rounded hover:bg-white/10">
+        {/* Mobile top bar — always uses the sidebar brand gradient so hamburger is always visible */}
+        <div className="md:hidden flex items-center justify-between p-4 shadow-md theme-sidebar"
+          style={{ color: "#fff" }}>
+          <button
+            onClick={toggleSidebar}
+            className="p-2 rounded hover:bg-white/10 transition"
+            style={{ color: "#fff" }}
+            aria-label="Open menu"
+          >
             <FaBars size={20} />
           </button>
-          <span className="font-bold">MELECH SH Dashboard</span>
+          <span className="font-bold text-white">MELECH SH Dashboard</span>
           {user?.role === "admin" && <ExpiryBell />}
         </div>
 
         {/* Desktop top bar — admin only */}
         {user?.role === "admin" && (
-          <div className="hidden md:flex items-center justify-end px-6 py-2 border-b shadow-sm theme-topbar"
-            style={{ borderColor: "var(--topbar-border)" }}>
+          <div className="hidden md:flex items-center justify-end px-6 py-2 border-b shadow-sm bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-700">
             <div className="flex items-center gap-2">
-              <span className="text-xs" style={{ color: "var(--text-muted)" }}>Overdue orders:</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">Overdue orders:</span>
               <ExpiryBell />
             </div>
           </div>
