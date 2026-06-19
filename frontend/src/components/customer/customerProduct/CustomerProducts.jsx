@@ -436,7 +436,8 @@ const CustomerProducts = () => {
         ) : (
           <>
             {/* ── Product card grid ──────────────────────────────────── */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+            {/* Mobile: 1 col for small screens, 2 col from 400px+, more on larger */}
+            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
               {cpPaginated.map((product, index) => {
                 const cartItem = cartMap[product._id] || null;
                 const inCart   = !!cartItem;
@@ -458,21 +459,21 @@ const CustomerProducts = () => {
                       ${inCart ? "border-green-200 shadow-sm shadow-green-100/60" : "border-gray-100 shadow-sm"}
                       ${oos ? "opacity-60" : ""}`}
                   >
-                    {/* ── Image area ───────────────────────────────── */}
-                    <div className="relative w-full pt-[75%] bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden shrink-0">
+                    {/* ── Image area — fixed height so image is never cropped ── */}
+                    <div className="relative w-full h-44 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden shrink-0">
                       {thumb ? (
                         <img src={thumb} alt={product.name} loading="lazy"
-                          className="absolute inset-0 w-full h-full object-cover
+                          className="w-full h-full object-contain p-1
                             group-hover:scale-105 transition-transform duration-300" />
                       ) : (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Package size={28} className="text-gray-200" />
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Package size={36} className="text-gray-200" />
                         </div>
                       )}
 
                       {/* Multiple images badge */}
                       {Array.isArray(product.images) && product.images.length > 1 && (
-                        <span className="absolute top-2 left-2 text-[9px] font-bold bg-black/45
+                        <span className="absolute top-2 left-2 text-[9px] font-bold bg-black/50
                           text-white px-1.5 py-0.5 rounded-full">
                           {product.images.length} photos
                         </span>
@@ -488,7 +489,7 @@ const CustomerProducts = () => {
 
                       {/* Out of stock overlay */}
                       {oos && (
-                        <div className="absolute inset-0 bg-white/65 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
                           <span className="bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow">
                             Out of stock
                           </span>
@@ -497,50 +498,56 @@ const CustomerProducts = () => {
                     </div>
 
                     {/* ── Card body ────────────────────────────────── */}
-                    <div className="p-3 flex flex-col flex-1 gap-1.5">
+                    <div className="p-3 flex flex-col gap-2">
                       {/* Category chip */}
                       <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50
-                        border border-indigo-100 px-2 py-0.5 rounded-full w-fit truncate max-w-full tracking-wide uppercase">
+                        border border-indigo-100 px-2 py-0.5 rounded-full w-fit max-w-full truncate tracking-wide uppercase">
                         {product.categoryId?.name || "—"}
                       </span>
 
-                      {/* Product name */}
-                      <p className="font-bold text-gray-900 text-sm leading-snug line-clamp-2 flex-1">
+                      {/* Product name — 2 lines max, won't push price off */}
+                      <p className="font-bold text-gray-900 text-sm leading-snug line-clamp-2 min-h-[2.5rem]">
                         {product.name}
                       </p>
 
-                      {/* Description */}
+                      {/* Description — slightly bigger, 2 lines */}
                       {product.description && (
-                        <p className="text-[10px] text-gray-400 line-clamp-1 leading-relaxed">
+                        <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">
                           {product.description}
                         </p>
                       )}
 
                       {/* Wholesale price for staff */}
                       {user?.role === "staff" && showWholesaleCol && (
-                        <p className="text-[10px] text-amber-600 font-semibold">
+                        <p className="text-xs text-amber-600 font-semibold">
                           WS: {product.wholesalePrice != null ? `₦${Number(product.wholesalePrice).toLocaleString()}` : "—"}
                         </p>
                       )}
 
                       {/* Stock badge */}
-                      {canSeeStock && <div className="mt-0.5"><StockBadge stock={product.stock} /></div>}
+                      {canSeeStock && <div><StockBadge stock={product.stock} /></div>}
 
-                      {/* ── Price + action row ─────────────────────── */}
-                      <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-50">
+                      {/* ── Price + action row
+                          Stacked vertically so long prices like ₦1,000,000
+                          never fight with the + button for space.          */}
+                      <div className="mt-auto pt-2 border-t border-gray-50 flex flex-col gap-2"
+                        onClick={(e) => e.stopPropagation()}>
+                        {/* Price — full width, no constraint */}
                         <div>
-                          <p className="text-base font-extrabold text-gray-900 leading-none">
+                          <p className="text-base font-extrabold text-gray-900 leading-none break-all">
                             ₦{Number(price).toLocaleString()}
                           </p>
-                          {user?.role === "wholesale" && (
-                            <p className="text-[8px] text-amber-600 font-bold mt-0.5 tracking-wide">WSP</p>
-                          )}
-                          {user?.role === "customer" && (
-                            <p className="text-[8px] text-indigo-500 font-bold mt-0.5 tracking-wide">RTP</p>
-                          )}
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {user?.role === "wholesale" && (
+                              <span className="text-[9px] text-amber-600 font-bold tracking-wide">WSP</span>
+                            )}
+                            {user?.role === "customer" && (
+                              <span className="text-[9px] text-indigo-500 font-bold tracking-wide">RTP</span>
+                            )}
+                          </div>
                         </div>
-
-                        <div onClick={(e) => e.stopPropagation()}>
+                        {/* Action button — full row, easy to tap */}
+                        <div className="flex justify-end">
                           <QuickAddButton
                             product={product}
                             cartItem={cartItem}
