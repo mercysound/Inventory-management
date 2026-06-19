@@ -18,8 +18,11 @@ const EMPTY_FORM = {
   stock:          "",
   categoryId:     "",
   supplierId:     "",
+  images:         [],
   image:          "",
   removeImage:    false,
+  batchNumber:    "",
+  expiryDate:     "",
 };
 
 const Product = () => {
@@ -31,15 +34,17 @@ const Product = () => {
   const [filteredProducts,  setFilteredProducts]  = useState([]);
   const [selectedCategory,  setSelectedCategory]  = useState("");
   const [searchValue,       setSearchValue]       = useState("");
-  const productsRef         = useRef([]);   // always holds the latest products array
-  const selectedCategoryRef = useRef("");   // latest category filter value
-  const searchValueRef      = useRef("");   // latest search value
+  const productsRef         = useRef([]);
+  const selectedCategoryRef = useRef("");
+  const searchValueRef      = useRef("");
   const [loading,           setLoading]           = useState(false);
-  const [image,             setImage]             = useState(null);
+  const [imageFiles,        setImageFiles]        = useState([]);
+  const [keptImageUrls,     setKeptImageUrls]     = useState([]);
   const [showDeletedPopup,  setShowDeletedPopup]  = useState(false);
   const [deletedProducts,   setDeletedProducts]   = useState([]);
   const [loadingDeleted,    setLoadingDeleted]    = useState(false);
   const [updatingProductId, setUpdatingProductId] = useState(null);
+  const [lowStockThreshold, setLowStockThreshold] = useState(10);
   const scrollRef = useRef(null);
 
   const [formData, setFormData] = useState(EMPTY_FORM);
@@ -48,15 +53,16 @@ const Product = () => {
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axiosInstance.get("/products");
-      if (response.data.success) {
-        setCategories(response.data.categories);
-        setSuppliers(response.data.suppliers);
-        const newProducts = response.data.products;
+      const [prodRes, settingsRes] = await Promise.all([
+        axiosInstance.get("/products"),
+        axiosInstance.get("/settings").catch(() => ({ data: { settings: {} } })),
+      ]);
+      if (prodRes.data.success) {
+        setCategories(prodRes.data.categories);
+        setSuppliers(prodRes.data.suppliers);
+        const newProducts = prodRes.data.products;
         productsRef.current = newProducts;
         setProducts(newProducts);
-        // Re-apply the current filters against the fresh product list.
-        // Read current filter values directly — no stale-closure problem.
         const currentCat    = selectedCategoryRef.current;
         const currentSearch = searchValueRef.current;
         setFilteredProducts(
@@ -73,6 +79,9 @@ const Product = () => {
       } else {
         toast.error("Error fetching products. Please try again");
       }
+      // Update the low stock threshold from settings
+      const threshold = settingsRes?.data?.settings?.lowStockThreshold;
+      if (threshold !== undefined) setLowStockThreshold(threshold);
     } catch (error) {
       console.error("Error fetching products", error);
       toast.error("Failed to load products");
@@ -123,8 +132,15 @@ const Product = () => {
       stock:          product.stock,
       categoryId:     product.categoryId?._id || "",
       supplierId:     product.supplierId?._id || "",
-      image:          product.image || "",
-      removeImage:    false,
+      images: Array.isArray(product.images) && product.images.length > 0
+        ? product.images
+        : product.image ? [product.image] : [],
+      image:       product.image || "",
+      removeImage: false,
+      batchNumber: product.batchNumber || "",
+      expiryDate:  product.expiryDate
+        ? new Date(product.expiryDate).toISOString().slice(0, 10)
+        : "",
     });
     setOpenModal(true);
   };
@@ -164,12 +180,18 @@ const Product = () => {
 
     try {
       const data = new FormData();
+
+      // Append all non-image text fields
       Object.keys(formData).forEach((key) => {
-        if (key === "image" || key === "removeImage" || key === "_imageName") return;
+        if (["image", "removeImage", "_imageName", "images"].includes(key)) return;
         data.append(key, formData[key] === "" ? "" : formData[key]);
       });
-      if (image)               data.append("image", image);
-      if (formData.removeImage) data.append("removeImage", "true");
+
+      // Append each new image file under the "images" field (multer array)
+      imageFiles.forEach((file) => data.append("images", file));
+
+      // Tell the server which existing Cloudinary URLs to keep
+      data.append("keepImages", JSON.stringify(keptImageUrls));
 
       const url = isEditing ? `/products/${targetId}` : "/products/add";
       if (isEditing) setUpdatingProductId(targetId);
@@ -197,7 +219,6 @@ const Product = () => {
             }
           }
         } else {
-          // For add mode, ProductForm handles clearing the server draft itself
           fetchProducts();
         }
       } else {
@@ -210,7 +231,11 @@ const Product = () => {
     } finally {
       setUpdatingProductId(null);
       if (isEditing && scrollRef.current) {
-        requestAnimationFrame(() => { scrollRef.current.scrollTop = savedScrollTop; });
+        try {
+          requestAnimationFrame(() => {
+            if (scrollRef.current) scrollRef.current.scrollTop = savedScrollTop;
+          });
+        } catch { /* ignore */ }
       }
     }
   };
@@ -218,7 +243,8 @@ const Product = () => {
   const closeModal = () => {
     setOpenModal(false);
     setEditProduct(null);
-    setImage(null);
+    setImageFiles([]);
+    setKeptImageUrls([]);
     setFormData(EMPTY_FORM);
   };
 
@@ -293,6 +319,7 @@ const Product = () => {
             onViewDeleted={handleViewDeleted}
             updatingProductId={updatingProductId}
             scrollRef={scrollRef}
+            lowStockThreshold={lowStockThreshold}
           />
         )}
       </div>
@@ -307,7 +334,10 @@ const Product = () => {
           suppliers={suppliers}
           onSubmit={handleSubmit}
           onClose={closeModal}
-          setImage={setImage}
+          imageFiles={imageFiles}
+          setImageFiles={setImageFiles}
+          keptImageUrls={keptImageUrls}
+          setKeptImageUrls={setKeptImageUrls}
         />
       )}
 

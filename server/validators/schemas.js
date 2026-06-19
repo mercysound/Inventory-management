@@ -45,11 +45,15 @@ export const productSchema = Joi.object({
     Joi.number().integer().min(0),
     Joi.string().pattern(/^\d+$/)
   ).required(),
-  categoryId:  Joi.string().required().hex().length(24),
-  supplierId:  Joi.string().hex().length(24).allow("", null).optional(),
-  images:      Joi.array().items(Joi.string().uri()).max(10).optional(),
-  image:       Joi.string().allow(null, "").optional(),
-  removeImage: Joi.string().allow("true", "false").optional(),
+  categoryId:   Joi.string().required().hex().length(24),
+  supplierId:   Joi.string().hex().length(24).allow("", null).optional(),
+  images:       Joi.array().items(Joi.string().uri()).max(10).optional(),
+  image:        Joi.string().allow(null, "").optional(),
+  removeImage:  Joi.string().allow("true", "false").optional(),
+  keepImages:   Joi.string().allow("", null).optional(),
+  // Optional product metadata
+  expiryDate:   Joi.date().iso().allow(null, "").optional(),
+  batchNumber:  Joi.string().trim().max(100).allow("", null).optional(),
 });
 
 export const productUpdateSchema = productSchema.fork([

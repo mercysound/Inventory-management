@@ -1,5 +1,9 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Camera, Upload, X, ImagePlus, Loader2 } from "lucide-react";
 import axiosInstance from "../../../utils/axiosInstance";
+
+const MAX_IMAGES = 5;
 
 // ── Debounce hook ─────────────────────────────────────────────────────────────
 const useDebounce = (fn, delay) => {
@@ -10,6 +14,96 @@ const useDebounce = (fn, delay) => {
   }, [fn, delay]);
 };
 
+// ── Single image slot in the picker grid ─────────────────────────────────────
+const ImageSlot = ({ src, onRemove, index }) => (
+  <motion.div
+    initial={{ opacity: 0, scale: 0.85 }}
+    animate={{ opacity: 1, scale: 1 }}
+    exit={{ opacity: 0, scale: 0.85 }}
+    transition={{ duration: 0.18 }}
+    className="relative aspect-square rounded-xl overflow-hidden border-2 border-gray-100 bg-gray-50 group"
+  >
+    <img src={src} alt={`Product image ${index + 1}`} className="w-full h-full object-cover" />
+    {/* Primary badge on first image */}
+    {index === 0 && (
+      <span className="absolute bottom-1 left-1 text-[10px] font-bold bg-indigo-600 text-white px-1.5 py-0.5 rounded-md">
+        Primary
+      </span>
+    )}
+    <button
+      type="button"
+      onClick={() => onRemove(index)}
+      className="absolute top-1 right-1 w-6 h-6 bg-black/60 hover:bg-red-600 text-white rounded-full
+        flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+      aria-label="Remove image"
+    >
+      <X size={11} />
+    </button>
+  </motion.div>
+);
+
+// ── Add slot (upload from file or camera) ────────────────────────────────────
+const AddSlot = ({ onFileSelect, onCameraCapture, disabled }) => {
+  const fileInputRef   = useRef(null);
+  const cameraInputRef = useRef(null);
+
+  return (
+    <div className="relative aspect-square rounded-xl border-2 border-dashed border-gray-200
+      bg-gray-50 flex flex-col items-center justify-center gap-1.5 hover:border-indigo-300
+      hover:bg-indigo-50/30 transition-all cursor-pointer group"
+    >
+      {disabled ? (
+        <span className="text-xs text-gray-400 text-center px-2">Max {MAX_IMAGES} images reached</span>
+      ) : (
+        <>
+          <ImagePlus size={20} className="text-gray-300 group-hover:text-indigo-400 transition" />
+          <span className="text-[10px] text-gray-400 font-medium">Add image</span>
+
+          {/* Hover action buttons */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2
+            opacity-0 group-hover:opacity-100 transition-all bg-white/90 rounded-xl p-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700
+                text-white text-xs font-semibold py-1.5 rounded-lg transition"
+            >
+              <Upload size={12} /> Gallery
+            </button>
+            <button
+              type="button"
+              onClick={() => cameraInputRef.current?.click()}
+              className="w-full flex items-center justify-center gap-1.5 bg-gray-700 hover:bg-gray-800
+                text-white text-xs font-semibold py-1.5 rounded-lg transition"
+            >
+              <Camera size={12} /> Camera
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Hidden file inputs */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => onFileSelect(e.target.files)}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => onCameraCapture(e.target.files)}
+      />
+    </div>
+  );
+};
+
+// ── Main ProductForm component ────────────────────────────────────────────────
 const ProductForm = ({
   open,
   editProduct,
@@ -19,26 +113,31 @@ const ProductForm = ({
   suppliers,
   onSubmit,
   onClose,
-  setImage,
+  // imageFiles + setImageFiles: new File objects to upload
+  imageFiles,
+  setImageFiles,
+  // keptImageUrls + setKeptImageUrls: existing URLs admin wants to keep
+  keptImageUrls,
+  setKeptImageUrls,
 }) => {
-  const [loading,        setLoading]        = useState(false);
-  const [preview,        setPreview]        = useState("");
-  const [draftRestored,  setDraftRestored]  = useState(false);
-  const [draftStatus,    setDraftStatus]    = useState(""); // "saving" | "saved" | "error" | ""
-  const [draftSavedAt,   setDraftSavedAt]   = useState(null);
+  const [loading,       setLoading]       = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [draftStatus,   setDraftStatus]   = useState("");
+  const [draftSavedAt,  setDraftSavedAt]  = useState(null);
+
+  // Local preview URLs for newly selected files
+  const [newPreviews, setNewPreviews] = useState([]);
+
   const isAddMode = !editProduct;
 
-  // ── Save draft to server (debounced 1.5s) ────────────────────────────────
+  // ── Draft persistence ─────────────────────────────────────────────────────
   const persistDraft = useCallback(async (data) => {
     if (!isAddMode) return;
-    // Strip fields that can't meaningfully be restored cross-device
     const { image, removeImage, ...safeDraft } = data;
-    // Don't save if all meaningful fields are empty
     const hasContent = Object.entries(safeDraft).some(
       ([k, v]) => k !== "_imageName" && v !== "" && v !== null && v !== undefined
     );
     if (!hasContent) return;
-
     setDraftStatus("saving");
     try {
       const res = await axiosInstance.put("/settings/product-draft", { draft: safeDraft });
@@ -46,17 +145,14 @@ const ProductForm = ({
         setDraftStatus("saved");
         setDraftSavedAt(res.data.savedAt || new Date().toISOString());
       }
-    } catch {
-      setDraftStatus("error");
-    }
+    } catch { setDraftStatus("error"); }
   }, [isAddMode]);
 
   const debouncedSaveDraft = useDebounce(persistDraft, 1500);
 
-  // ── Load draft from server when modal opens in ADD mode ──────────────────
+  // ── Load draft when opening in add mode ──────────────────────────────────
   useEffect(() => {
     if (!open || !isAddMode) return;
-
     const fetchDraft = async () => {
       try {
         const res = await axiosInstance.get("/settings/product-draft");
@@ -73,22 +169,29 @@ const ProductForm = ({
             return () => clearTimeout(t);
           }
         }
-      } catch {
-        // Silently fail — draft load is non-critical
-      }
+      } catch { /* silently fail */ }
     };
-
     fetchDraft();
   }, [open]);
 
-  // ── Edit mode: set image preview from existing product data ─────────────
+  // ── On edit mode: populate keptImageUrls from product's existing images ──
   useEffect(() => {
-    if (editProduct && formData?.image) {
-      setPreview(formData.image);
-    } else if (!editProduct) {
-      setPreview("");
+    if (!open) return;
+    if (editProduct) {
+      // formData.images is set by Product.jsx from the product's images array
+      const existing = Array.isArray(formData.images)
+        ? formData.images.filter(Boolean)
+        : formData.image ? [formData.image] : [];
+      setKeptImageUrls(existing);
+      setNewPreviews([]);
+      setImageFiles([]);
+    } else {
+      // Add mode: clear everything
+      setKeptImageUrls([]);
+      setNewPreviews([]);
+      setImageFiles([]);
     }
-  }, [editProduct, formData?.image]);
+  }, [open, editProduct]);
 
   // ── Escape key ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -97,7 +200,12 @@ const ProductForm = ({
     return () => window.removeEventListener("keydown", handleEsc);
   }, [onClose]);
 
-  // ── Field change handler — triggers debounced server save ─────────────────
+  // ── Revoke object URLs on unmount to avoid memory leaks ─────────────────
+  useEffect(() => {
+    return () => newPreviews.forEach((url) => URL.revokeObjectURL(url));
+  }, [newPreviews]);
+
+  // ── Field handlers ────────────────────────────────────────────────────────
   const handleChange = (e) => {
     const updated = { ...formData, [e.target.name]: e.target.value };
     setFormData(updated);
@@ -119,308 +227,332 @@ const ProductForm = ({
     debouncedSaveDraft(updated);
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setImage(file);
-    setPreview(URL.createObjectURL(file));
-    // Save image name as reminder (can't serialize File object cross-device)
-    const updated = { ...formData, _imageName: file.name };
-    setFormData(updated);
-    debouncedSaveDraft(updated);
+  // ── Image helpers ─────────────────────────────────────────────────────────
+  const totalImageCount = keptImageUrls.length + newPreviews.length;
+  const slotsRemaining  = MAX_IMAGES - totalImageCount;
+
+  const addFiles = (fileList) => {
+    if (!fileList || fileList.length === 0) return;
+    const available = MAX_IMAGES - totalImageCount;
+    if (available <= 0) return;
+    const toAdd = Array.from(fileList).slice(0, available);
+    const previews = toAdd.map((f) => URL.createObjectURL(f));
+    setNewPreviews((prev) => [...prev, ...previews]);
+    setImageFiles((prev) => [...prev, ...toAdd]);
   };
 
-  const handleRemoveImage = () => {
-    setPreview("");
-    setImage(null);
-    const updated = { ...formData, image: "", removeImage: true };
-    setFormData(updated);
-    debouncedSaveDraft(updated);
+  // Remove an existing Cloudinary URL from keptImageUrls
+  const removeKeptImage = (index) => {
+    setKeptImageUrls((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // ── Clear draft from server ───────────────────────────────────────────────
+  // Remove a newly selected file (and its preview)
+  const removeNewImage = (index) => {
+    URL.revokeObjectURL(newPreviews[index]);
+    setNewPreviews((prev) => prev.filter((_, i) => i !== index));
+    setImageFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // ── Clear draft ───────────────────────────────────────────────────────────
   const clearServerDraft = async () => {
-    try {
-      await axiosInstance.delete("/settings/product-draft");
-    } catch {
-      // Silently fail
-    }
+    try { await axiosInstance.delete("/settings/product-draft"); } catch { /* ignore */ }
   };
 
   const handleClearDraft = async () => {
     await clearServerDraft();
-    setFormData({
-      name: "", description: "", price: "", wholesalePrice: "",
-      stock: "", categoryId: "", supplierId: "", image: "", removeImage: false,
-    });
-    setPreview("");
-    setImage(null);
+    setFormData({ name: "", description: "", price: "", wholesalePrice: "", stock: "", categoryId: "", supplierId: "", image: "", removeImage: false });
+    setKeptImageUrls([]);
+    setNewPreviews([]);
+    setImageFiles([]);
     setDraftStatus("");
     setDraftSavedAt(null);
     setDraftRestored(false);
   };
 
-  // ── Format "saved X minutes ago" ─────────────────────────────────────────
-  const formatSavedAt = (isoDate) => {
-    if (!isoDate) return "";
-    const mins = Math.floor((Date.now() - new Date(isoDate)) / 60000);
+  const formatSavedAt = (iso) => {
+    if (!iso) return "";
+    const mins = Math.floor((Date.now() - new Date(iso)) / 60000);
     if (mins < 1) return "just now";
     if (mins === 1) return "1 min ago";
     return `${mins} mins ago`;
   };
 
   const hasDraftContent = Object.entries(formData).some(
-    ([k, v]) => !["image", "removeImage", "_imageName"].includes(k) && v !== "" && v !== false && v !== null
+    ([k, v]) => !["image", "removeImage", "_imageName", "images"].includes(k) && v !== "" && v !== false && v !== null
   );
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white p-6 rounded-xl shadow-xl w-full sm:w-3/4 md:w-[560px] max-h-[90vh] overflow-y-auto relative">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto">
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
+        {/* ── Header ─────────────────────────────────────────────────────── */}
+        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
-            <h2 className="text-base font-semibold text-gray-900">
+            <h2 className="text-base font-bold text-gray-900">
               {editProduct ? "Edit product" : "Add product"}
             </h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              {editProduct
-                ? "Update the product details below"
-                : "Fill in the details for the new product"}
+              {editProduct ? "Update the product details below" : "Fill in the details for the new product"}
             </p>
           </div>
           <button type="button" onClick={onClose} disabled={loading}
             className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 disabled:opacity-40 transition">
-            ✕
+            <X size={15} />
           </button>
         </div>
 
-        {/* ── Draft restored banner ── */}
-        {draftRestored && (
-          <div className="mb-4 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-xs text-amber-800">
-            <span className="text-base flex-shrink-0">📋</span>
-            <div className="flex-1">
-              <p className="font-semibold">Draft restored from your account</p>
-              <p className="mt-0.5 text-amber-700">
-                Your previously entered details have been restored — they follow you across all devices.
-                {draftSavedAt && (
-                  <span className="ml-1 text-amber-500">
-                    Last saved {formatSavedAt(draftSavedAt)}.
-                  </span>
-                )}
-              </p>
+        <div className="px-6 pb-6 pt-4 space-y-5">
+
+          {/* ── Draft restored banner ───────────────────────────────────── */}
+          <AnimatePresence>
+            {draftRestored && (
+              <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-xs text-amber-800">
+                <span className="text-base shrink-0">📋</span>
+                <div className="flex-1">
+                  <p className="font-semibold">Draft restored</p>
+                  <p className="text-amber-600 mt-0.5">
+                    Your previously typed details have been restored across devices.
+                    {draftSavedAt && <span className="ml-1 text-amber-500">Saved {formatSavedAt(draftSavedAt)}.</span>}
+                  </p>
+                </div>
+                <button onClick={() => setDraftRestored(false)} className="text-amber-400 hover:text-amber-600 font-bold shrink-0">✕</button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* ── Auto-save status ────────────────────────────────────────── */}
+          {isAddMode && hasDraftContent && !draftRestored && (
+            <div className="flex items-center gap-1.5 text-xs">
+              {draftStatus === "saving"  && <><span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" /><span className="text-amber-600">Saving draft…</span></>}
+              {draftStatus === "saved"   && <><span className="w-2 h-2 rounded-full bg-green-400" /><span className="text-green-600">Draft saved{draftSavedAt && <span className="text-gray-400 ml-1">· {formatSavedAt(draftSavedAt)}</span>}</span></>}
+              {draftStatus === "error"   && <><span className="w-2 h-2 rounded-full bg-red-400" /><span className="text-red-500">Save failed — check connection</span></>}
+              {draftStatus === ""        && <><span className="w-2 h-2 rounded-full bg-gray-300" /><span className="text-gray-400">Draft auto-saves as you type</span></>}
             </div>
-            <button onClick={() => setDraftRestored(false)}
-              className="text-amber-500 hover:text-amber-700 font-bold text-sm flex-shrink-0">✕</button>
-          </div>
-        )}
+          )}
 
-        {/* ── Auto-save status indicator ── */}
-        {isAddMode && hasDraftContent && !draftRestored && (
-          <div className="mb-3 flex items-center gap-1.5 text-xs">
-            {draftStatus === "saving" && (
-              <>
-                <span className="w-2 h-2 rounded-full bg-amber-400 inline-block animate-pulse" />
-                <span className="text-amber-600">Saving draft to your account...</span>
-              </>
-            )}
-            {draftStatus === "saved" && (
-              <>
-                <span className="w-2 h-2 rounded-full bg-green-400 inline-block" />
-                <span className="text-green-600">
-                  Draft saved to your account
-                  {draftSavedAt && <span className="text-gray-400 ml-1">· {formatSavedAt(draftSavedAt)}</span>}
-                </span>
-              </>
-            )}
-            {draftStatus === "error" && (
-              <>
-                <span className="w-2 h-2 rounded-full bg-red-400 inline-block" />
-                <span className="text-red-500">Draft save failed — check your connection</span>
-              </>
-            )}
-            {draftStatus === "" && (
-              <>
-                <span className="w-2 h-2 rounded-full bg-gray-300 inline-block" />
-                <span className="text-gray-400">Draft auto-saves as you type</span>
-              </>
-            )}
-          </div>
-        )}
-
-        <form
-          onSubmit={async (e) => {
-            e.preventDefault();
-            if (loading) return;
-            setLoading(true);
-            try {
-              await onSubmit();
-              // ✅ Clear draft from server ONLY on successful save
-              if (isAddMode) await clearServerDraft();
-            } finally {
-              setLoading(false);
-            }
-          }}
-          className="flex flex-col gap-4"
-        >
-          <div className="grid grid-cols-2 gap-3">
-
-            {/* NAME */}
-            <div className="col-span-2">
-              <label className="block text-[11px] font-medium text-gray-500 uppercase tracking-wide mb-1">
-                Product name
-              </label>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (loading) return;
+              setLoading(true);
+              try {
+                await onSubmit();
+                if (isAddMode) await clearServerDraft();
+              } finally {
+                setLoading(false);
+              }
+            }}
+            className="space-y-4"
+          >
+            {/* ── Product name ─────────────────────────────────────────── */}
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Product name</label>
               <input name="name" value={formData.name} onChange={handleChange}
                 placeholder="e.g. Wireless Headset"
-                className="border border-gray-200 p-2.5 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
                 required />
             </div>
 
-            {/* DESCRIPTION */}
-            <div className="col-span-2">
-              <label className="block text-[11px] font-medium text-gray-500 uppercase tracking-wide mb-1">
-                Description
-              </label>
+            {/* ── Description ──────────────────────────────────────────── */}
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Description</label>
               <textarea name="description" value={formData.description} onChange={handleChange}
                 placeholder="Brief product description" rows={2}
-                className="border border-gray-200 p-2.5 rounded-lg w-full text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
                 required />
             </div>
 
-            {/* RETAIL PRICE */}
-            <div>
-              <label className="block text-[11px] font-medium text-gray-500 uppercase tracking-wide mb-1">
-                Retail price (₦)
-                <span className="ml-1 text-blue-400 normal-case font-normal text-[10px]">— customers see this</span>
-              </label>
-              <input type="number" name="price" value={formData.price}
-                onChange={handleNumberChange("price")} placeholder="0" min="0"
-                className="border border-gray-200 p-2.5 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
-                required />
+            {/* ── Prices ───────────────────────────────────────────────── */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                  Retail price (₦)
+                  <span className="ml-1 text-indigo-400 normal-case font-normal text-[10px]">customers</span>
+                </label>
+                <input type="number" name="price" value={formData.price}
+                  onChange={handleNumberChange("price")} placeholder="0" min="0"
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
+                  required />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                  Wholesale (₦)
+                  <span className="ml-1 text-amber-500 normal-case font-normal text-[10px]">optional</span>
+                </label>
+                <input type="number" name="wholesalePrice" value={formData.wholesalePrice ?? ""}
+                  onChange={handleNumberChange("wholesalePrice")} placeholder="Optional" min="0"
+                  className="w-full border border-amber-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-200 focus:border-transparent bg-amber-50/30" />
+              </div>
             </div>
 
-            {/* WHOLESALE PRICE */}
-            <div>
-              <label className="block text-[11px] font-medium text-gray-500 uppercase tracking-wide mb-1">
-                Wholesale price (₦)
-                <span className="ml-1 text-amber-500 normal-case font-normal text-[10px]">— optional</span>
-              </label>
-              <input type="number" name="wholesalePrice" value={formData.wholesalePrice ?? ""}
-                onChange={handleNumberChange("wholesalePrice")} placeholder="Optional" min="0"
-                className="border border-amber-200 p-2.5 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-400 bg-amber-50/40" />
+            {/* ── Stock + Category ─────────────────────────────────────── */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Stock</label>
+                <input type="number" name="stock" value={formData.stock}
+                  onChange={handleNumberChange("stock")} placeholder="0" min="0"
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
+                  required />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Category</label>
+                <select name="categoryId" value={formData.categoryId} onChange={handleChange}
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
+                  required>
+                  <option value="">Select category</option>
+                  {categories?.map((cat) => (
+                    <option key={cat._id} value={cat._id}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            {/* STOCK */}
+            {/* ── Supplier ─────────────────────────────────────────────── */}
             <div>
-              <label className="block text-[11px] font-medium text-gray-500 uppercase tracking-wide mb-1">
-                Stock
-              </label>
-              <input type="number" name="stock" value={formData.stock}
-                onChange={handleNumberChange("stock")} placeholder="0" min="0"
-                className="border border-gray-200 p-2.5 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
-                required />
-            </div>
-
-            {/* CATEGORY */}
-            <div>
-              <label className="block text-[11px] font-medium text-gray-500 uppercase tracking-wide mb-1">
-                Category
-              </label>
-              <select name="categoryId" value={formData.categoryId} onChange={handleChange}
-                className="border border-gray-200 p-2.5 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
-                required>
-                <option value="">Select category</option>
-                {categories?.map((cat) => (
-                  <option key={cat._id} value={cat._id}>{cat.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* SUPPLIER */}
-            <div className="col-span-2">
-              <label className="block text-[11px] font-medium text-gray-500 uppercase tracking-wide mb-1">
-                Supplier
-              </label>
+              <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Supplier</label>
               <select name="supplierId" value={formData.supplierId || ""} onChange={handleChange}
-                className="border border-gray-200 p-2.5 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400">
+                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent">
                 <option value="">No supplier</option>
                 {suppliers?.map((sup) => (
                   <option key={sup._id} value={sup._id}>{sup.name}</option>
                 ))}
               </select>
             </div>
-          </div>
 
-          {/* IMAGE UPLOAD */}
-          <div>
-            <label className="block text-[11px] font-medium text-gray-500 uppercase tracking-wide mb-1">
-              Product image
-            </label>
-
-            {/* Cross-device image reminder */}
-            {isAddMode && !preview && formData._imageName && (
-              <div className="mb-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                📸 You previously selected <strong>"{formData._imageName}"</strong>.
-                Please re-select the image — it cannot be transferred across devices.
+            {/* ── Batch number + Expiry date (optional, admin/staff only) ── */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                  Batch Number
+                  <span className="ml-1 text-gray-400 normal-case font-normal text-[10px]">optional</span>
+                </label>
+                <input
+                  type="text"
+                  name="batchNumber"
+                  value={formData.batchNumber || ""}
+                  onChange={handleChange}
+                  placeholder="e.g. LOT-2024-001"
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
+                />
               </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                  Expiry Date
+                  <span className="ml-1 text-gray-400 normal-case font-normal text-[10px]">optional</span>
+                </label>
+                <input
+                  type="date"
+                  name="expiryDate"
+                  value={formData.expiryDate
+                    ? new Date(formData.expiryDate).toISOString().slice(0, 10)
+                    : ""}
+                  onChange={handleChange}
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
+                />
+              </div>
+            </div>
+            {/* Expiry info note */}
+            {(formData.expiryDate) && (() => {
+              const days = Math.ceil((new Date(formData.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+              if (days <= 0) return (
+                <p className="text-xs text-red-500 font-semibold -mt-2">
+                  ⚠️ This product has already expired.
+                </p>
+              );
+              if (days <= 21) return (
+                <p className="text-xs text-amber-600 font-semibold -mt-2">
+                  ⚠️ Expires in {days} day{days !== 1 ? "s" : ""} — within the 3-week warning window.
+                </p>
+              );
+              return null;
+            })()}
+
+            {/* ── Images section ───────────────────────────────────────── */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+                  Product images
+                </label>
+                <span className={`text-xs font-medium ${totalImageCount >= MAX_IMAGES ? "text-amber-500" : "text-gray-400"}`}>
+                  {totalImageCount}/{MAX_IMAGES} images
+                </span>
+              </div>
+
+              {/* Optional-image note */}
+              <p className="text-xs text-gray-400 mb-3">
+                Images are optional. The first image is used as the product thumbnail.
+                You can add up to {MAX_IMAGES} images — from your gallery or via camera.
+              </p>
+
+              {/* Image grid: existing kept + new previews + add slot */}
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                <AnimatePresence>
+                  {/* Kept existing images */}
+                  {keptImageUrls.map((url, i) => (
+                    <ImageSlot key={`kept-${i}`} src={url} index={i} onRemove={removeKeptImage} />
+                  ))}
+                  {/* New file previews */}
+                  {newPreviews.map((url, i) => (
+                    <ImageSlot
+                      key={`new-${i}`}
+                      src={url}
+                      index={keptImageUrls.length + i}
+                      onRemove={removeNewImage}
+                    />
+                  ))}
+                </AnimatePresence>
+
+                {/* Add slot — hidden when at max */}
+                {totalImageCount < MAX_IMAGES && (
+                  <AddSlot
+                    onFileSelect={addFiles}
+                    onCameraCapture={addFiles}
+                    disabled={totalImageCount >= MAX_IMAGES}
+                  />
+                )}
+              </div>
+
+              {totalImageCount > 0 && (
+                <p className="text-[10px] text-gray-400 mt-2">
+                  💡 Hover over an image and click ✕ to remove it. Drag is not supported — reorder by removing and re-adding.
+                </p>
+              )}
+            </div>
+
+            {/* ── Pricing info box ─────────────────────────────────────── */}
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800">
+              <p className="font-semibold mb-0.5">🏪 Pricing</p>
+              <p>Retail price is what <strong>customers</strong> pay. Wholesale price is what <strong>wholesale account holders</strong> see.</p>
+            </div>
+
+            {/* ── Clear draft ──────────────────────────────────────────── */}
+            {isAddMode && hasDraftContent && (
+              <button type="button" onClick={handleClearDraft}
+                className="text-xs text-gray-400 hover:text-red-500 underline transition w-fit">
+                🗑 Clear draft and start fresh
+              </button>
             )}
 
-            {preview ? (
-              <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-gray-200">
-                <img src={preview} alt="Preview" className="w-full h-full object-cover" />
-                <button type="button" onClick={handleRemoveImage}
-                  className="absolute top-1 right-1 w-5 h-5 bg-black/60 text-white rounded-full flex items-center justify-center text-[10px] hover:bg-red-600 transition">
-                  ✕
-                </button>
-              </div>
-            ) : (
-              <label className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-gray-200 rounded-lg p-6 text-center cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition">
-                <svg className="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 5v10M7 10l5-5 5 5" />
-                  <rect x="3" y="18" width="18" height="2" rx="1" fill="currentColor" opacity="0.2" />
-                </svg>
-                <span className="text-xs text-gray-400">Click to upload or drag & drop</span>
-                <span className="text-[11px] text-gray-300">PNG, JPG, WEBP up to 5MB</span>
-                <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-              </label>
-            )}
-          </div>
-
-          {/* Wholesale info box */}
-          <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-800">
-            <p className="font-semibold mb-1">🏪 Pricing info</p>
-            <p>
-              Retail price is what <strong>customers</strong> pay.
-              Wholesale price is what <strong>wholesale account holders</strong> see when they log in.
-            </p>
-          </div>
-
-          {/* Clear draft button */}
-          {isAddMode && hasDraftContent && (
-            <button type="button" onClick={handleClearDraft}
-              className="text-xs text-gray-400 hover:text-red-500 underline text-left transition w-fit">
-              🗑 Clear draft and start fresh
-            </button>
-          )}
-
-          {/* ACTION BUTTONS */}
-          <div className="flex gap-2 pt-1">
-            <button type="submit" disabled={loading}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-semibold text-white transition ${
-                loading ? "bg-gray-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
-              }`}>
-              {loading
-                ? (editProduct ? "Saving..." : "Adding...")
-                : (editProduct ? "Save changes" : "Add product")}
-            </button>
-            <button type="button" onClick={onClose} disabled={loading}
-              className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition">
-              Cancel
-            </button>
-          </div>
-        </form>
+            {/* ── Action buttons ───────────────────────────────────────── */}
+            <div className="flex gap-2 pt-1">
+              <button type="submit" disabled={loading}
+                className={`flex-1 py-3 rounded-xl text-sm font-bold text-white transition flex items-center justify-center gap-2 ${
+                  loading ? "bg-gray-300 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-700"
+                }`}>
+                {loading
+                  ? <><Loader2 size={15} className="animate-spin" />{editProduct ? "Saving…" : "Adding…"}</>
+                  : editProduct ? "Save changes" : "Add product"}
+              </button>
+              <button type="button" onClick={onClose} disabled={loading}
+                className="flex-1 py-3 rounded-xl text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

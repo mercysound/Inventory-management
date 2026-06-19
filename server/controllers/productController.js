@@ -7,27 +7,87 @@ import { getPaginationParams, getPaginationMeta } from '../utils/pagination.js';
 import OrderModel from '../models/OrderModel.js';
 import orderNotifier from '../utils/orderNotifier.js';
 
-// ─── Helper: strip wholesalePrice from product for non-admin/non-staff roles ─
-// Customers and wholesale users only see their own price — not both columns.
-// Staff and admin see everything.
+// ─── Helper: upload a buffer to Cloudinary, return secure URL ────────────────
+// Explicitly re-applies the cloudinary config at call time so the api_key is
+// always present regardless of module initialization order.
+const uploadToCloudinary = (buffer) => {
+  return new Promise((resolve, reject) => {
+    // Re-apply config here — guarantees credentials are set even if the
+    // singleton wasn't initialized when the module was first imported.
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key:    process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+
+    const stream = cloudinary.uploader.upload_stream(
+      { resource_type: "image" },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result.secure_url);
+      }
+    );
+    stream.end(buffer);
+  });
+};
+
+// ─── Helper: destroy a Cloudinary image by URL ───────────────────────────────
+const destroyCloudinaryUrl = async (url) => {
+  if (!url) return;
+  try {
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key:    process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+    const parts       = url.split('/');
+    const uploadIndex = parts.indexOf('upload');
+    if (uploadIndex === -1) return;
+    const publicId = parts.slice(uploadIndex + 2).join('/').replace(/\.[^/.]+$/, '');
+    if (publicId) await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+  } catch (e) {
+    console.error('Cloudinary destroy failed:', e.message);
+  }
+};
+
+// ─── Helper: resolve canonical images array ───────────────────────────────────
+// Always returns a clean string array. Merges new `images[]` with legacy
+// single `image` field so the frontend always gets one consistent shape.
+const resolveImages = (product) => {
+  const obj = product.toObject ? product.toObject() : { ...product };
+  const arr = Array.isArray(obj.images) ? obj.images.filter(Boolean) : [];
+  if (arr.length === 0 && obj.image) return [obj.image];
+  return arr;
+};
+
+// ─── Helper: sanitize product for role ───────────────────────────────────────
+// Always injects the resolved `images` array so every frontend consumer gets it.
 const sanitizeProductForRole = (product, role) => {
   const obj = product.toObject ? product.toObject() : { ...product };
+
+  // Inject canonical images array
+  obj.images = resolveImages(product);
+
   if (role === 'customer') {
-    // Customers see only retail price; hide wholesalePrice entirely
     delete obj.wholesalePrice;
+    delete obj.batchNumber;
+    delete obj.expiryDate;
     return obj;
   }
   if (role === 'wholesale') {
-    // Wholesale users see only wholesale price displayed as "price"
-    // We overwrite price with wholesalePrice (fall back to retail if not set)
     obj.price = obj.wholesalePrice ?? obj.price;
     delete obj.wholesalePrice;
+    delete obj.batchNumber;
+    delete obj.expiryDate;
     return obj;
   }
-  // admin, staff → return full object with both prices
+  // admin, staff → full object including batchNumber and expiryDate
   return obj;
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /products
+// ─────────────────────────────────────────────────────────────────────────────
 const getProducts = async (req, res) => {
   try {
     const { skip, limit, page, sort } = getPaginationParams(req);
@@ -43,57 +103,71 @@ const getProducts = async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    const sanitized = products.map(p => sanitizeProductForRole(p, role));
-
-    const suppliers = await SupplierModel.find();
+    const sanitized = products.map((p) => sanitizeProductForRole(p, role));
+    const suppliers  = await SupplierModel.find();
     const categories = await CategoryModel.find();
+    const meta       = getPaginationMeta(total, limit, page);
 
-    const meta = getPaginationMeta(total, limit, page);
-
-    return sendResponse(res, 200, {
-      products: sanitized,
-      suppliers,
-      categories,
-    }, 'Products retrieved successfully', meta);
+    return sendResponse(res, 200, { products: sanitized, suppliers, categories }, 'Products retrieved successfully', meta);
   } catch (error) {
     console.error('Error fetching products:', error);
     return sendError(res, 500, 'Failed to fetch products');
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /products/add
+// Accepts up to 5 images via multipart field "images".
+// ─────────────────────────────────────────────────────────────────────────────
 const addProduct = async (req, res) => {
   try {
     const { name, description, price, wholesalePrice, stock, categoryId, supplierId } = req.body;
 
-    let imageUrl = null;
-    if (req.file) {
-      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-        resource_type: 'image',
-      });
-      imageUrl = uploadResult.secure_url;
+    // Upload all provided images to Cloudinary (max 5, enforced by multer)
+    const uploadedUrls = [];
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const url = await uploadToCloudinary(file.buffer);
+        uploadedUrls.push(url);
+      }
     }
 
-    // If wholesalePrice is not provided or empty, default to retail price
-    const finalWholesalePrice = (wholesalePrice && wholesalePrice !== '') ? Number(wholesalePrice) : Number(price);
+    const finalWholesalePrice =
+      wholesalePrice && wholesalePrice !== '' ? Number(wholesalePrice) : Number(price);
 
     const product = await ProductModel.create({
       name,
       description,
-      price,
+      price:          Number(price),
       wholesalePrice: finalWholesalePrice,
-      stock,
+      stock:          Number(stock),
       categoryId,
-      supplierId: supplierId && supplierId.trim() !== '' ? supplierId : null,
-      image: imageUrl,
+      supplierId:     supplierId && supplierId.trim() !== '' ? supplierId : null,
+      images:         uploadedUrls,
+      image:          uploadedUrls[0] || null,
+      // Optional fields
+      expiryDate:  req.body.expiryDate  || null,
+      batchNumber: req.body.batchNumber || null,
     });
 
-    return sendResponse(res, 201, product, 'Product added successfully');
+    const out = product.toObject();
+    out.images = resolveImages(product);
+    return sendResponse(res, 201, out, 'Product added successfully');
   } catch (error) {
     console.error('Error adding product:', error);
     return sendError(res, 500, 'Failed to add product');
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PUT /products/:id
+// Images handling:
+//   - `req.files`          → new images to add (appended, keeping existing ones
+//                            unless `replaceImages=true` is sent)
+//   - `keepImages`         → JSON-stringified array of existing URLs to retain
+//                            (images NOT in this list are deleted from Cloudinary)
+//   - `replaceImages=true` → delete ALL existing images first, then add new ones
+// ─────────────────────────────────────────────────────────────────────────────
 const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
@@ -103,22 +177,21 @@ const updateProduct = async (req, res) => {
 
     const updateData = { ...req.body };
 
-    // Handle wholesalePrice
+    // ── wholesalePrice ────────────────────────────────────────────────────
     if ('wholesalePrice' in updateData) {
       const wp = updateData.wholesalePrice;
-      // If admin provided an explicit value, use it.
-      // If left blank/empty, inherit from the retail `price` (if provided in update) or existing product.price.
       if (wp !== '' && wp !== null && wp !== undefined) {
         updateData.wholesalePrice = Number(wp);
       } else {
-        const retailSource = updateData.price !== undefined && updateData.price !== null && updateData.price !== ''
-          ? Number(updateData.price)
-          : product.price;
+        const retailSource =
+          updateData.price !== undefined && updateData.price !== ''
+            ? Number(updateData.price)
+            : product.price;
         updateData.wholesalePrice = Number(retailSource);
       }
     }
 
-    // Handle supplierId
+    // ── supplierId ────────────────────────────────────────────────────────
     if ('supplierId' in updateData) {
       const sid = updateData.supplierId;
       updateData.supplierId =
@@ -127,39 +200,45 @@ const updateProduct = async (req, res) => {
           : null;
     }
 
-    // Handle image removal
-    if (updateData.removeImage === 'true' || updateData.removeImage === true) {
-      if (product.image) {
-        try {
-          const urlParts    = product.image.split('/');
-          const uploadIndex = urlParts.indexOf('upload');
-          if (uploadIndex !== -1) {
-            const publicId = urlParts.slice(uploadIndex + 2).join('/').replace(/\.[^/.]+$/, '');
-            if (publicId) await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
-          }
-        } catch (e) { console.error('Cloudinary remove-image cleanup failed:', e.message); }
-      }
-      updateData.image = null;
+    // ── Multi-image logic ─────────────────────────────────────────────────
+    // `keepImages` = JSON array of existing Cloudinary URLs to preserve.
+    // Any existing URL not in keepImages is deleted from Cloudinary.
+    let keepImages = [];
+    if (updateData.keepImages) {
+      try { keepImages = JSON.parse(updateData.keepImages); } catch { keepImages = []; }
+      delete updateData.keepImages;
+    } else {
+      // If no keepImages sent, preserve all existing images by default
+      keepImages = Array.isArray(product.images) ? [...product.images] : [];
+      if (keepImages.length === 0 && product.image) keepImages = [product.image];
     }
 
-    // Handle new image upload
-    if (req.file) {
-      if (product.image) {
-        try {
-          const urlParts    = product.image.split('/');
-          const uploadIndex = urlParts.indexOf('upload');
-          if (uploadIndex !== -1) {
-            const publicId = urlParts.slice(uploadIndex + 2).join('/').replace(/\.[^/.]+$/, '');
-            if (publicId) await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
-          }
-        } catch (e) { console.error('Cloudinary old-image cleanup failed:', e.message); }
+    // Delete any existing images that were removed by the admin
+    const existingImages = Array.isArray(product.images) && product.images.length > 0
+      ? product.images
+      : (product.image ? [product.image] : []);
+
+    for (const url of existingImages) {
+      if (!keepImages.includes(url)) {
+        await destroyCloudinaryUrl(url);
       }
-      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-        resource_type: 'image',
-      });
-      updateData.image = uploadResult.secure_url;
     }
 
+    // Upload new images
+    const newlyUploaded = [];
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const url = await uploadToCloudinary(file.buffer);
+        newlyUploaded.push(url);
+      }
+    }
+
+    // Final images array (keep existing retained + new uploads, capped at 5)
+    const finalImages = [...keepImages, ...newlyUploaded].slice(0, 5);
+    updateData.images = finalImages;
+    updateData.image  = finalImages[0] || null; // keep legacy field in sync
+
+    // Remove old single-image fields from body to avoid conflicts
     delete updateData.removeImage;
 
     const updated = await ProductModel.findByIdAndUpdate(
@@ -168,17 +247,20 @@ const updateProduct = async (req, res) => {
       { new: true }
     );
 
-    // If price fields changed, update any unpaid cart orders referencing this product
+    // ── Propagate price changes to unpaid cart orders ─────────────────────
     try {
       const priceChanged =
-        (updated.price !== product.price) ||
-        (updated.wholesalePrice !== product.wholesalePrice);
+        updated.price !== product.price ||
+        updated.wholesalePrice !== product.wholesalePrice;
 
       if (priceChanged) {
         const orders = await OrderModel.find({ product: id, paid: false }).select('priceMode quantity');
         if (orders.length > 0) {
           const bulk = orders.map((o) => {
-            const newPrice = (o.priceMode === 'wholesale') ? (updated.wholesalePrice ?? updated.price) : updated.price;
+            const newPrice =
+              o.priceMode === 'wholesale'
+                ? (updated.wholesalePrice ?? updated.price)
+                : updated.price;
             return {
               updateOne: {
                 filter: { _id: o._id },
@@ -188,27 +270,34 @@ const updateProduct = async (req, res) => {
           });
           await OrderModel.bulkWrite(bulk);
         }
-
-        // Notify any listeners (SSE) that orders/prices changed for this product
-        orderNotifier.emit('productPriceChanged', { productId: id, affected: orders.length || 0, updatedAt: new Date().toISOString() });
+        orderNotifier.emit('productPriceChanged', {
+          productId:  id,
+          affected:   orders.length || 0,
+          updatedAt:  new Date().toISOString(),
+        });
       }
     } catch (err) {
       console.error('Failed to propagate price change to orders:', err);
     }
 
-    return sendResponse(res, 200, updated, 'Product updated successfully');
+    const out = updated.toObject();
+    out.images = resolveImages(updated);
+    return sendResponse(res, 200, out, 'Product updated successfully');
   } catch (error) {
-    console.error(error);
+    console.error('updateProduct error:', error);
     return sendError(res, 500, 'Failed to update product');
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// DELETE /products/:id  (soft-delete)
+// ─────────────────────────────────────────────────────────────────────────────
 const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const existingProduct = await ProductModel.findById(id);
-    if (!existingProduct) return sendError(res, 404, 'Product not found');
-    if (existingProduct.isDeleted) return sendError(res, 400, 'Product already deleted');
+    const existing = await ProductModel.findById(id);
+    if (!existing)          return sendError(res, 404, 'Product not found');
+    if (existing.isDeleted) return sendError(res, 400, 'Product already deleted');
 
     const product = await ProductModel.findByIdAndUpdate(id, { isDeleted: true }, { new: true });
     return sendResponse(res, 200, product, 'Product deleted successfully');
@@ -218,6 +307,9 @@ const deleteProduct = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /products/deleted
+// ─────────────────────────────────────────────────────────────────────────────
 const getDeletedProducts = async (req, res) => {
   try {
     const { skip, limit, page, sort } = getPaginationParams(req);
@@ -239,11 +331,14 @@ const getDeletedProducts = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PUT /products/restore/:id
+// ─────────────────────────────────────────────────────────────────────────────
 const restoreProduct = async (req, res) => {
   try {
     const { id } = req.params;
     const product = await ProductModel.findById(id);
-    if (!product) return sendError(res, 404, 'Product not found');
+    if (!product)          return sendError(res, 404, 'Product not found');
     if (!product.isDeleted) return sendError(res, 400, 'Product is not deleted');
 
     product.isDeleted = false;
@@ -255,31 +350,19 @@ const restoreProduct = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// DELETE /products/permanent/:id  (hard-delete + Cloudinary cleanup)
+// ─────────────────────────────────────────────────────────────────────────────
 const deleteProductPermanent = async (req, res) => {
   try {
     const { id } = req.params;
     const product = await ProductModel.findById(id);
     if (!product) return sendError(res, 404, 'Product not found');
 
-    // Attempt to remove the image from Cloudinary.
-    // Wrapped in its own try/catch so a bad URL or Cloudinary error
-    // never blocks the actual product deletion from the database.
-    if (product.image) {
-      try {
-        const urlParts   = product.image.split('/');
-        const uploadIndex = urlParts.indexOf('upload');
-        if (uploadIndex !== -1) {
-          // Skip the version segment (e.g. "v1234567890") that follows "upload"
-          const publicId = urlParts.slice(uploadIndex + 2).join('/').replace(/\.[^/.]+$/, '');
-          if (publicId) {
-            await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
-          }
-        }
-      } catch (cloudinaryErr) {
-        // Log but do not abort — the product should still be deleted even if
-        // Cloudinary cleanup fails (e.g. image already removed, bad URL, network issue)
-        console.error('Cloudinary cleanup failed during permanent delete:', cloudinaryErr.message);
-      }
+    // Delete all images from Cloudinary
+    const allImages = resolveImages(product);
+    for (const url of allImages) {
+      await destroyCloudinaryUrl(url);
     }
 
     await ProductModel.findByIdAndDelete(id);
