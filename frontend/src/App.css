@@ -1,42 +1,123 @@
 @import "tailwindcss";
 
-/* ── Tailwind v4: enable class-based dark mode ───────────────────────────────
-   When <html class="dark"> is present, all dark: variants activate.
-   ThemeContext sets this by toggling the "dark" class on document.documentElement.
+/* ─────────────────────────────────────────────────────────────────────────────
+   TAILWIND v4 — Class-based dark mode
+   ThemeContext adds/removes class="dark" on <html>.
+   Strategy: only remap neutral gray scale. NEVER remap white/black because
+   those are used for text-white on coloured backgrounds (sidebar, buttons).
    ─────────────────────────────────────────────────────────────────────────── */
 @variant dark (&:where(.dark, .dark *));
 
-/* ── Global theme palettes via CSS custom properties ─────────────────────────
-   Applied via data-theme="<name>" on <html>.
-   The sidebar gradient is NOT affected by dark mode — it always uses the
-   brand colour chosen by the admin.                                         */
-
-/* Default */
-:root {
-  --sidebar-bg: linear-gradient(to bottom, #111827, #1f2937);
+/* ── Page shell ──────────────────────────────────────────────────────────── */
+html.dark body,
+html.dark #root {
+  background-color: #0f1117 !important;
+  color: #e2e8f0;
 }
-[data-theme="ocean"]  { --sidebar-bg: linear-gradient(to bottom, #0f4c5c, #0e7490); }
-[data-theme="forest"] { --sidebar-bg: linear-gradient(to bottom, #14532d, #166534); }
-[data-theme="royal"]  { --sidebar-bg: linear-gradient(to bottom, #3b0764, #4c1d95); }
-[data-theme="sunset"] { --sidebar-bg: linear-gradient(to bottom, #7c2d12, #9a3412); }
 
-/* ── Theme accent colours (light mode) ───────────────────────────────────── */
-:root,
-[data-theme="default"] { --accent: #4f46e5; --accent-light: #eef2ff; --accent-text: #4338ca; }
-[data-theme="ocean"]   { --accent: #0891b2; --accent-light: #cffafe; --accent-text: #0e7490; }
-[data-theme="forest"]  { --accent: #16a34a; --accent-light: #dcfce7; --accent-text: #15803d; }
-[data-theme="royal"]   { --accent: #7c3aed; --accent-light: #f3e8ff; --accent-text: #6d28d9; }
-[data-theme="sunset"]  { --accent: #ea580c; --accent-light: #ffedd5; --accent-text: #c2410c; }
+/* ── Remap gray scale — backgrounds and text ─────────────────────────────── */
+.dark {
+  --color-gray-50:   #1a1d2e;
+  --color-gray-100:  #1e2130;
+  --color-gray-200:  #252840;
+  --color-gray-300:  #2d3148;
+  --color-gray-400:  #64748b;
+  --color-gray-500:  #8892a4;
+  --color-gray-600:  #94a3b8;
+  --color-gray-700:  #b0bec9;
+  --color-gray-800:  #cbd5e1;
+  --color-gray-900:  #e2e8f0;
 
-/* ── Sidebar helper class ─────────────────────────────────────────────────── */
+  --color-slate-50:  #1a1d2e;
+  --color-slate-100: #1e2130;
+  --color-slate-200: #252840;
+  --color-slate-300: #2d3148;
+  --color-slate-700: #b0bec9;
+  --color-slate-800: #cbd5e1;
+  --color-slate-900: #e2e8f0;
+}
+
+/* ── Explicit overrides for common bg classes that must flip ─────────────── */
+.dark .bg-white   { background-color: #1e2130 !important; }
+.dark .bg-gray-50 { background-color: #1a1d2e !important; }
+.dark .bg-gray-100 { background-color: #1e2130 !important; }
+
+/* ── Borders ─────────────────────────────────────────────────────────────── */
+.dark .border-gray-100 { border-color: #2d3148 !important; }
+.dark .border-gray-200 { border-color: #2d3148 !important; }
+.dark .divide-gray-50  > * + * { border-color: #2d3148 !important; }
+.dark .divide-gray-100 > * + * { border-color: #2d3148 !important; }
+.dark .divide-gray-200 > * + * { border-color: #2d3148 !important; }
+
+/* ── Text that needs to flip on dark backgrounds ─────────────────────────── */
+/* We only flip grays — NOT white/black so sidebar/button text stays intact  */
+.dark .text-gray-900 { color: #e2e8f0 !important; }
+.dark .text-gray-800 { color: #cbd5e1 !important; }
+.dark .text-gray-700 { color: #b0bec9 !important; }
+.dark .text-gray-600 { color: #94a3b8 !important; }
+.dark .text-gray-500 { color: #8892a4 !important; }
+.dark .text-gray-400 { color: #64748b !important; }
+
+/* ── Input/select/textarea backgrounds ───────────────────────────────────── */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.dark select,
+.dark textarea {
+  background-color: #252840;
+  border-color: #2d3148;
+  color: #e2e8f0;
+}
+.dark input::placeholder,
+.dark textarea::placeholder { color: #64748b; }
+
+/* ── Table rows ──────────────────────────────────────────────────────────── */
+.dark table { background-color: #1e2130; }
+.dark thead tr { background-color: #1a1d2e !important; }
+.dark tbody tr { background-color: #1e2130; border-color: #252840; }
+.dark tbody tr:hover { background-color: #252840 !important; }
+.dark th { color: #94a3b8 !important; background-color: #1a1d2e !important; }
+.dark td { color: #cbd5e1 !important; border-color: #252840 !important; }
+
+/* ── Cards that use bg-white directly ────────────────────────────────────── */
+.dark .rounded-xl:not([class*="bg-green"]):not([class*="bg-red"]):not([class*="bg-amber"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-purple"]):not([class*="bg-gradient"]),
+.dark .rounded-2xl:not([class*="bg-green"]):not([class*="bg-red"]):not([class*="bg-amber"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-purple"]):not([class*="bg-gradient"]) {
+  background-color: #1e2130;
+  border-color: #2d3148;
+}
+
+/* ── Shadows ─────────────────────────────────────────────────────────────── */
+.dark .shadow-sm  { box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+.dark .shadow-md  { box-shadow: 0 4px 12px rgba(0,0,0,.6); }
+.dark .shadow-lg  { box-shadow: 0 8px 24px rgba(0,0,0,.7); }
+
+/* ── Scrollbars ──────────────────────────────────────────────────────────── */
+.dark ::-webkit-scrollbar { width: 6px; height: 6px; }
+.dark ::-webkit-scrollbar-track { background: #1a1d2e; }
+.dark ::-webkit-scrollbar-thumb { background: #2d3148; border-radius: 3px; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #374160; }
+
+/* ── Global theme brand palette — sidebar gradient ───────────────────────── */
+:root                  { --sidebar-bg: linear-gradient(to bottom, #111827, #1f2937); }
+[data-theme="ocean"]   { --sidebar-bg: linear-gradient(to bottom, #0f4c5c, #0e7490); }
+[data-theme="forest"]  { --sidebar-bg: linear-gradient(to bottom, #14532d, #166534); }
+[data-theme="royal"]   { --sidebar-bg: linear-gradient(to bottom, #3b0764, #4c1d95); }
+[data-theme="sunset"]  { --sidebar-bg: linear-gradient(to bottom, #7c2d12, #9a3412); }
+
 .theme-sidebar { background: var(--sidebar-bg); }
 
-/* ── Disable spinner arrows on number inputs ─────────────────────────────── */
+/* ── Sidebar text always white regardless of mode (sidebar is always dark) ── */
+aside .text-white,
+aside span,
+aside a,
+aside li { color: #ffffff !important; }
+aside .text-gray-400 { color: rgba(255,255,255,0.5) !important; }
+aside .hover\:bg-gray-700:hover { background-color: rgba(255,255,255,0.1) !important; }
+
+/* ── Number input spinners ───────────────────────────────────────────────── */
 input[type="number"] { -moz-appearance: textfield; }
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
-/* ── Smooth colour transitions when switching theme / mode ────────────────── */
+/* ── Smooth transitions ──────────────────────────────────────────────────── */
 *, *::before, *::after {
   transition-property: background-color, border-color, color;
   transition-duration: 180ms;
