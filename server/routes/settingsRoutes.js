@@ -9,10 +9,14 @@ import {
   getDelegation,
   updateDelegation,
   getMyDelegationStatus,
+  getGlobalTheme,
 } from "../controllers/settingsController.js";
 import { authMiddleware, authorizeRoles } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
+
+// ── Public: global theme (no auth — used by all users on load) ───────────────
+router.get("/theme", getGlobalTheme);
 
 // ── Global settings ───────────────────────────────────────────────────────────
 router.get("/",  authMiddleware, authorizeRoles("admin"), getSettings);

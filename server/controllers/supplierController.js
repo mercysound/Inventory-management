@@ -1,5 +1,6 @@
 import ProductModel from '../models/ProductModel.js';
 import Supplier from '../models/SupplierModel.js';
+import SettingsModel from '../models/SettingsModel.js';
 import { sendResponse, sendError } from '../utils/apiResponse.js';
 
 const addSupplier = async (req, res) => {
@@ -42,12 +43,20 @@ const getSupplier = async (req, res) => {
   try {
     const suppliers = await Supplier.find().sort({ createdAt: -1 });
 
+    // Read the admin-configured low stock threshold (default 10)
+    const settings = await SettingsModel.findOne({}).sort({ createdAt: 1 });
+    const lowStockThreshold = settings?.lowStockThreshold ?? 10;
+
     // ✅ Attach product count, low stock count, out of stock count to each supplier
     const suppliersWithStats = await Promise.all(
       suppliers.map(async (s) => {
         const [productCount, lowStockCount, outOfStockCount] = await Promise.all([
           ProductModel.countDocuments({ supplierId: s._id, isDeleted: false }),
-          ProductModel.countDocuments({ supplierId: s._id, isDeleted: false, stock: { $gt: 0, $lt: 5 } }),
+          ProductModel.countDocuments({
+            supplierId: s._id,
+            isDeleted:  false,
+            stock: { $gt: 0, $lte: lowStockThreshold },
+          }),
           ProductModel.countDocuments({ supplierId: s._id, isDeleted: false, stock: 0 }),
         ]);
         return {

@@ -32,14 +32,14 @@ const CopyButton = ({ text }) => {
 };
 
 // ── Stock badge ───────────────────────────────────────────────────────────────
-const StockBadge = ({ stock }) => {
+const StockBadge = ({ stock, threshold = 10 }) => {
   if (stock === 0)
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-600 border border-red-100">
         <span className="w-1.5 h-1.5 rounded-full bg-red-400 inline-block" /> Out of stock
       </span>
     );
-  if (stock < 5)
+  if (stock <= threshold)
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-100">
         <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" /> Low — {stock} left
@@ -135,6 +135,7 @@ const ProductTable = ({
   onViewDeleted,
   updatingProductId,
   scrollRef,
+  lowStockThreshold = 10,
 }) => {
   const { user } = useAuth();
   const role = (user?.role || "").toString().toLowerCase();
@@ -167,8 +168,8 @@ const ProductTable = ({
 
   const visibleProducts = products.slice(0, visibleCount);
   const hasMore         = visibleCount < products.length;
-  const outOfStock      = products.filter((p) => p.stock === 0).length;
-  const lowStock        = products.filter((p) => p.stock > 0 && p.stock < 5).length;
+  const outOfStock = products.filter((p) => p.stock === 0).length;
+  const lowStock   = products.filter((p) => p.stock > 0 && p.stock <= lowStockThreshold).length;
   const totalValue      = products.reduce((sum, p) => sum + (p.price * p.stock), 0);
 
   const loadMore = useCallback(() => {
@@ -350,8 +351,8 @@ const ProductTable = ({
 
                         {/* Stock + reorder */}
                         <td className="px-4 py-3.5 min-w-[160px]">
-                          <StockBadge stock={product.stock} />
-                          {product.stock < 5 && product.supplierId && (
+                          <StockBadge stock={product.stock} threshold={lowStockThreshold} />
+                          {product.stock > 0 && product.stock <= lowStockThreshold && product.supplierId && (
                             <ReorderHint supplier={product.supplierId} />
                           )}
                         </td>
@@ -459,14 +460,14 @@ const ProductTable = ({
                           </span>
                         </div>
                         <div className="mt-1.5">
-                          <StockBadge stock={product.stock} />
+                          <StockBadge stock={product.stock} threshold={lowStockThreshold} />
                         </div>
                       </div>
                     </div>
                     {product.description && (
                       <p className="mt-2 text-xs text-gray-400 line-clamp-2 leading-relaxed">{product.description}</p>
                     )}
-                    {product.stock < 5 && product.supplierId && (
+                    {product.stock > 0 && product.stock <= lowStockThreshold && product.supplierId && (
                       <div className="mt-2"><ReorderHint supplier={product.supplierId} /></div>
                     )}
                   </div>

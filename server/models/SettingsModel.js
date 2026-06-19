@@ -52,6 +52,19 @@ const settingsSchema = new mongoose.Schema(
         ref:  "User",
       },
     ],
+
+    // ── Inventory alert thresholds ────────────────────────────────────────
+    lowStockThreshold: { type: Number, default: 10, min: 1 },
+    productExpiryWarningWeeks: { type: Number, default: 3, min: 1 },
+
+    // ── Appearance ────────────────────────────────────────────────────────
+    // globalTheme: the admin-chosen brand palette applied to all users.
+    // Valid values: default | ocean | forest | royal | sunset
+    globalTheme: {
+      type:    String,
+      enum:    ["default", "ocean", "forest", "royal", "sunset"],
+      default: "default",
+    },
     // ─────────────────────────────────────────────────────────────────────
   },
   { timestamps: true }

@@ -34,6 +34,8 @@ import completedOrderHistoryRoutes from "./routes/completedOrderHistoryRoutes.js
 import expiringOrdersRoutes from "./routes/expiringOrdersRoutes.js";
 import settingsRoutes from "./routes/settingsRoutes.js";
 import cloudinary from "./config/cloudinary.js";
+import { startOrderExpiryCron } from "./jobs/orderExpiryCron.js";
+import { startProductExpiryCron } from "./jobs/productExpiryCron.js";
 //meant for production only, to serve frontend from same server whe
 import path from "path";
 import { fileURLToPath } from "url";
@@ -240,6 +242,8 @@ const IP = process.env.LOCAL_IP || "localhost";
 app.listen(port, "0.0.0.0", async () => {
   try {
     await connectDB();
+    startOrderExpiryCron();
+    startProductExpiryCron();
     console.log(`✅ Server running on http://${IP}:${port}`);
   } catch (error) {
     console.error("❌ Server startup failed:", error);

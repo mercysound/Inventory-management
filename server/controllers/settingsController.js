@@ -38,14 +38,23 @@ export const updateSettings = async (req, res) => {
       reminderIntervalHours,
       storeName,
       adminNotificationEmail,
+      lowStockThreshold,
+      productExpiryWarningWeeks,
+      globalTheme,
     } = req.body;
 
     const update = {};
-    if (orderExpiryHours      !== undefined) update.orderExpiryHours      = Number(orderExpiryHours);
-    if (reminderMode          !== undefined) update.reminderMode          = reminderMode;
-    if (reminderIntervalHours !== undefined) update.reminderIntervalHours = Number(reminderIntervalHours);
-    if (storeName             !== undefined) update.storeName             = storeName;
-    if (adminNotificationEmail !== undefined) update.adminNotificationEmail = adminNotificationEmail;
+    if (orderExpiryHours        !== undefined) update.orderExpiryHours        = Number(orderExpiryHours);
+    if (reminderMode            !== undefined) update.reminderMode            = reminderMode;
+    if (reminderIntervalHours   !== undefined) update.reminderIntervalHours   = Number(reminderIntervalHours);
+    if (storeName               !== undefined) update.storeName               = storeName;
+    if (adminNotificationEmail  !== undefined) update.adminNotificationEmail  = adminNotificationEmail;
+    if (lowStockThreshold       !== undefined) update.lowStockThreshold       = Math.max(1, Number(lowStockThreshold));
+    if (productExpiryWarningWeeks !== undefined) update.productExpiryWarningWeeks = Math.max(1, Number(productExpiryWarningWeeks));
+    if (globalTheme             !== undefined) {
+      const valid = ["default", "ocean", "forest", "royal", "sunset"];
+      if (valid.includes(globalTheme)) update.globalTheme = globalTheme;
+    }
 
     const settings = await SettingsModel.findOneAndUpdate(
       { userId: req.user._id },
@@ -329,5 +338,22 @@ export const getMyDelegationStatus = async (req, res) => {
   } catch (err) {
     console.error("getMyDelegationStatus error:", err.message);
     return sendError(res, 500, "Failed to check delegation status");
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /settings/theme   (PUBLIC — no auth required)
+// Returns only the globalTheme so any user can sync the brand palette on load
+// without needing admin-level access to the full settings document.
+// ─────────────────────────────────────────────────────────────────────────────
+export const getGlobalTheme = async (req, res) => {
+  try {
+    const settings = await SettingsModel.findOne({}).sort({ createdAt: 1 }).select("globalTheme");
+    return sendResponse(res, 200, {
+      globalTheme: settings?.globalTheme || "default",
+    }, "Global theme retrieved");
+  } catch (err) {
+    console.error("getGlobalTheme error:", err.message);
+    return sendResponse(res, 200, { globalTheme: "default" }, "Default theme");
   }
 };
