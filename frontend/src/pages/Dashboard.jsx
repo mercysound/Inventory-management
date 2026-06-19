@@ -67,7 +67,7 @@ const Dashboard = () => {
   const toggleSidebar = () => setIsOpen((p) => !p);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-100">
+    <div className="flex h-screen overflow-hidden theme-page">
       {/* Desktop sidebar */}
       <div className="hidden md:block md:w-64 md:flex-shrink-0">
         <Sidebar isOpen={true} toggleSidebar={toggleSidebar} />
@@ -84,8 +84,9 @@ const Dashboard = () => {
       {/* Main content */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Mobile top bar */}
-        <div className="md:hidden flex items-center justify-between p-4 bg-gray-900 text-white shadow-md">
-          <button onClick={toggleSidebar} className="p-2 rounded hover:bg-gray-800">
+        <div className="md:hidden flex items-center justify-between p-4 shadow-md theme-topbar text-white"
+          style={{ background: "var(--bg-sidebar)" }}>
+          <button onClick={toggleSidebar} className="p-2 rounded hover:bg-white/10">
             <FaBars size={20} />
           </button>
           <span className="font-bold">MELECH SH Dashboard</span>
@@ -94,16 +95,17 @@ const Dashboard = () => {
 
         {/* Desktop top bar — admin only */}
         {user?.role === "admin" && (
-          <div className="hidden md:flex items-center justify-end px-6 py-2 bg-white border-b border-gray-100 shadow-sm">
+          <div className="hidden md:flex items-center justify-end px-6 py-2 border-b shadow-sm theme-topbar"
+            style={{ borderColor: "var(--topbar-border)" }}>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400">Overdue orders:</span>
+              <span className="text-xs" style={{ color: "var(--text-muted)" }}>Overdue orders:</span>
               <ExpiryBell />
             </div>
           </div>
         )}
 
         {/* Route outlet */}
-        <main id="main-scroll" className="flex-1 bg-gray-100 p-4 md:p-6 overflow-y-auto">
+        <main id="main-scroll" className="flex-1 p-4 md:p-6 overflow-y-auto theme-page">
           <Outlet />
         </main>
       </div>
