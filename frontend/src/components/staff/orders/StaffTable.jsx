@@ -2,152 +2,189 @@ import React from "react";
 import { motion } from "framer-motion";
 import { FaPlus, FaMinus, FaTrash, FaImage } from "react-icons/fa";
 
-const StaffTable = ({
-  orders,
-  loading,
-  onIncreaseQty,
-  onReduceQty,
-  onRemoveOrder,
-}) => {
-  if (loading) {
-    return <div className="p-8 text-center text-gray-500">Loading orders...</div>;
-  }
-
-  if (!orders.length) {
-    return (
-      <div className="p-8 text-center text-gray-500 bg-white rounded-lg border border-dashed">
-        No orders in cart yet
-      </div>
-    );
-  }
+const StaffTable = ({ orders, onIncreaseQty, onReduceQty, onRemoveOrder, isWholesale }) => {
+  if (!orders.length) return null; // parent handles empty state
 
   return (
-    <div className="space-y-4">
-      {/* Desktop View */}
-      <div className="hidden lg:block">
-        <div className="overflow-hidden rounded-lg shadow-lg border border-gray-200">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white">
-                <th className="p-4 text-left">#</th>
-                <th className="p-4 text-left">Product Image</th>
-                <th className="p-4 text-left">Product Details</th>
-                <th className="p-4 text-center">Quantity</th>
-                <th className="p-4 text-right">Unit Price</th>
-                <th className="p-4 text-right">Total</th>
-                <th className="p-4 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
-              {orders.map((o, i) => (
-                <motion.tr key={o._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="hover:bg-indigo-50 transition-colors">
-                  <td className="p-4 font-semibold text-gray-600">{i + 1}</td>
+    <div className="space-y-3">
+      {/* ── Desktop table ─────────────────────────────────────────────────── */}
+      <div className="hidden lg:block rounded-xl overflow-hidden border border-gray-100">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50 text-gray-500 text-xs font-semibold uppercase tracking-wide">
+              <th className="px-4 py-3 text-left w-8">#</th>
+              <th className="px-4 py-3 text-left w-16">Image</th>
+              <th className="px-4 py-3 text-left">Product</th>
+              <th className="px-4 py-3 text-center w-32">Qty</th>
+              <th className="px-4 py-3 text-right w-28">Unit Price</th>
+              <th className="px-4 py-3 text-right w-28">Subtotal</th>
+              <th className="px-4 py-3 text-center w-28">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {orders.map((o, i) => (
+              <motion.tr
+                key={o._id}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.04 }}
+                className="bg-white hover:bg-indigo-50/40 transition-colors"
+              >
+                {/* # */}
+                <td className="px-4 py-3 text-gray-400 font-medium">{i + 1}</td>
 
-                  <td className="p-4">
-                    <div className="w-20 h-20 rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-100 flex items-center justify-center flex-shrink-0 shadow-sm">
-                      {o.product?.image ? (
-                        <img src={o.product.image} alt={o.product?.name} className="w-full h-full object-cover hover:scale-110 transition-transform" />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center text-gray-400 text-xs">
-                          <FaImage size={24} className="mb-1" />
-                          <span>No Image</span>
-                        </div>
-                      )}
-                    </div>
-                  </td>
+                {/* Image */}
+                <td className="px-4 py-3">
+                  <div className="w-12 h-12 rounded-xl overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center shrink-0">
+                    {o.product?.image ? (
+                      <img src={o.product.image} alt={o.product?.name}
+                        className="w-full h-full object-cover hover:scale-110 transition-transform duration-200" />
+                    ) : (
+                      <FaImage size={16} className="text-gray-300" />
+                    )}
+                  </div>
+                </td>
 
-                  <td className="p-4">
-                    <div className="min-w-0">
-                      <h3 className="font-semibold text-gray-900 text-base">{o.product?.name || "Unknown Product"}</h3>
-                      {o.product?.description && (
-                        <details className="mt-1">
-                          <summary className="text-xs text-gray-600 cursor-pointer hover:text-gray-800">View Description</summary>
-                          <p className="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded">{o.product.description}</p>
-                        </details>
-                      )}
-                    </div>
-                  </td>
-
-                  <td className="p-4 text-center">
-                    <span className="inline-flex items-center justify-center px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full font-semibold">
-                      {o.quantity}
+                {/* Product details */}
+                <td className="px-4 py-3">
+                  <p className="font-semibold text-gray-900">{o.product?.name || "Unknown Product"}</p>
+                  {o.product?.categoryId?.name && (
+                    <p className="text-xs text-indigo-500 font-medium mt-0.5">{o.product.categoryId.name}</p>
+                  )}
+                  {o.product?.description && (
+                    <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{o.product.description}</p>
+                  )}
+                  {isWholesale && (
+                    <span className="inline-block mt-1 text-[10px] bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-semibold">
+                      WSP
                     </span>
-                  </td>
+                  )}
+                </td>
 
-                  <td className="p-4 text-right font-semibold text-gray-800">₦{o.price?.toLocaleString()}</td>
+                {/* Qty controls */}
+                <td className="px-4 py-3">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <motion.button
+                      onClick={() => onReduceQty(o._id)}
+                      whileTap={{ scale: 0.9 }}
+                      className="w-7 h-7 flex items-center justify-center bg-gray-100 hover:bg-yellow-100 hover:text-yellow-700 text-gray-600 rounded-lg transition"
+                    >
+                      <FaMinus size={10} />
+                    </motion.button>
+                    <span className="w-8 text-center font-bold text-gray-800 text-sm">{o.quantity}</span>
+                    <motion.button
+                      onClick={() => onIncreaseQty(o._id)}
+                      whileTap={{ scale: 0.9 }}
+                      className="w-7 h-7 flex items-center justify-center bg-gray-100 hover:bg-green-100 hover:text-green-700 text-gray-600 rounded-lg transition"
+                    >
+                      <FaPlus size={10} />
+                    </motion.button>
+                  </div>
+                </td>
 
-                  <td className="p-4 text-right font-bold text-indigo-600 text-lg">
-                    ₦{(o.totalPrice || o.quantity * o.price).toLocaleString()}
-                  </td>
+                {/* Unit price */}
+                <td className="px-4 py-3 text-right text-gray-600 font-medium">
+                  ₦{o.price?.toLocaleString()}
+                </td>
 
-                  <td className="p-4">
-                    <div className="flex items-center justify-center gap-2">
-                      <motion.button onClick={() => onReduceQty(o._id)} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} className="p-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-full transition shadow-md" title="Reduce Quantity">
-                        <FaMinus size={14} />
-                      </motion.button>
-                      <motion.button onClick={() => onIncreaseQty(o._id)} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-full transition shadow-md" title="Increase Quantity">
-                        <FaPlus size={14} />
-                      </motion.button>
-                      <motion.button onClick={() => onRemoveOrder(o._id)} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-full transition shadow-md" title="Remove Item">
-                        <FaTrash size={14} />
-                      </motion.button>
-                    </div>
-                  </td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                {/* Subtotal */}
+                <td className="px-4 py-3 text-right font-bold text-indigo-600">
+                  ₦{(o.totalPrice || o.quantity * o.price)?.toLocaleString()}
+                </td>
+
+                {/* Remove */}
+                <td className="px-4 py-3">
+                  <div className="flex justify-center">
+                    <motion.button
+                      onClick={() => onRemoveOrder(o._id)}
+                      whileTap={{ scale: 0.9 }}
+                      className="w-8 h-8 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-600 rounded-lg transition"
+                      title="Remove item"
+                    >
+                      <FaTrash size={12} />
+                    </motion.button>
+                  </div>
+                </td>
+              </motion.tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      {/* Mobile View */}
-      <div className="lg:hidden space-y-4">
+      {/* ── Mobile cards ──────────────────────────────────────────────────── */}
+      <div className="lg:hidden space-y-3">
         {orders.map((o, i) => (
-          <motion.div key={o._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-lg border border-gray-200 shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-            <div className="flex items-center justify-between p-3 bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-gray-200">
-              <span className="text-sm font-semibold text-indigo-600 bg-indigo-100 px-3 py-1 rounded-full">Item {i + 1}</span>
-            </div>
-            <div className="p-4">
-              <div className="w-full h-40 rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-100 flex items-center justify-center mb-4">
+          <motion.div
+            key={o._id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05 }}
+            className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+          >
+            {/* Card top */}
+            <div className="flex items-center gap-3 p-4 border-b border-gray-50">
+              {/* Image */}
+              <div className="w-16 h-16 rounded-xl overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center shrink-0">
                 {o.product?.image ? (
                   <img src={o.product.image} alt={o.product?.name} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="flex flex-col items-center justify-center text-gray-400">
-                    <FaImage size={32} className="mb-2" />
-                    <span className="text-sm">No Image</span>
-                  </div>
+                  <FaImage size={20} className="text-gray-300" />
                 )}
               </div>
-              <h3 className="font-bold text-lg text-gray-900 mb-2">{o.product?.name || "Unknown Product"}</h3>
-              {o.product?.description && (
-                <p className="text-sm text-gray-600 mb-3 line-clamp-2">{o.product.description}</p>
-              )}
-              <div className="bg-gray-50 rounded-lg p-3 mb-3 border border-gray-200">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Unit Price:</span>
-                  <span className="font-semibold text-gray-800">₦{o.price?.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-semibold text-gray-700">Total:</span>
-                  <span className="text-lg font-bold text-indigo-600">₦{(o.totalPrice || o.quantity * o.price).toLocaleString()}</span>
-                </div>
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-gray-900 truncate">{o.product?.name || "Unknown Product"}</p>
+                {o.product?.categoryId?.name && (
+                  <p className="text-xs text-indigo-500 font-medium">{o.product.categoryId.name}</p>
+                )}
+                {isWholesale && (
+                  <span className="inline-block mt-1 text-[10px] bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-semibold">
+                    WSP
+                  </span>
+                )}
               </div>
-              <div className="flex items-center justify-between mb-3 bg-indigo-50 p-2 rounded-lg border border-indigo-200">
-                <span className="text-sm font-medium text-gray-700">Quantity:</span>
-                <div className="flex items-center gap-2">
-                  <motion.button onClick={() => onReduceQty(o._id)} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} className="p-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-full transition">
-                    <FaMinus size={12} />
-                  </motion.button>
-                  <span className="px-4 py-1 bg-white border border-indigo-200 rounded-full font-semibold text-indigo-600">{o.quantity}</span>
-                  <motion.button onClick={() => onIncreaseQty(o._id)} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-full transition">
-                    <FaPlus size={12} />
-                  </motion.button>
-                </div>
-              </div>
-              <motion.button onClick={() => onRemoveOrder(o._id)} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full p-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition flex items-center justify-center gap-2">
-                <FaTrash size={14} />
-                Remove Item
+              {/* Remove */}
+              <motion.button
+                onClick={() => onRemoveOrder(o._id)}
+                whileTap={{ scale: 0.9 }}
+                className="w-8 h-8 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-400 hover:text-red-600 rounded-xl transition shrink-0"
+              >
+                <FaTrash size={12} />
               </motion.button>
+            </div>
+
+            {/* Price + qty */}
+            <div className="flex items-center justify-between px-4 py-3">
+              <div>
+                <p className="text-xs text-gray-400 mb-0.5">Unit price</p>
+                <p className="font-semibold text-gray-700">₦{o.price?.toLocaleString()}</p>
+              </div>
+
+              {/* Qty controls */}
+              <div className="flex items-center gap-2">
+                <motion.button
+                  onClick={() => onReduceQty(o._id)}
+                  whileTap={{ scale: 0.9 }}
+                  className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-yellow-100 text-gray-600 rounded-xl transition"
+                >
+                  <FaMinus size={11} />
+                </motion.button>
+                <span className="w-8 text-center font-bold text-gray-800">{o.quantity}</span>
+                <motion.button
+                  onClick={() => onIncreaseQty(o._id)}
+                  whileTap={{ scale: 0.9 }}
+                  className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-green-100 text-gray-600 rounded-xl transition"
+                >
+                  <FaPlus size={11} />
+                </motion.button>
+              </div>
+
+              <div className="text-right">
+                <p className="text-xs text-gray-400 mb-0.5">Subtotal</p>
+                <p className="font-bold text-indigo-600">
+                  ₦{(o.totalPrice || o.quantity * o.price)?.toLocaleString()}
+                </p>
+              </div>
             </div>
           </motion.div>
         ))}
