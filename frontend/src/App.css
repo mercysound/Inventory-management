@@ -1,22 +1,44 @@
 @import "tailwindcss";
 
-/* ── Hide spinner arrows on all number inputs app-wide ───────────────────────
-   Prevents accidental value changes when scrolling over an input field.
-   The actual wheel-scroll-to-change behaviour is disabled via a global
-   event listener in main.jsx.                                              */
-input[type="number"] {
-  -moz-appearance: textfield;
+/* ── Tailwind v4: enable class-based dark mode ───────────────────────────────
+   When <html class="dark"> is present, all dark: variants activate.
+   ThemeContext sets this by toggling the "dark" class on document.documentElement.
+   ─────────────────────────────────────────────────────────────────────────── */
+@variant dark (&:where(.dark, .dark *));
+
+/* ── Global theme palettes via CSS custom properties ─────────────────────────
+   Applied via data-theme="<name>" on <html>.
+   The sidebar gradient is NOT affected by dark mode — it always uses the
+   brand colour chosen by the admin.                                         */
+
+/* Default */
+:root {
+  --sidebar-bg: linear-gradient(to bottom, #111827, #1f2937);
 }
+[data-theme="ocean"]  { --sidebar-bg: linear-gradient(to bottom, #0f4c5c, #0e7490); }
+[data-theme="forest"] { --sidebar-bg: linear-gradient(to bottom, #14532d, #166534); }
+[data-theme="royal"]  { --sidebar-bg: linear-gradient(to bottom, #3b0764, #4c1d95); }
+[data-theme="sunset"] { --sidebar-bg: linear-gradient(to bottom, #7c2d12, #9a3412); }
+
+/* ── Theme accent colours (light mode) ───────────────────────────────────── */
+:root,
+[data-theme="default"] { --accent: #4f46e5; --accent-light: #eef2ff; --accent-text: #4338ca; }
+[data-theme="ocean"]   { --accent: #0891b2; --accent-light: #cffafe; --accent-text: #0e7490; }
+[data-theme="forest"]  { --accent: #16a34a; --accent-light: #dcfce7; --accent-text: #15803d; }
+[data-theme="royal"]   { --accent: #7c3aed; --accent-light: #f3e8ff; --accent-text: #6d28d9; }
+[data-theme="sunset"]  { --accent: #ea580c; --accent-light: #ffedd5; --accent-text: #c2410c; }
+
+/* ── Sidebar helper class ─────────────────────────────────────────────────── */
+.theme-sidebar { background: var(--sidebar-bg); }
+
+/* ── Disable spinner arrows on number inputs ─────────────────────────────── */
+input[type="number"] { -moz-appearance: textfield; }
 input[type="number"]::-webkit-outer-spin-button,
-input[type="number"]::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
+input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
-.input-field {
-  @apply w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-400 transition-all duration-200;
-}
-
-.error-text {
-  @apply text-red-500 text-sm mt-1;
+/* ── Smooth colour transitions when switching theme / mode ────────────────── */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color;
+  transition-duration: 180ms;
+  transition-timing-function: ease;
 }
