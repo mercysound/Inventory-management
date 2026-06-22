@@ -74,19 +74,23 @@ const StaffOrders = () => {
       const res  = await axiosInstance.get("/orders");
       const data = Array.isArray(res.data) ? res.data : res.data.data || res.data.orders || [];
       setOrders(data);
+      // Sync wholesale state from server only on initial load — not on every fetch
       if (data.length > 0) {
         const serverWholesale = data.some((o) => o.priceMode === "wholesale");
-        if (serverWholesale !== isWholesale) {
-          setIsWholesale(serverWholesale);
-          try { localStorage.setItem("melech_staff_price_mode", serverWholesale ? "wholesale" : "retail"); } catch {}
-        }
+        setIsWholesale((prev) => {
+          if (prev !== serverWholesale) {
+            try { localStorage.setItem("melech_staff_price_mode", serverWholesale ? "wholesale" : "retail"); } catch {}
+            return serverWholesale;
+          }
+          return prev;
+        });
       }
     } catch {
       toast.error("Failed to fetch orders.");
     } finally {
       setLoading(false);
     }
-  }, [isWholesale]);
+  }, []); // no deps — reads nothing from closure except stable setters
 
   useEffect(() => {
     fetchOrders();
@@ -95,21 +99,37 @@ const StaffOrders = () => {
     return () => window.removeEventListener("ordersUpdated", handler);
   }, [fetchOrders]);
 
-  // ── Wholesale toggle ──────────────────────────────────────────────────────
+  // ── Wholesale toggle — optimistic UI, API in background ─────────────────
   const handleToggleWholesale = async () => {
-    const nextMode = isWholesale ? "retail" : "wholesale";
+    const nextMode    = isWholesale ? "retail" : "wholesale";
+    const prevMode    = isWholesale ? "wholesale" : "retail";
+    const prevOrders  = orders;
+
+    // 1. Update UI instantly — no waiting for the server
+    setIsWholesale(nextMode === "wholesale");
+    try { localStorage.setItem("melech_staff_price_mode", nextMode); } catch {}
+    window.dispatchEvent(new CustomEvent("priceModeChanged", { detail: { mode: nextMode } }));
+
+    // 2. Fire API in background
     try {
       const res = await axiosInstance.post(`/orders/set-price-mode/${nextMode}`);
       if (res.data?.success) {
-        setIsWholesale(nextMode === "wholesale");
-        try { localStorage.setItem("melech_staff_price_mode", nextMode); } catch {}
-        window.dispatchEvent(new CustomEvent("priceModeChanged", { detail: { mode: nextMode } }));
-        await fetchOrders();
+        // Silently refresh orders to get server-confirmed prices (no loading spinner)
+        const fresh = await axiosInstance.get("/orders");
+        const data  = Array.isArray(fresh.data) ? fresh.data : fresh.data.data || fresh.data.orders || [];
+        setOrders(data);
         toast.success(`Switched to ${nextMode} pricing`);
       } else {
+        // Server rejected — roll back
+        setIsWholesale(prevMode === "wholesale");
+        try { localStorage.setItem("melech_staff_price_mode", prevMode); } catch {}
         toast.error(res.data?.message || "Failed to update prices");
       }
     } catch (err) {
+      // Network error — roll back
+      setIsWholesale(prevMode === "wholesale");
+      setOrders(prevOrders);
+      try { localStorage.setItem("melech_staff_price_mode", prevMode); } catch {}
       toast.error(err?.response?.data?.message || "Failed to update prices");
     }
   };

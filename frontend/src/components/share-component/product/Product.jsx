@@ -23,6 +23,7 @@ const EMPTY_FORM = {
   removeImage:    false,
   batchNumber:    "",
   expiryDate:     "",
+  isNewArrival:   false,
 };
 
 const Product = () => {
@@ -141,6 +142,7 @@ const Product = () => {
       expiryDate:  product.expiryDate
         ? new Date(product.expiryDate).toISOString().slice(0, 10)
         : "",
+      isNewArrival: product.isNewArrival || false,
     });
     setOpenModal(true);
   };
@@ -258,6 +260,32 @@ const Product = () => {
     finally { setLoadingDeleted(false); }
   };
 
+  const handleToggleNewArrival = useCallback(async (productId, currentValue) => {
+    // Optimistic update
+    const update = (list) => list.map((p) =>
+      p._id === productId
+        ? { ...p, isNewArrival: !currentValue, newArrivalAt: !currentValue ? new Date().toISOString() : null }
+        : p
+    );
+    productsRef.current = update(productsRef.current);
+    setProducts((prev) => update(prev));
+    setFilteredProducts((prev) => update(prev));
+
+    try {
+      const res = await axiosInstance.patch(`/products/${productId}/new-arrival`);
+      if (res.data.success) {
+        toast.success(res.data.message || "Updated");
+      } else {
+        // Rollback
+        fetchProducts();
+        toast.error("Failed to update new arrival status");
+      }
+    } catch {
+      fetchProducts();
+      toast.error("Failed to update new arrival status");
+    }
+  }, [fetchProducts]);
+
   const handleViewDeleted = () => { fetchDeletedProducts(); setShowDeletedPopup(true); };
 
   const handleRestore = async (id) => {
@@ -320,6 +348,7 @@ const Product = () => {
             updatingProductId={updatingProductId}
             scrollRef={scrollRef}
             lowStockThreshold={lowStockThreshold}
+            onToggleNewArrival={handleToggleNewArrival}
           />
         )}
       </div>

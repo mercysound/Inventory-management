@@ -17,6 +17,14 @@ const productSchema = new mongoose.Schema({
   // ─────────────────────────────────────────────────────────────────────────
 
   isDeleted: { type: Boolean, default: false },
+
+  // ── New Arrival flag ──────────────────────────────────────────────────────
+  // Admin can mark any product as a "New Arrival" independently of its
+  // category. Products can be promoted and demoted freely.
+  // newArrivalAt tracks when it was promoted (for sorting newest-first).
+  isNewArrival:  { type: Boolean, default: false },
+  newArrivalAt:  { type: Date,    default: null  },
+  // ─────────────────────────────────────────────────────────────────────────
   categoryId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Category",

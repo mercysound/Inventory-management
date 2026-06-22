@@ -107,6 +107,7 @@ const CustomerProducts = () => {
   const [loading,          setLoading]          = useState(true);
   const [searchQuery,      setSearchQuery]      = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [showNewArrivals,  setShowNewArrivals]  = useState(false); // New Arrivals filter
   const [showWholesaleCol, setShowWholesaleCol] = useState(false);
   const [currentPage,      setCurrentPage]      = useState(1);
   const PRODUCTS_PAGE_SIZE = 20;
@@ -127,8 +128,16 @@ const CustomerProducts = () => {
       ]);
       if (prodRes.data.success) {
         setCategories(prodRes.data.categories);
-        setProducts(prodRes.data.products);
-        setFilteredProducts(prodRes.data.products);
+        const allProducts = prodRes.data.products;
+        setProducts(allProducts);
+        // Sort: new arrivals bubble to top on initial load
+        const sorted = [...allProducts].sort((a, b) => {
+          if (a.isNewArrival && !b.isNewArrival) return -1;
+          if (!a.isNewArrival && b.isNewArrival) return 1;
+          if (a.isNewArrival && b.isNewArrival) return new Date(b.newArrivalAt || 0) - new Date(a.newArrivalAt || 0);
+          return 0;
+        });
+        setFilteredProducts(sorted);
       }
       const cartOrders = cartRes.data.data || cartRes.data.orders || [];
       const map = {};
@@ -295,15 +304,29 @@ const CustomerProducts = () => {
   }, []);
 
   // ── Filters ────────────────────────────────────────────────────────────────
-  const applyFilters = useCallback((query, catId) => {
+  const applyFilters = useCallback((query, catId, newArrivalsOnly = showNewArrivals) => {
     let r = products;
-    if (catId) r = r.filter((p) => (p.categoryId?._id ?? p.categoryId) === catId);
-    if (query) r = r.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()));
+    if (catId)            r = r.filter((p) => (p.categoryId?._id ?? p.categoryId) === catId);
+    if (query)            r = r.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()));
+    if (newArrivalsOnly)  r = r.filter((p) => p.isNewArrival === true);
+    // Sort: new arrivals bubble to the top (by newArrivalAt desc, then createdAt desc)
+    r = [...r].sort((a, b) => {
+      if (a.isNewArrival && !b.isNewArrival) return -1;
+      if (!a.isNewArrival && b.isNewArrival) return 1;
+      if (a.isNewArrival && b.isNewArrival) {
+        return new Date(b.newArrivalAt || 0) - new Date(a.newArrivalAt || 0);
+      }
+      return 0;
+    });
     setFilteredProducts(r);
-  }, [products]);
+  }, [products, showNewArrivals]);
 
   const handleSearch         = (e) => { const q = e.target.value; setSearchQuery(q); setCurrentPage(1); applyFilters(q, selectedCategory); };
   const handleCategoryChange = (e) => { const c = e.target.value; setSelectedCategory(c); setCurrentPage(1); applyFilters(searchQuery, c); };
+  const handleNewArrivalsToggle = () => {
+    const next = !showNewArrivals;
+    setShowNewArrivals(next); setCurrentPage(1); applyFilters(searchQuery, selectedCategory, next);
+  };
 
   // ── Open order modal ───────────────────────────────────────────────────────
   const handleOrderChange = (product) => {
@@ -420,6 +443,29 @@ const CustomerProducts = () => {
               WS price
             </button>
           )}
+
+          {/* New Arrivals filter pill */}
+          {(() => {
+            const newCount = products.filter((p) => p.isNewArrival).length;
+            if (newCount === 0) return null;
+            return (
+              <button
+                type="button"
+                onClick={handleNewArrivalsToggle}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition
+                  ${showNewArrivals
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                    : "bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                  }`}
+              >
+                ✨ New Arrivals
+                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold
+                  ${showNewArrivals ? "bg-white/20 text-white" : "bg-indigo-100 text-indigo-700"}`}>
+                  {newCount}
+                </span>
+              </button>
+            );
+          })()}
         </div>
 
         {/* ── Content ─────────────────────────────────────────────────── */}
@@ -469,6 +515,14 @@ const CustomerProducts = () => {
                         <div className="w-full h-full flex items-center justify-center">
                           <Package size={36} className="text-gray-200" />
                         </div>
+                      )}
+
+                      {/* New Arrival badge */}
+                      {product.isNewArrival && (
+                        <span className="absolute top-2 left-2 text-[9px] font-bold bg-indigo-600
+                          text-white px-2 py-0.5 rounded-full shadow-sm flex items-center gap-0.5">
+                          ✨ NEW
+                        </span>
                       )}
 
                       {/* Multiple images badge */}

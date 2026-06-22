@@ -136,6 +136,7 @@ const ProductTable = ({
   updatingProductId,
   scrollRef,
   lowStockThreshold = 10,
+  onToggleNewArrival,
 }) => {
   const { user } = useAuth();
   const role = (user?.role || "").toString().toLowerCase();
@@ -320,7 +321,14 @@ const ProductTable = ({
                                 : <Package size={14} className="text-gray-300" />}
                             </div>
                             <div>
-                              <p className="font-semibold text-gray-800 text-sm leading-tight">{product.name}</p>
+                              <p className="font-semibold text-gray-800 text-sm leading-tight">
+                                {product.name}
+                                {product.isNewArrival && (
+                                  <span className="ml-2 text-[9px] font-bold bg-indigo-100 text-indigo-600 border border-indigo-200 px-1.5 py-0.5 rounded-full align-middle">
+                                    ✨ NEW
+                                  </span>
+                                )}
+                              </p>
                               {product.supplierId && (
                                 <p className="text-[10px] text-gray-400 mt-0.5">{product.supplierId.name}</p>
                               )}
@@ -365,6 +373,16 @@ const ProductTable = ({
                         {/* Actions */}
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-1.5">
+                            {/* New arrival quick-toggle */}
+                            <button
+                              onClick={() => onToggleNewArrival?.(product._id, product.isNewArrival)}
+                              title={product.isNewArrival ? "Remove from New Arrivals" : "Mark as New Arrival"}
+                              className={`w-8 h-8 flex items-center justify-center rounded-lg transition text-base
+                                ${product.isNewArrival
+                                  ? "bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
+                                  : "text-gray-300 hover:bg-indigo-50 hover:text-indigo-400"
+                                }`}
+                            >✨</button>
                             <button onClick={() => onEdit(product)}
                               className="w-8 h-8 flex items-center justify-center rounded-lg text-blue-500 hover:bg-blue-100 transition"
                               title="Edit product"><Pencil size={14} /></button>

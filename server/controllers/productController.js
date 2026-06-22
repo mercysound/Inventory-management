@@ -373,6 +373,34 @@ const deleteProductPermanent = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH /products/:id/new-arrival
+// Admin toggles the isNewArrival flag on a product.
+// If marking as new arrival, newArrivalAt is set to now.
+// If removing, newArrivalAt is cleared.
+// The product remains in all categories and is still purchasable.
+// ─────────────────────────────────────────────────────────────────────────────
+const toggleNewArrival = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await ProductModel.findById(id);
+    if (!product) return sendError(res, 404, 'Product not found');
+
+    const next = !product.isNewArrival;
+    product.isNewArrival = next;
+    product.newArrivalAt  = next ? new Date() : null;
+    await product.save();
+
+    return sendResponse(res, 200, {
+      isNewArrival: product.isNewArrival,
+      newArrivalAt: product.newArrivalAt,
+    }, next ? 'Marked as New Arrival' : 'Removed from New Arrivals');
+  } catch (error) {
+    console.error('toggleNewArrival error:', error);
+    return sendError(res, 500, 'Failed to update new arrival status');
+  }
+};
+
 export {
   getProducts,
   addProduct,
@@ -381,4 +409,5 @@ export {
   getDeletedProducts,
   restoreProduct,
   deleteProductPermanent,
+  toggleNewArrival,
 };

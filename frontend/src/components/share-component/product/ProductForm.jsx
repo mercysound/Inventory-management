@@ -454,6 +454,39 @@ const ProductForm = ({
                 />
               </div>
             </div>
+
+            {/* ── New Arrival toggle ───────────────────────────────────── */}
+            <div className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-all cursor-pointer
+              ${formData.isNewArrival
+                ? "border-indigo-500 bg-indigo-50"
+                : "border-gray-200 hover:border-gray-300 bg-white"
+              }`}
+              onClick={() => {
+                const updated = { ...formData, isNewArrival: !formData.isNewArrival };
+                setFormData(updated);
+                debouncedSaveDraft(updated);
+              }}
+            >
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all
+                ${formData.isNewArrival ? "bg-indigo-600" : "bg-gray-100"}`}>
+                <span className="text-lg">{formData.isNewArrival ? "✨" : "🏷️"}</span>
+              </div>
+              <div className="flex-1">
+                <p className={`text-sm font-bold ${formData.isNewArrival ? "text-indigo-700" : "text-gray-700"}`}>
+                  New Arrival
+                  {formData.isNewArrival && (
+                    <span className="ml-2 text-[10px] font-semibold bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">
+                      Active
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
+                  {formData.isNewArrival
+                    ? "This product is featured as a New Arrival. Click to remove it."
+                    : "Mark this product as a New Arrival so it appears at the top of the product page. Optional."}
+                </p>
+              </div>
+            </div>
             {/* Expiry info note */}
             {(formData.expiryDate) && (() => {
               const days = Math.ceil((new Date(formData.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
