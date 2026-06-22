@@ -9,6 +9,7 @@ import CustomerOrderTable from "./CustomerOrderTable";
 import PaystackButton from "./PaystackButton";
 import CartSkeleton from "./Cartskeleton";
 import PendingOrdersModal from "./PendingOrdersModal";
+import FulfillmentModal from "./FulfillmentModal";
 import ReceiptModal from "../../share-component/receipt/ReceiptModal";
 import { useAuth } from "../../../context/AuthContext";
 import { useCart } from "../../../context/CartContext";
@@ -75,6 +76,13 @@ const CustomerOrderPortal = () => {
   const { user } = useAuth();
   const { resetCart } = useCart();
 
+  // Full profile (phone + address) fetched once — used to pre-fill FulfillmentModal
+  const [userProfile, setUserProfile] = useState({
+    name:    user?.name    || "",
+    phone:   "",
+    address: "",
+  });
+
   const [orders,         setOrders]         = useState([]);
   const [priceMode,      setPriceMode]      = useState(() => {
     // Wholesale-role users are always in wholesale pricing mode
@@ -101,13 +109,22 @@ const CustomerOrderPortal = () => {
   const [previewLoading,   setPreviewLoading]   = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
+  // Fulfillment modal — shown before Paystack opens
+  const [showFulfillment,    setShowFulfillment]    = useState(false);
+  const [fulfillmentData,    setFulfillmentData]    = useState(null);
+  const fulfillmentDataRef = useRef(null);           // always-current ref used inside Paystack closure
+  const paystackRef        = useRef(null);
+  const bypassPreCheck     = useRef(false);
+
+  // ── Stable ref wrapper so SSE and event listeners never cause re-renders ──
+  const fetchOrdersRef = useRef(null);
+
   // ── Fetch orders + pending history ───────────────────────────────────────
   const fetchOrders = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true);
       else setRefreshing(true);
 
-      // Fetch cart orders AND placed orders (pending/processing) in parallel
       const [orderRes, historyRes] = await Promise.all([
         axiosInstance.get("/orders"),
         axiosInstance.get("/placed-orders"),
@@ -120,14 +137,15 @@ const CustomerOrderPortal = () => {
       }));
       setOrders(normalized);
 
-      // Always keep CartContext in sync — dispatch the real total so the
-      // floating cart button count is always accurate on every fetch
+      // Sync cart count — use a flag to distinguish internal vs external dispatch
+      // so the ordersUpdated listener below does NOT re-trigger fetchOrders
       const realTotal = normalized.reduce((sum, o) => sum + (o.quantity || 0), 0);
       try {
-        window.dispatchEvent(new CustomEvent("ordersUpdated", { detail: { total: realTotal } }));
+        window.dispatchEvent(new CustomEvent("ordersUpdated", {
+          detail: { total: realTotal, _source: "fetchOrders" }, // tag the source
+        }));
       } catch (_) {}
-      // Wholesale-role users are always in wholesale mode.
-      // For others: detect from cart orders, then fall back to localStorage preference.
+
       if (user?.role === "wholesale") {
         setPriceMode("wholesale");
       } else {
@@ -136,7 +154,6 @@ const CustomerOrderPortal = () => {
         setPriceMode(detected ? "wholesale" : storedMode === "wholesale" ? "wholesale" : "retail");
       }
 
-      // Active pending/processing orders for the modal
       const history = historyRes.data.orders || [];
       const pending = history.filter((o) =>
         ["pending", "processing"].includes(o.deliveryStatus?.toLowerCase())
@@ -151,17 +168,28 @@ const CustomerOrderPortal = () => {
     }
   }, [user]);
 
+  // Keep ref always pointing to latest fetchOrders — used in SSE/event handlers
+  // so those effects never need fetchOrders in their dependency arrays
+  useEffect(() => {
+    fetchOrdersRef.current = fetchOrders;
+  }, [fetchOrders]);
+
   useEffect(() => {
     fetchOrders();
-    // Re-fetch when another tab/page signals an update
-    const onExternalUpdate = () => fetchOrders(true);
+    // Only re-fetch on events from EXTERNAL sources (other pages/tabs).
+    // Skip events tagged with _source: "fetchOrders" to prevent self-triggering.
+    const onExternalUpdate = (e) => {
+      if (e?.detail?._source === "fetchOrders") return; // our own dispatch — ignore
+      fetchOrdersRef.current?.(true);
+    };
     window.addEventListener("ordersUpdated", onExternalUpdate);
     return () => window.removeEventListener("ordersUpdated", onExternalUpdate);
   }, [fetchOrders]);
 
-  // ── SSE: listen for real-time order status changes from admin/delegated staff ──
-  // Stays alive the whole time the user is on the cart page so the pending
-  // badge, stats row, and modal all update instantly without a page reload.
+  // ── SSE: real-time order status changes ──────────────────────────────────
+  // Uses fetchOrdersRef so this effect only mounts ONCE — no dependency on
+  // fetchOrders prevents the SSE connection from being torn down and rebuilt
+  // on every render, which was causing the request storm.
   useEffect(() => {
     const token = localStorage.getItem("pos-token");
     if (!token) return;
@@ -171,28 +199,37 @@ const CustomerOrderPortal = () => {
     const es   = new EventSource(url);
 
     es.addEventListener("placedOrderUpdated", () => {
-      // Silently re-fetch cart data and pending orders list
-      fetchOrders(true);
-      // Bump the key so the modal re-fetches its cancelled-pending list silently
+      fetchOrdersRef.current?.(true);
       setModalRefreshKey((k) => k + 1);
     });
 
-    es.addEventListener("error", () => {
-      es.close();
-    });
+    es.addEventListener("error", () => { es.close(); });
 
     return () => es.close();
-  }, [fetchOrders]);
+  }, []); // empty deps — stable ref handles freshness
 
-  // ── For wholesale users: ensure all existing cart items use wholesale pricing ──
-  // This fixes any orders that were created before the pricing fix (retail price stored).
+  // ── For wholesale users: lock server-side cart to wholesale pricing on load ──
   useEffect(() => {
     if (user?.role !== "wholesale") return;
-    axiosInstance
-      .post("/orders/set-price-mode/wholesale")
-      .then(() => fetchOrders(true))
-      .catch(() => {}); // silent — non-critical
-  }, [user, fetchOrders]);
+    axiosInstance.post("/orders/set-price-mode/wholesale").catch(() => {});
+    // Don't call fetchOrders here — the initial fetchOrders() already ran above
+  }, [user]);
+
+  // ── Fetch full profile once so FulfillmentModal can pre-fill phone + address ──
+  useEffect(() => {
+    axiosInstance.get("/users/profile")
+      .then((res) => {
+        if (res.data.success) {
+          const d = res.data._doc || {};
+          setUserProfile({
+            name:    d.name    || user?.name    || "",
+            phone:   d.phone   || "",
+            address: d.address || "",
+          });
+        }
+      })
+      .catch(() => {}); // silently fail — pre-fill is best-effort
+  }, [user]);
 
   // Cleanup blob URLs on unmount
 
@@ -324,9 +361,13 @@ const CustomerOrderPortal = () => {
     const paystackReference = paystackResponse?.reference || paystackResponse?.trxref || null;
     try {
       const completeRes = await axiosInstance.post("/orders/complete", {
-        paymentMethod: "Paystack",
-        buyerName:     user?.name || "Customer",
+        paymentMethod:         "Paystack",
+        buyerName:             user?.name || "Customer",
         paystackReference,
+        fulfillmentType:       fulfillmentDataRef.current?.fulfillmentType       || "pickup",
+        deliveryAddress:       fulfillmentDataRef.current?.deliveryAddress       || undefined,
+        deliveryRecipientName: fulfillmentDataRef.current?.deliveryRecipientName || undefined,
+        deliveryPhone:         fulfillmentDataRef.current?.deliveryPhone         || undefined,
       });
       if (!completeRes.data.success) {
         toast.error(completeRes.data.message || "Order completion failed");
@@ -337,6 +378,8 @@ const CustomerOrderPortal = () => {
       // Immediately clear the floating cart button — don't wait for re-fetch
       setOrders([]);
       resetCart();
+      fulfillmentDataRef.current = null; // reset for next order
+      setFulfillmentData(null);
       try {
         window.dispatchEvent(new CustomEvent("ordersUpdated", { detail: { total: 0 } }));
       } catch (_) {}
@@ -375,29 +418,32 @@ const CustomerOrderPortal = () => {
     }
   };
 
-  // ── Pre-payment stock check ───────────────────────────────────────────────
+  // ── Pre-payment check: verify stock then open fulfillment modal ──────────
   const handlePrePayCheck = async () => {
+    // Bypass: fulfillment already confirmed, Paystack is being opened via ref
+    if (bypassPreCheck.current) {
+      bypassPreCheck.current = false; // reset for next time
+      return true; // proceed straight to Paystack
+    }
+
     try {
       const res = await axiosInstance.post("/orders/verify-stock");
-      return res.data.success;
+      if (!res.data.success) return false;
+      // Stock OK — open fulfillment modal; Paystack triggered via ref after confirmation
+      setShowFulfillment(true);
+      return false;
     } catch (err) {
       const data   = err?.response?.data;
       const status = err?.response?.status;
 
-      // Account suspended — clear message, no redirect (user hasn't paid yet)
       if (status === 403 && data?.code === "ACCOUNT_DEACTIVATED") {
-        toast.error(
-          "⚠️ Your account has been temporarily suspended. Please contact support before making a payment.",
-          { autoClose: 8000 }
-        );
+        toast.error("Your account has been temporarily suspended. Please contact support.", { autoClose: 8000 });
         return false;
       }
-
       if (status === 403) {
-        toast.error(data?.message || "Your account cannot process payments right now. Please contact support.");
+        toast.error(data?.message || "Your account cannot process payments right now.");
         return false;
       }
-
       if (data?.message === "STOCK_CONFLICT" && data?.conflicts?.length) {
         const lines = data.conflicts.map((c) =>
           c.available === 0
@@ -407,10 +453,8 @@ const CustomerOrderPortal = () => {
         toast.error(
           <div>
             <p className="font-semibold text-sm">Stock issue — cannot proceed</p>
-            <div className="text-xs mt-1 leading-relaxed space-y-1">
-              {lines.map((l, i) => <p key={i}>{l}</p>)}
-            </div>
-            <p className="text-xs mt-2 text-gray-200">Please update your cart quantities and try again.</p>
+            <div className="text-xs mt-1 leading-relaxed space-y-1">{lines.map((l, i) => <p key={i}>{l}</p>)}</div>
+            <p className="text-xs mt-2 text-gray-200">Update your cart quantities and try again.</p>
           </div>,
           { autoClose: 9000 }
         );
@@ -420,6 +464,17 @@ const CustomerOrderPortal = () => {
       }
       return false;
     }
+  };
+
+  // Called by FulfillmentModal — save data, bypass pre-check, open Paystack
+  const handleFulfillmentConfirmed = (data) => {
+    fulfillmentDataRef.current = data;  // write to ref FIRST — available instantly in closures
+    setFulfillmentData(data);           // also set state for UI reactivity
+    setShowFulfillment(false);
+    bypassPreCheck.current = true;
+    setTimeout(() => {
+      paystackRef.current?.open();
+    }, 80);
   };
 
   const handleDownloadFinalReceipt = () => {
@@ -549,6 +604,7 @@ const CustomerOrderPortal = () => {
                   </motion.button>
 
                   <PaystackButton
+                    triggerRef={paystackRef}
                     email={user?.email}
                     amount={grandTotal}
                     name={user?.name}
@@ -571,12 +627,20 @@ const CustomerOrderPortal = () => {
 
       {/* ── Modals ─────────────────────────────────────────────────────────── */}
 
-      {/* Pending orders modal — shows active orders + cancelled-awaiting-refund */}
+      {/* Pending orders modal */}
       <PendingOrdersModal
         isOpen={showPendingModal}
         onClose={() => setShowPendingModal(false)}
         activeOrders={pendingOrders}
         refreshKey={modalRefreshKey}
+      />
+
+      {/* Fulfillment choice modal — appears before Paystack opens */}
+      <FulfillmentModal
+        isOpen={showFulfillment}
+        onClose={() => setShowFulfillment(false)}
+        onConfirm={handleFulfillmentConfirmed}
+        userProfile={userProfile}
       />
 
       {/* Final receipt modal */}

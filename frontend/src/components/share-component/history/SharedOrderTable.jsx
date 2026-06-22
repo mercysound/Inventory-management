@@ -401,7 +401,18 @@ const SharedOrderTable = memo(({
                   <td className="p-3 font-mono text-xs text-gray-500">
                     ...{String(order._id).slice(-8).toUpperCase()}
                   </td>
-                  {showBuyer && <td className="p-3 font-medium">{order.buyerName || "Unknown"}</td>}
+                  {showBuyer && (
+                    <td className="p-3 font-medium">
+                      {order.buyerName || "Unknown"}
+                      {order.fulfillmentType === "delivery" && (
+                        <div className="mt-1">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-amber-100 border border-amber-300 text-amber-800 px-2 py-0.5 rounded-full">
+                            🚚 DELIVERY
+                          </span>
+                        </div>
+                      )}
+                    </td>
+                  )}
                   {showUser && (
                     <td className="p-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
@@ -519,6 +530,24 @@ const SharedOrderTable = memo(({
                       <p className="text-xs font-semibold text-gray-500 uppercase mb-2">
                         Full ID: {String(order._id)}
                       </p>
+
+                      {/* Fulfillment info in history */}
+                      {order.fulfillmentType === "delivery" ? (
+                        <div className="mb-3 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 flex items-start gap-3">
+                          <span className="text-base shrink-0">🚚</span>
+                          <div className="text-xs text-amber-900 space-y-1">
+                            <p className="font-bold text-sm">DELIVERY ORDER</p>
+                            <p><strong>Recipient:</strong> {order.deliveryRecipientName || "—"}</p>
+                            <p><strong>Phone:</strong> {order.deliveryPhone || "—"}</p>
+                            <p><strong>Address:</strong> {order.deliveryAddress || "—"}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mb-3 bg-green-50 border border-green-200 rounded-xl px-4 py-2 flex items-center gap-2">
+                          <span className="text-base">🏪</span>
+                          <p className="text-xs text-green-800 font-semibold">SELF PICKUP — Customer collected at the store.</p>
+                        </div>
+                      )}
                       <ul className="space-y-2">
                         {order.productList?.map((item, idx) => (
                           <li key={idx} className="flex items-start gap-3 text-sm">
@@ -595,6 +624,12 @@ const SharedOrderTable = memo(({
                   <p className="text-xs text-gray-400 font-mono">
                     ...{String(order._id).slice(-8).toUpperCase()}
                   </p>
+                  {/* Fulfillment badge on mobile */}
+                  {order.fulfillmentType === "delivery" && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-amber-100 border border-amber-300 text-amber-800 px-2 py-0.5 rounded-full mt-1">
+                      🚚 DELIVERY
+                    </span>
+                  )}
                 </div>
               </div>
               <StatusBadge status={order.deliveryStatus} />
@@ -634,20 +669,34 @@ const SharedOrderTable = memo(({
             </button>
 
             {expandedRows[order._id] && (
-              <ul className="space-y-2 mb-2 pl-2 border-l-2 border-blue-100">
-                {order.productList?.map((item, idx) => (
-                  <li key={idx} className="text-sm">
-                    <span className="font-medium text-gray-800">
-                      {item.productName || item.productId?.name || "Unknown Product"}
-                    </span>
-                    <span className="text-gray-400 text-xs ml-1">
-                      ({item.categoryName || item.productId?.categoryId?.name || "Unknown Category"})
-                    </span>
-                    <span className="ml-1 text-xs">×{item.quantity}</span>
-                    <p className="text-green-700 text-xs">₦{item.price?.toLocaleString()} each</p>
-                  </li>
-                ))}
-              </ul>
+              <div className="mb-2">
+                {order.fulfillmentType === "delivery" ? (
+                  <div className="mb-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-900 space-y-0.5">
+                    <p className="font-bold">🚚 Delivery Order</p>
+                    <p><strong>Recipient:</strong> {order.deliveryRecipientName || "—"}</p>
+                    <p><strong>Phone:</strong> {order.deliveryPhone || "—"}</p>
+                    <p><strong>Address:</strong> {order.deliveryAddress || "—"}</p>
+                  </div>
+                ) : (
+                  <div className="mb-2 bg-green-50 border border-green-100 rounded-xl px-3 py-1.5 text-xs text-green-800 font-semibold">
+                    🏪 Self Pickup
+                  </div>
+                )}
+                <ul className="space-y-2 mb-2 pl-2 border-l-2 border-blue-100">
+                  {order.productList?.map((item, idx) => (
+                    <li key={idx} className="text-sm">
+                      <span className="font-medium text-gray-800">
+                        {item.productName || item.productId?.name || "Unknown Product"}
+                      </span>
+                      <span className="text-gray-400 text-xs ml-1">
+                        ({item.categoryName || item.productId?.categoryId?.name || "Unknown Category"})
+                      </span>
+                      <span className="ml-1 text-xs">×{item.quantity}</span>
+                      <p className="text-green-700 text-xs">₦{item.price?.toLocaleString()} each</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
 
             <div className="text-sm text-gray-700 space-y-0.5">
