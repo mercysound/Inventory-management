@@ -481,9 +481,8 @@ const CustomerProducts = () => {
           </div>
         ) : (
           <>
-            {/* ── Product card grid ──────────────────────────────────── */}
-            {/* Mobile: 1 col for small screens, 2 col from 400px+, more on larger */}
-            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+            {/* ── Product card grid ── */}
+            <div className="grid grid-cols-2 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 md:gap-3">
               {cpPaginated.map((product, index) => {
                 const cartItem = cartMap[product._id] || null;
                 const inCart   = !!cartItem;
@@ -505,15 +504,15 @@ const CustomerProducts = () => {
                       ${inCart ? "border-green-200 shadow-sm shadow-green-100/60" : "border-gray-100 shadow-sm"}
                       ${oos ? "opacity-60" : ""}`}
                   >
-                    {/* ── Image area — fixed height so image is never cropped ── */}
-                    <div className="relative w-full h-44 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden shrink-0">
+                    {/* ── Image area ── */}
+                    <div className="relative w-full h-32 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden shrink-0">
                       {thumb ? (
                         <img src={thumb} alt={product.name} loading="lazy"
                           className="w-full h-full object-contain p-1
                             group-hover:scale-105 transition-transform duration-300" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Package size={36} className="text-gray-200" />
+                          <Package size={28} className="text-gray-200" />
                         </div>
                       )}
 
@@ -552,28 +551,28 @@ const CustomerProducts = () => {
                     </div>
 
                     {/* ── Card body ────────────────────────────────── */}
-                    <div className="p-3 flex flex-col gap-2">
+                    <div className="p-2.5 flex flex-col gap-1.5">
                       {/* Category chip */}
                       <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50
                         border border-indigo-100 px-2 py-0.5 rounded-full w-fit max-w-full truncate tracking-wide uppercase">
                         {product.categoryId?.name || "—"}
                       </span>
 
-                      {/* Product name — 2 lines max, won't push price off */}
-                      <p className="font-bold text-gray-900 text-sm leading-snug line-clamp-2 min-h-[2.5rem]">
+                      {/* Product name — 2 lines max */}
+                      <p className="font-bold text-gray-900 text-sm leading-snug line-clamp-2 min-h-[1.75rem]">
                         {product.name}
                       </p>
 
-                      {/* Description — slightly bigger, 2 lines */}
+                      {/* Description — 1 line only to keep card compact */}
                       {product.description && (
-                        <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">
+                        <p className="text-[11px] text-gray-400 line-clamp-1 leading-relaxed">
                           {product.description}
                         </p>
                       )}
 
                       {/* Wholesale price for staff */}
                       {user?.role === "staff" && showWholesaleCol && (
-                        <p className="text-xs text-amber-600 font-semibold">
+                        <p className="text-[11px] text-amber-600 font-semibold">
                           WS: {product.wholesalePrice != null ? `₦${Number(product.wholesalePrice).toLocaleString()}` : "—"}
                         </p>
                       )}
@@ -581,10 +580,8 @@ const CustomerProducts = () => {
                       {/* Stock badge */}
                       {canSeeStock && <div><StockBadge stock={product.stock} /></div>}
 
-                      {/* ── Price + action row
-                          Stacked vertically so long prices like ₦1,000,000
-                          never fight with the + button for space.          */}
-                      <div className="mt-auto pt-2 border-t border-gray-50 flex flex-col gap-2"
+                      {/* ── Price + action row — stacked so long prices never fight the button ── */}
+                      <div className="mt-auto pt-1.5 border-t border-gray-50 flex flex-col gap-1.5"
                         onClick={(e) => e.stopPropagation()}>
                         {/* Price — full width, no constraint */}
                         <div>
