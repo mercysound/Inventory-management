@@ -117,7 +117,6 @@ const PlacedOrders = () => {
       return idMatch && buyerMatch && statusMatch && fromMatch && toMatch;
     });
   }, [orders, searchOrderId, searchBuyer, filterStatus, dateFrom, dateTo]);
-
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
       let aVal, bVal;
@@ -168,6 +167,7 @@ const PlacedOrders = () => {
   const filteredRevenue = useMemo(() => filtered.reduce((s, o) => s + (o.totalPrice || 0), 0), [filtered]);
   const pendingCount    = useMemo(() => orders.filter((o) => o.deliveryStatus === "pending").length,    [orders]);
   const processingCount = useMemo(() => orders.filter((o) => o.deliveryStatus === "processing").length, [orders]);
+  const deliveryCount   = useMemo(() => orders.filter((o) => o.fulfillmentType === "delivery").length,  [orders]);
 
   return (
     <div className="p-4">
@@ -186,10 +186,10 @@ const PlacedOrders = () => {
           {/* Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
             {[
-              { label: "Total Orders",  value: orders.length },
-              { label: "Pending",       value: pendingCount,    color: "text-yellow-600" },
-              { label: "Processing",    value: processingCount, color: "text-blue-600" },
-              { label: "Total Revenue", value: `₦${totalRevenue.toLocaleString()}` },
+              { label: "Total Orders",   value: orders.length },
+              { label: "Pending",        value: pendingCount,    color: "text-yellow-600" },
+              { label: "Processing",     value: processingCount, color: "text-blue-600" },
+              { label: "Total Revenue",  value: `₦${totalRevenue.toLocaleString()}` },
             ].map(({ label, value, color }) => (
               <div key={label} className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">{label}</p>
@@ -197,6 +197,16 @@ const PlacedOrders = () => {
               </div>
             ))}
           </div>
+          {/* Delivery orders alert */}
+          {deliveryCount > 0 && (
+            <div className="mb-4 flex items-center gap-3 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3">
+              <span className="text-xl">🚚</span>
+              <p className="text-sm text-amber-900 font-semibold">
+                {deliveryCount} order{deliveryCount !== 1 ? "s" : ""} require delivery.
+                <span className="font-normal ml-1">Expand each delivery order to see address and recipient details before updating status.</span>
+              </p>
+            </div>
+          )}
 
           {/* Filters */}
           <div className="mb-4 flex flex-wrap gap-3 items-end bg-gray-50 border border-gray-200 rounded-lg p-3">

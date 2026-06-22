@@ -90,7 +90,20 @@ const PlacedOrdersTable = ({
                     ...{String(order._id).slice(-8).toUpperCase()}
                   </td>
 
-                  <td className="p-3 font-medium text-gray-800">{order.buyerName || "Unknown"}</td>
+                  <td className="p-3 font-medium text-gray-800">{order.buyerName || "Unknown"}
+                    {order.fulfillmentType === "delivery" && (
+                      <div className="mt-1 inline-flex items-center gap-1 bg-amber-100 border border-amber-300
+                        text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        🚚 DELIVERY
+                      </div>
+                    )}
+                    {(!order.fulfillmentType || order.fulfillmentType === "pickup") && (
+                      <div className="mt-1 inline-flex items-center gap-1 bg-green-100 border border-green-200
+                        text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        🏪 PICKUP
+                      </div>
+                    )}
+                  </td>
 
                   <td className="p-3">
                     <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
@@ -146,6 +159,28 @@ const PlacedOrdersTable = ({
                       <p className="text-xs font-semibold text-gray-500 uppercase mb-2">
                         Full Order ID: <span className="font-mono">{String(order._id)}</span>
                       </p>
+
+                      {/* Delivery info warning block */}
+                      {order.fulfillmentType === "delivery" && (
+                        <div className="mb-3 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 flex items-start gap-3">
+                          <span className="text-lg shrink-0">🚚</span>
+                          <div className="text-xs text-amber-900 space-y-1">
+                            <p className="font-bold text-sm">DELIVERY ORDER — Do not mark as Processing until you have contacted the buyer about transport fare</p>
+                            <p><strong>Recipient:</strong> {order.deliveryRecipientName || "—"}</p>
+                            <p><strong>Phone:</strong> {order.deliveryPhone || "—"}</p>
+                            <p><strong>Address:</strong> {order.deliveryAddress || "—"}</p>
+                            <p className="text-amber-700 italic">Transport fare is NOT included in the order payment. Call the buyer to agree on transport cost before dispatching.</p>
+                          </div>
+                        </div>
+                      )}
+                      {(!order.fulfillmentType || order.fulfillmentType === "pickup") && (
+                        <div className="mb-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center gap-3">
+                          <span className="text-lg">🏪</span>
+                          <p className="text-xs text-green-800 font-semibold">
+                            SELF PICKUP — Customer will collect this order at the store. No delivery needed.
+                          </p>
+                        </div>
+                      )}
                       <ul className="space-y-2">
                         {order.productList?.map((item, idx) => (
                           <li key={idx} className="flex items-start gap-3 text-sm">
@@ -194,6 +229,27 @@ const PlacedOrdersTable = ({
               </h3>
               <StatusBadge status={order.deliveryStatus} />
             </div>
+            {/* Fulfillment badge on mobile */}
+            <div className="mb-2">
+              {order.fulfillmentType === "delivery" ? (
+                <span className="inline-flex items-center gap-1 bg-amber-100 border border-amber-300 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  🚚 DELIVERY ORDER
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 bg-green-100 border border-green-200 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  🏪 SELF PICKUP
+                </span>
+              )}
+            </div>
+            {/* Delivery details on mobile */}
+            {order.fulfillmentType === "delivery" && (
+              <div className="mb-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-900 space-y-0.5">
+                <p><strong>Recipient:</strong> {order.deliveryRecipientName || "—"}</p>
+                <p><strong>Phone:</strong> {order.deliveryPhone || "—"}</p>
+                <p><strong>Address:</strong> {order.deliveryAddress || "—"}</p>
+                <p className="text-amber-700 italic text-[10px]">Transport fare is separate — call buyer before dispatch.</p>
+              </div>
+            )}
 
             <p className="text-xs text-gray-400 font-mono mb-1">
               ID: ...{String(order._id).slice(-8).toUpperCase()}
