@@ -24,6 +24,24 @@ const isSlowRoute = (url = "") => SLOW_ROUTES.some((route) => url.includes(route
 const isEmailRoute = (url = "") => EMAIL_ROUTES.some((route) => url.includes(route));
 
 const NETWORK_ERROR_TOAST_ID = "network-error";
+
+// ── Network error toast deduplication ────────────────────────────────────────
+// Multiple concurrent requests can fail simultaneously when offline.
+// This flag ensures only ONE network-error toast shows within a 4-second window,
+// regardless of how many requests fail at the same time.
+let _networkToastActive = false;
+const showNetworkToast = (message) => {
+  if (_networkToastActive) return;
+  _networkToastActive = true;
+  toast.error(message, {
+    toastId:     NETWORK_ERROR_TOAST_ID,
+    autoClose:   6000,
+    pauseOnHover: true,
+    onClose:     () => { _networkToastActive = false; },
+  });
+  // Safety reset in case onClose never fires (e.g. toast dismissed programmatically)
+  setTimeout(() => { _networkToastActive = false; }, 8000);
+};
 const isNetworkError = (error) =>
   !error.response &&
   (error.message === "Network Error" || error.code === "ECONNABORTED" || error.message?.toLowerCase().includes("timeout"));
@@ -136,11 +154,7 @@ axiosInstance.interceptors.response.use(
 
     if (!isAuthRoute(requestUrl)) {
       if (isNetworkError(error)) {
-        toast.error(message, {
-          toastId: NETWORK_ERROR_TOAST_ID,
-          autoClose: 6000,
-          pauseOnHover: true,
-        });
+        showNetworkToast(message);
       } else if (status !== 400 && status !== 401) {
         toast.error(message);
       }
