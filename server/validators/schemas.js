@@ -100,10 +100,15 @@ export const createOrderSchema = Joi.object({
 });
 
 export const completeOrderSchema = Joi.object({
-  paymentMethod:     Joi.string().valid("card", "bank_transfer", "cash_on_delivery", "Paystack").required(),
-  buyerName:         Joi.string().trim().max(100).optional(),
-  paystackReference: Joi.string().optional(),
-  isWholesale:       Joi.boolean().optional(),
+  paymentMethod:         Joi.string().valid("card", "bank_transfer", "cash_on_delivery", "Paystack").required(),
+  buyerName:             Joi.string().trim().max(100).optional(),
+  paystackReference:     Joi.string().optional(),
+  isWholesale:           Joi.boolean().optional(),
+  // Fulfillment preference — delivery or pickup
+  fulfillmentType:       Joi.string().valid("pickup", "delivery").optional(),
+  deliveryAddress:       Joi.string().trim().max(500).allow("", null).optional(),
+  deliveryRecipientName: Joi.string().trim().max(100).allow("", null).optional(),
+  deliveryPhone:         Joi.string().trim().max(30).allow("", null).optional(),
 });
 
 export const updateOrderSchema = Joi.object({

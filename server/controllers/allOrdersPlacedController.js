@@ -191,6 +191,11 @@ export const updateDeliveryStatus = async (req, res) => {
         allQuantity:             order.allQuantity,
         productList:             order.productList,
         paid:                    order.paid || true,
+        // Carry over fulfillment info so history shows pickup vs delivery
+        fulfillmentType:         order.fulfillmentType       || "pickup",
+        deliveryAddress:         order.deliveryAddress       || null,
+        deliveryRecipientName:   order.deliveryRecipientName || null,
+        deliveryPhone:           order.deliveryPhone         || null,
         ...auditFields,
       });
 
@@ -247,6 +252,11 @@ export const updateDeliveryStatus = async (req, res) => {
         totalPrice:     order.totalPrice,
         allQuantity:    order.allQuantity,
         productList:    order.productList,
+        // Carry over fulfillment info
+        fulfillmentType:         order.fulfillmentType       || "pickup",
+        deliveryAddress:         order.deliveryAddress       || null,
+        deliveryRecipientName:   order.deliveryRecipientName || null,
+        deliveryPhone:           order.deliveryPhone         || null,
         ...auditFields,
       });
 

@@ -6,13 +6,52 @@ export const sendAdminOrderPlacedEmail = async ({
   totalPrice,
   orderId,
   role = "customer",
+  fulfillmentType = "pickup",
+  deliveryAddress = null,
+  deliveryRecipientName = null,
+  deliveryPhone = null,
 }) => {
   const roleLabel = role === "wholesale" ? "Wholesale Customer" : "Customer";
   const roleColor = role === "wholesale" ? "#d97706" : "#4f46e5";
 
+  const isDelivery = fulfillmentType === "delivery";
+
+  // Delivery block — only included when the customer chose delivery
+  const deliveryBlock = isDelivery ? `
+    <tr>
+      <td style="padding:12px 0 0;">
+        <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:14px 16px;">
+          <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#92400e;">
+            🚚 DELIVERY ORDER — Action Required
+          </p>
+          <p style="margin:0 0 4px;font-size:12px;color:#374151;">
+            <strong>Recipient:</strong> ${deliveryRecipientName || "—"}
+          </p>
+          <p style="margin:0 0 4px;font-size:12px;color:#374151;">
+            <strong>Phone:</strong> ${deliveryPhone || "—"}
+          </p>
+          <p style="margin:0 0 8px;font-size:12px;color:#374151;">
+            <strong>Deliver to:</strong> ${deliveryAddress || "—"}
+          </p>
+          <p style="margin:0;font-size:11px;color:#92400e;font-style:italic;">
+            The customer has been informed that transport fare is separate and will be
+            agreed directly between you and the buyer before or after delivery.
+            Call the buyer to confirm transport cost before dispatching.
+          </p>
+        </div>
+      </td>
+    </tr>` : `
+    <tr>
+      <td style="padding:4px 0;font-size:13px;">
+        <strong>Fulfilment:</strong>
+        <span style="color:#16a34a;font-weight:700;">Self Pickup</span>
+        — customer will collect in person.
+      </td>
+    </tr>`;
+
   await sendWithRetry({
     to:      adminEmail,
-    subject: `🛒 New Order Placed — ${buyerName}`,
+    subject: `${isDelivery ? "🚚" : "🛒"} New ${isDelivery ? "Delivery" : "Pickup"} Order — ${buyerName}`,
     html: `
       <div style="font-family:'Segoe UI',Arial,sans-serif;background:#f8fafc;padding:32px 0;">
         <table width="560" cellpadding="0" cellspacing="0"
@@ -20,9 +59,9 @@ export const sendAdminOrderPlacedEmail = async ({
                  box-shadow:0 2px 16px rgba(0,0,0,.06);max-width:560px;
                  width:100%;margin:0 auto;">
           <tr>
-            <td style="background:#4f46e5;padding:24px 32px;">
+            <td style="background:${isDelivery ? "#d97706" : "#4f46e5"};padding:24px 32px;">
               <p style="margin:0;color:#fff;font-size:18px;font-weight:700;">
-                🛒 New Order Alert — Melech Store
+                ${isDelivery ? "🚚 Delivery Order" : "🛒 New Order"} — Melech Store
               </p>
             </td>
           </tr>
@@ -61,6 +100,7 @@ export const sendAdminOrderPlacedEmail = async ({
                     </span>
                   </td>
                 </tr>
+                ${deliveryBlock}
               </table>
 
               <p>

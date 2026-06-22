@@ -212,11 +212,38 @@ const verifyStock = async (req, res) => {
  * if stock fails AFTER payment has been charged.
  */
 const completeOrder = async (req, res) => {
-  const { paymentMethod, buyerName, paystackReference, isWholesale } = req.body;
+  const {
+    paymentMethod, buyerName, paystackReference, isWholesale,
+    fulfillmentType, deliveryAddress, deliveryRecipientName, deliveryPhone,
+  } = req.body;
   const userId = req.user._id;
   const role   = req.user.role;
 
   if (!paymentMethod) return sendError(res, 400, "Payment method is required");
+
+  // ── Server-side validation of fulfillment fields ──────────────────────────
+  // Only customer and wholesale roles place online orders with fulfillment choice.
+  // Staff walk-in sales always go direct to history and never have fulfillment.
+  const isOnlineOrder = role === "customer" || role === "wholesale";
+
+  if (isOnlineOrder) {
+    const fType = fulfillmentType === "delivery" ? "delivery" : "pickup";
+
+    if (fType === "delivery") {
+      // Sanitise and validate delivery fields — never trust client input
+      const cleanAddress   = typeof deliveryAddress   === "string" ? deliveryAddress.trim()   : "";
+      const cleanRecipient = typeof deliveryRecipientName === "string" ? deliveryRecipientName.trim() : "";
+      const cleanPhone     = typeof deliveryPhone     === "string" ? deliveryPhone.trim()     : "";
+
+      if (!cleanAddress)   return sendError(res, 400, "Delivery address is required for delivery orders");
+      if (!cleanRecipient) return sendError(res, 400, "Recipient name is required for delivery orders");
+      if (!cleanPhone)     return sendError(res, 400, "Recipient phone number is required for delivery orders");
+      // Basic phone validation — must be at least 7 digits
+      if (!/^\+?[\d\s\-()]{7,20}$/.test(cleanPhone)) {
+        return sendError(res, 400, "Please enter a valid phone number for delivery");
+      }
+    }
+  }
 
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -300,6 +327,11 @@ const completeOrder = async (req, res) => {
 
     // ── customer OR wholesale → placed orders (admin manages delivery) ────
     if (role === "customer" || role === "wholesale") {
+      const fType        = fulfillmentType === "delivery" ? "delivery" : "pickup";
+      const cleanAddress   = fType === "delivery" ? String(deliveryAddress || "").trim() : null;
+      const cleanRecipient = fType === "delivery" ? String(deliveryRecipientName || "").trim() : null;
+      const cleanPhone     = fType === "delivery" ? String(deliveryPhone || "").trim() : null;
+
       placed = await AllOrdersPlacedModel.create([{
         userOrdering:  userId,
         buyerName:     buyerName || (role === "wholesale" ? "Wholesale Customer" : "Customer"),
@@ -307,8 +339,12 @@ const completeOrder = async (req, res) => {
         totalPrice,
         allQuantity,
         productList,
-        paid:          true,
+        paid:           true,
         deliveryStatus: "pending",
+        fulfillmentType:       fType,
+        deliveryAddress:       cleanAddress,
+        deliveryRecipientName: cleanRecipient,
+        deliveryPhone:         cleanPhone,
       }], { session });
 
       // Notify admin of new order — fire-and-forget (after transaction commits)
@@ -320,8 +356,12 @@ const completeOrder = async (req, res) => {
               adminEmail,
               buyerName: buyerName || (role === "wholesale" ? "Wholesale Customer" : "Customer"),
               totalPrice,
-              orderId: placed[0]._id,
+              orderId:         placed[0]._id,
               role,
+              fulfillmentType: placed[0].fulfillmentType,
+              deliveryAddress: placed[0].deliveryAddress,
+              deliveryRecipientName: placed[0].deliveryRecipientName,
+              deliveryPhone:   placed[0].deliveryPhone,
             });
           }
         } catch (e) {
@@ -504,6 +544,11 @@ const generateInvoice = async (req, res) => {
         _changedById:   changedById,
         _isDelegated:   isDelegated,
         _orderCreatedAt: order.createdAt,
+        // Fulfillment fields
+        _fulfillmentType:         order.fulfillmentType         || "pickup",
+        _deliveryAddress:         order.deliveryAddress         || null,
+        _deliveryRecipientName:   order.deliveryRecipientName   || null,
+        _deliveryPhone:           order.deliveryPhone           || null,
       });
     }
 
@@ -525,6 +570,12 @@ const generateInvoice = async (req, res) => {
     const changedById    = req._changedById   || null;
     const isDelegated    = req._isDelegated   || false;
     const orderCreatedAt = req._orderCreatedAt || null;
+    // Fulfillment display values
+    const fulfillmentType       = req._fulfillmentType       || "pickup";
+    const deliveryAddress       = req._deliveryAddress       || null;
+    const deliveryRecipientName = req._deliveryRecipientName || null;
+    const deliveryPhone         = req._deliveryPhone         || null;
+    const isDelivery            = fulfillmentType === "delivery";
 
     // Role badge label: WS for wholesale, RT for retail customer, Staff for staff
     // For walk-in (staff) orders, determine from first product's priceMode
@@ -613,6 +664,36 @@ const generateInvoice = async (req, res) => {
           } else {
             doc.font("Helvetica-Bold").fillColor("#b91c1c").text("Refund: Pending — contact store", margin, doc.y, { width: contentWidth });
           }
+          doc.fillColor("#000").moveDown(0.3);
+        }
+
+        // ── Delivery block (PDF) ────────────────────────────────────────────
+        if (isDelivery) {
+          divider();
+          doc.moveDown(0.5);
+          doc.fontSize(7.5).font("Helvetica-Bold").fillColor("#92400e")
+            .text("🚚 DELIVERY ORDER", margin, doc.y, { align: "center", width: contentWidth });
+          doc.font("Helvetica").fontSize(7).fillColor("#374151").moveDown(0.3);
+          if (deliveryRecipientName) {
+            const ly = doc.y;
+            doc.font("Helvetica-Bold").text("Recipient:", margin, ly, { width: 70 });
+            doc.font("Helvetica").text(deliveryRecipientName, margin + 72, ly, { width: contentWidth - 72 });
+            doc.moveDown(0.3);
+          }
+          if (deliveryPhone) {
+            const ly = doc.y;
+            doc.font("Helvetica-Bold").text("Phone:", margin, ly, { width: 70 });
+            doc.font("Helvetica").text(deliveryPhone, margin + 72, ly, { width: contentWidth - 72 });
+            doc.moveDown(0.3);
+          }
+          if (deliveryAddress) {
+            const ly = doc.y;
+            doc.font("Helvetica-Bold").text("Address:", margin, ly, { width: 70 });
+            doc.font("Helvetica").text(deliveryAddress, margin + 72, ly, { width: contentWidth - 72 });
+            doc.moveDown(0.3);
+          }
+          doc.fontSize(6.5).font("Helvetica").fillColor("#92400e")
+            .text("Transport fare is separate — our team will contact you to arrange delivery cost.", margin, doc.y, { width: contentWidth });
           doc.fillColor("#000").moveDown(0.3);
         }
 
@@ -862,6 +943,21 @@ const generateInvoice = async (req, res) => {
         '<div style="font-weight:700;color:#b91c1c;font-size:.74rem;text-align:center;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;">⚠️ Order Cancelled</div>',
         ...(cancelledAt ? ['<div style="display:flex;justify-content:space-between;font-size:.75rem;padding:3px 0;"><span style="font-weight:600;color:#6b7280;">Cancelled on</span><span>' + new Date(cancelledAt).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" }) + '</span></div>'] : []),
         '<div style="display:flex;justify-content:space-between;font-size:.75rem;padding:3px 0;"><span style="font-weight:600;color:#6b7280;">Refund</span><span style="font-weight:700;color:' + (refundMade ? "#7c3aed" : "#b91c1c") + '">' + (refundMade ? "✅ Completed" : "⏳ Pending — contact store") + '</span></div>',
+        '</div>',
+        '<div style="height:12px"></div>',
+      ] : []),
+
+      // ── Delivery info block ────────────────────────────────────────────────
+      ...(isDelivery ? [
+        '<hr class="dash"/>',
+        '<div style="margin:0 16px 0;background:#fffbeb;border:1px solid #f59e0b;border-radius:10px;padding:12px 14px;">',
+        '<div style="font-weight:700;color:#92400e;font-size:.74rem;text-align:center;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;">🚚 Delivery Order</div>',
+        '<div style="font-size:.75rem;padding:3px 0;color:#374151;">',
+        '<div style="display:flex;justify-content:space-between;padding:2px 0;"><span style="font-weight:600;color:#6b7280;">Recipient</span><span>' + escapeHtml(deliveryRecipientName || "—") + '</span></div>',
+        '<div style="display:flex;justify-content:space-between;padding:2px 0;"><span style="font-weight:600;color:#6b7280;">Phone</span><span>' + escapeHtml(deliveryPhone || "—") + '</span></div>',
+        '<div style="padding:2px 0;"><span style="font-weight:600;color:#6b7280;">Address</span><br/><span style="font-style:italic;">' + escapeHtml(deliveryAddress || "—") + '</span></div>',
+        '</div>',
+        '<div style="margin-top:8px;font-size:.68rem;color:#92400e;font-style:italic;">Transport fare is separate — our team will contact you to arrange delivery cost.</div>',
         '</div>',
         '<div style="height:12px"></div>',
       ] : []),

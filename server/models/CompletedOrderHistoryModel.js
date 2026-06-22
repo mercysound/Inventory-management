@@ -45,6 +45,13 @@ const completedOrderHistorySchema = new mongoose.Schema(
     // mark if admin(s) have hidden it (counts as admin-side delete)
     adminHidden: { type: Boolean, default: false },
 
+    // ── Fulfillment info (carried over from AllOrdersPlaced) ──────────────
+    fulfillmentType:       { type: String, enum: ["pickup", "delivery"], default: "pickup" },
+    deliveryAddress:       { type: String, default: null },
+    deliveryRecipientName: { type: String, default: null },
+    deliveryPhone:         { type: String, default: null },
+    // ─────────────────────────────────────────────────────────────────────
+
     // ── Delegation / Status-change audit trail ────────────────────────────
     // changedBy:        the user who changed the delivery status (admin or delegated staff)
     // changedByRole:    "admin" or "staff"

@@ -27,6 +27,19 @@ const allOrdersPlacedSchema = new mongoose.Schema(
     ],
     paid: { type: Boolean, default: false },
 
+    // ── Fulfillment preference ────────────────────────────────────────────
+    // fulfillmentType: "pickup" (customer collects) | "delivery" (we deliver)
+    // Delivery-specific fields are only populated when type = "delivery".
+    fulfillmentType: {
+      type:    String,
+      enum:    ["pickup", "delivery"],
+      default: "pickup",
+    },
+    deliveryAddress:       { type: String, default: null },
+    deliveryRecipientName: { type: String, default: null },
+    deliveryPhone:         { type: String, default: null },
+    // ─────────────────────────────────────────────────────────────────────
+
     // ── Expiry notification tracking ──────────────────────────────────────
     // firstExpiryEmailSentAt: timestamp of the first expiry notification email
     // Used to avoid duplicate "first" emails in "once" mode
