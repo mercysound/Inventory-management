@@ -76,13 +76,13 @@ const ImageCarousel = ({ images = [], productName = "" }) => {
   return (
     <div className="relative w-full select-none">
       {/* Main image — taller, flush to top of modal */}
-      <div className="w-full h-56 relative overflow-hidden bg-gray-100">
+      <div className="w-full h-56 relative overflow-hidden bg-white">
         <AnimatePresence mode="wait" initial={false}>
           <motion.img
             key={idx}
             src={imgs[idx]}
             alt={`${productName} ${idx + 1}`}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain p-2"
             initial={{ opacity: 0, x: 40 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -40 }}
@@ -139,6 +139,8 @@ const ImageCarousel = ({ images = [], productName = "" }) => {
 const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock, showStockText = true }) => {
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
+  // Track whether user has touched the quantity input — prevents remove warning on initial open
+  const userTouchedQty = useRef(false);
 
   const isUpdate = !!orderData.orderId;
   const qty      = Number(orderData.quantity) || 0;
@@ -246,6 +248,7 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
 
   // ── Quantity helpers (recalculate based on current mode) ──────────────────
   const setQty = (next) => {
+    userTouchedQty.current = true;
     const n = Math.max(0, Math.min(next, orderData.stock));
     const storedMode = (() => {
       try { return localStorage.getItem("melech_staff_price_mode"); } catch { return null; }
@@ -268,6 +271,7 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
   };
 
   const handleInputChange = (e) => {
+    userTouchedQty.current = true;
     const raw = e.target.value;
     if (raw === "") {
       setOrderData((prev) => ({ ...prev, quantity: "", total: 0 }));
@@ -570,7 +574,7 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
 
               {/* Total / remove warning */}
               <AnimatePresence mode="wait">
-                {isUpdate && qty === 0 ? (
+                {isUpdate && qty === 0 && userTouchedQty.current ? (
                   <motion.div key="remove-warning"
                     initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.1 }}
@@ -620,12 +624,12 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
                     ${
                       orderData.stock === 0 || (!isUpdate && qty < 1)
                         ? "bg-gray-300 cursor-not-allowed shadow-none"
-                        : isUpdate && qty === 0
+                        : isUpdate && qty === 0 && userTouchedQty.current
                         ? "bg-red-500 hover:bg-red-600 shadow-red-200"
                         : "bg-green-600 hover:bg-green-700 shadow-green-200"
                     }`}
                 >
-                  {isUpdate && qty === 0 ? (
+                  {isUpdate && qty === 0 && userTouchedQty.current ? (
                     <><Trash2 size={14} /> Remove</>
                   ) : isUpdate ? (
                     <><RefreshCw size={14} /> Update Cart</>

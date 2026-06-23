@@ -8,6 +8,7 @@ import {
   ShoppingBag,
   ShoppingCart,
   SlidersHorizontal,
+  X,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useAuth } from "../../../context/AuthContext";
@@ -92,6 +93,153 @@ const QuickAddButton = ({ product, cartItem, onAdd, onIncrease, onDecrease }) =>
   );
 };
 
+// ─── ProductCard — shared card used by all three tabs ────────────────────────
+const ProductCard = ({ product, index, cartMap, user, canSeeStock, showWholesaleCol, onCardClick, onAdd, onIncrease, onDecrease }) => {
+  const cartItem = cartMap[product._id] || null;
+  const inCart   = !!cartItem;
+  const thumb    = product.images?.[0] || product.image || null;
+  const price    = user?.role === "wholesale"
+    ? (product.wholesalePrice ?? product.price)
+    : product.price;
+  const oos = product.stock === 0;
+  return (
+    <motion.div
+      key={product._id}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(index * 0.02, 0.25) }}
+      onClick={() => onCardClick(product)}
+      className={`relative group flex flex-col bg-white rounded-2xl border overflow-hidden
+        cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5
+        ${inCart ? "border-green-200 shadow-sm shadow-green-100/60" : "border-gray-100 shadow-sm"}
+        ${oos ? "opacity-60" : ""}`}
+    >
+      <div className="relative w-full h-32 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden shrink-0">
+        {thumb ? (
+          <img src={thumb} alt={product.name} loading="lazy"
+            className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform duration-300" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Package size={28} className="text-gray-200" />
+          </div>
+        )}
+        {/* Badges — only one badge shown at a time (priority: bonanza > new > photos) */}
+        {product.isBonanza && (
+          <span className="absolute top-2 left-2 text-[9px] font-bold bg-orange-500 text-white px-2 py-0.5 rounded-full shadow-sm">
+            🎉 DEAL
+          </span>
+        )}
+        {!product.isBonanza && product.isNewArrival && (
+          <span className="absolute top-2 left-2 text-[9px] font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-full shadow-sm">
+            ✨ NEW
+          </span>
+        )}
+        {!product.isBonanza && !product.isNewArrival && Array.isArray(product.images) && product.images.length > 1 && (
+          <span className="absolute top-2 left-2 text-[9px] font-bold bg-black/50 text-white px-1.5 py-0.5 rounded-full">
+            {product.images.length} photos
+          </span>
+        )}
+        {inCart && (
+          <div className="absolute top-2 right-2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow flex items-center gap-1">
+            <ShoppingCart size={8} />{cartItem.quantity}
+          </div>
+        )}
+        {oos && (
+          <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
+            <span className="bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow">Out of stock</span>
+          </div>
+        )}
+      </div>
+      <div className="p-2.5 flex flex-col gap-1.5">
+        <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full w-fit max-w-full truncate tracking-wide uppercase">
+          {product.categoryId?.name || "—"}
+        </span>
+        <p className="font-bold text-gray-900 text-sm leading-snug line-clamp-2 min-h-[1.75rem]">{product.name}</p>
+        {product.description && (
+          <p className="text-[11px] text-gray-400 line-clamp-1 leading-relaxed">{product.description}</p>
+        )}
+        {user?.role === "staff" && showWholesaleCol && (
+          <p className="text-[11px] text-amber-600 font-semibold">
+            WS: {product.wholesalePrice != null ? `₦${Number(product.wholesalePrice).toLocaleString()}` : "—"}
+          </p>
+        )}
+        {canSeeStock && <div><StockBadge stock={product.stock} /></div>}
+        {/* ── Price + action on one row ── */}
+        <div className="mt-auto pt-1.5 border-t border-gray-50 flex items-center justify-between gap-2"
+          onClick={(e) => e.stopPropagation()}>
+          {/* Price — shrinks to give room to the button on long prices */}
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <p className="font-extrabold text-gray-900 leading-none tabular-nums truncate
+              text-sm xs:text-sm"
+              style={{ fontSize: "clamp(0.7rem, 2.5vw, 0.875rem)" }}>
+              ₦{Number(price).toLocaleString()}
+            </p>
+            {(user?.role === "wholesale" || user?.role === "customer") && (
+              <span className={`text-[9px] font-bold tracking-wide ${user?.role === "wholesale" ? "text-amber-600" : "text-indigo-500"}`}>
+                {user?.role === "wholesale" ? "WSP" : "RTP"}
+              </span>
+            )}
+          </div>
+          {/* Button — never shrinks */}
+          <div className="flex-shrink-0">
+            <QuickAddButton product={product} cartItem={cartItem}
+              onAdd={() => onAdd(product)}
+              onIncrease={() => onIncrease(product._id)}
+              onDecrease={() => onDecrease(product._id)} />
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+// ─── TabPagination — reusable pagination bar for each tab ────────────────────
+const COLORS = {
+  green:  { active: "bg-green-600 border-green-600 shadow-green-200", hover: "hover:bg-gray-50", btn: "bg-green-600 hover:bg-green-700", ring: "focus:ring-green-400" },
+  indigo: { active: "bg-indigo-600 border-indigo-600 shadow-indigo-200", hover: "hover:bg-gray-50", btn: "bg-indigo-600 hover:bg-indigo-700", ring: "focus:ring-indigo-400" },
+  orange: { active: "bg-orange-500 border-orange-500 shadow-orange-200", hover: "hover:bg-gray-50", btn: "bg-orange-500 hover:bg-orange-600", ring: "focus:ring-orange-400" },
+};
+const TabPagination = ({ current, total, count, pageSize, jump, setJump, goTo, color = "green" }) => {
+  if (total <= 1) return null;
+  const c = COLORS[color] || COLORS.green;
+  const pages = Array.from({ length: total }, (_, i) => i + 1)
+    .filter(p => p === 1 || p === total || Math.abs(p - current) <= 1)
+    .reduce((acc, p, i, arr) => { if (i > 0 && p - arr[i-1] > 1) acc.push("…"); acc.push(p); return acc; }, []);
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 flex-wrap">
+      <p className="text-[11px] text-gray-400 order-3 sm:order-1">
+        Showing <span className="font-semibold text-gray-600">{(current-1)*pageSize+1}</span>–<span className="font-semibold text-gray-600">{Math.min(current*pageSize,count)}</span> of <span className="font-semibold text-gray-600">{count}</span>
+      </p>
+      <div className="flex items-center justify-center gap-1.5 flex-wrap order-1 sm:order-2">
+        <button onClick={() => goTo(current-1)} disabled={current===1}
+          className="px-3 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-white disabled:opacity-40 transition shadow-sm">
+          &#8592; Prev
+        </button>
+        {pages.map((p, i) => p === "…"
+          ? <span key={`e${i}`} className="text-gray-400 text-sm px-1">…</span>
+          : <button key={p} onClick={() => goTo(p)}
+              className={`w-9 h-9 rounded-xl text-sm font-semibold border transition shadow-sm
+                ${p === current ? `${c.active} text-white` : `bg-white border-gray-200 text-gray-600 ${c.hover}`}`}>
+              {p}
+            </button>
+        )}
+        <button onClick={() => goTo(current+1)} disabled={current===total}
+          className="px-3 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-white disabled:opacity-40 transition shadow-sm">
+          Next &#8594;
+        </button>
+      </div>
+      <form onSubmit={(e) => { e.preventDefault(); const n = parseInt(jump,10); if (!isNaN(n)) goTo(n); }}
+        className="flex items-center gap-1.5 order-2 sm:order-3">
+        <span className="text-[11px] text-gray-400">Go to</span>
+        <input type="number" min={1} max={total} value={jump} onChange={e => setJump(e.target.value)}
+          onWheel={e => e.currentTarget.blur()} placeholder="pg"
+          className={`w-14 h-9 text-center text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 ${c.ring} shadow-sm`} />
+        <button type="submit" className={`h-9 px-3 rounded-xl text-xs font-semibold text-white transition shadow-sm ${c.btn}`}>Go</button>
+      </form>
+    </div>
+  );
+};
+
 // ─── Main component ──────────────────────────────────────────────────────────
 const CustomerProducts = () => {
   const { user } = useAuth();
@@ -105,12 +253,30 @@ const CustomerProducts = () => {
   const cartMapRef = useRef({});
   const [openModal,        setOpenModal]        = useState(false);
   const [loading,          setLoading]          = useState(true);
-  const [searchQuery,      setSearchQuery]      = useState("");
+
+  // ── Main tab / filter state ───────────────────────────────────────────────
+  // activeTab: "all" | "new" | "bonanza"
+  const [activeTab,        setActiveTab]        = useState("all");
+  const [searchQuery,      setSearchQuery]      = useState("");       // "all" tab search
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [showNewArrivals,  setShowNewArrivals]  = useState(false); // New Arrivals filter
-  const [showWholesaleCol, setShowWholesaleCol] = useState(false);
+  const [catSearch,        setCatSearch]        = useState("");       // category dropdown search
+  const [showCatDropdown,  setShowCatDropdown]  = useState(false);   // custom dropdown open
+  const catDropdownRef = useRef(null);
+
+  // Per-tab independent search + page state
+  const [newSearch,     setNewSearch]     = useState("");
+  const [bonanzaSearch, setBonanzaSearch] = useState("");
   const [currentPage,      setCurrentPage]      = useState(1);
+  const [newPage,          setNewPage]          = useState(1);
+  const [bonanzaPage,      setBonanzaPage]      = useState(1);
+  const [jumpInput,        setJumpInput]        = useState("");
+  const [newJump,          setNewJump]          = useState("");
+  const [bonanzaJump,      setBonanzaJump]      = useState("");
+
+  const pageTopRef = useRef(null);
   const PRODUCTS_PAGE_SIZE = 20;
+
+  const [showWholesaleCol, setShowWholesaleCol] = useState(false);
 
   const [orderData, setOrderData] = useState({
     orderId:"", productId:"", productName:"", productImage:"",
@@ -164,6 +330,18 @@ const CustomerProducts = () => {
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  // Close category dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e) => {
+      if (catDropdownRef.current && !catDropdownRef.current.contains(e.target)) {
+        setShowCatDropdown(false);
+        setCatSearch("");
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("pos-token");
@@ -304,28 +482,50 @@ const CustomerProducts = () => {
   }, []);
 
   // ── Filters ────────────────────────────────────────────────────────────────
-  const applyFilters = useCallback((query, catId, newArrivalsOnly = showNewArrivals) => {
+  const applyFilters = useCallback((query, catId, newArrivalsOnly = false) => {
     let r = products;
-    if (catId)            r = r.filter((p) => (p.categoryId?._id ?? p.categoryId) === catId);
-    if (query)            r = r.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()));
-    if (newArrivalsOnly)  r = r.filter((p) => p.isNewArrival === true);
-    // Sort: new arrivals bubble to the top (by newArrivalAt desc, then createdAt desc)
+    if (catId) r = r.filter((p) => (p.categoryId?._id ?? p.categoryId) === catId);
+    if (query) r = r.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()));
+    if (newArrivalsOnly) r = r.filter((p) => p.isNewArrival === true);
     r = [...r].sort((a, b) => {
       if (a.isNewArrival && !b.isNewArrival) return -1;
       if (!a.isNewArrival && b.isNewArrival) return 1;
-      if (a.isNewArrival && b.isNewArrival) {
+      if (a.isNewArrival && b.isNewArrival)
         return new Date(b.newArrivalAt || 0) - new Date(a.newArrivalAt || 0);
-      }
       return 0;
     });
     setFilteredProducts(r);
-  }, [products, showNewArrivals]);
+  }, [products]);
 
-  const handleSearch         = (e) => { const q = e.target.value; setSearchQuery(q); setCurrentPage(1); applyFilters(q, selectedCategory); };
-  const handleCategoryChange = (e) => { const c = e.target.value; setSelectedCategory(c); setCurrentPage(1); applyFilters(searchQuery, c); };
+  const goToPage = (p) => {
+    const total = Math.ceil(filteredProducts.length / PRODUCTS_PAGE_SIZE);
+    const clamped = Math.max(1, Math.min(p, total));
+    setCurrentPage(clamped); setJumpInput("");
+    setTimeout(() => pageTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  };
+  const goToNewPage = (p) => {
+    const total = Math.ceil(products.filter(x => x.isNewArrival).length / PRODUCTS_PAGE_SIZE);
+    setNewPage(Math.max(1, Math.min(p, total))); setNewJump("");
+    setTimeout(() => pageTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  };
+  const goToBonanzaPage = (p) => {
+    const total = Math.ceil(products.filter(x => x.isBonanza).length / PRODUCTS_PAGE_SIZE);
+    setBonanzaPage(Math.max(1, Math.min(p, total))); setBonanzaJump("");
+    setTimeout(() => pageTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  };
+
+  const handleSearch = (e) => { const q = e.target.value; setSearchQuery(q); setCurrentPage(1); applyFilters(q, selectedCategory); };
+  const handleCategorySelect = (id) => {
+    setSelectedCategory(id); setCurrentPage(1); setShowCatDropdown(false); setCatSearch("");
+    applyFilters(searchQuery, id);
+  };
   const handleNewArrivalsToggle = () => {
-    const next = !showNewArrivals;
-    setShowNewArrivals(next); setCurrentPage(1); applyFilters(searchQuery, selectedCategory, next);
+    setActiveTab((t) => t === "new" ? "all" : "new");
+    setNewPage(1); setNewSearch("");
+  };
+  const handleBonanzaToggle = () => {
+    setActiveTab((t) => t === "bonanza" ? "all" : "bonanza");
+    setBonanzaPage(1); setBonanzaSearch("");
   };
 
   // ── Open order modal ───────────────────────────────────────────────────────
@@ -360,8 +560,24 @@ const CustomerProducts = () => {
   };
 
   const totalCartItems = Object.values(cartMap).reduce((s, i) => s + (i.quantity || 0), 0);
-  const cpPaginated    = filteredProducts.slice((currentPage - 1) * PRODUCTS_PAGE_SIZE, currentPage * PRODUCTS_PAGE_SIZE);
-  const totalPages     = Math.ceil(filteredProducts.length / PRODUCTS_PAGE_SIZE);
+
+  // ── Tab-specific filtered + paginated lists ───────────────────────────────
+  const newArrivalProducts = products.filter(p => p.isNewArrival);
+  const bonanzaProducts    = products.filter(p => p.isBonanza);
+  const newFiltered        = newSearch ? newArrivalProducts.filter(p => p.name.toLowerCase().includes(newSearch.toLowerCase())) : newArrivalProducts;
+  const bonanzaFiltered    = bonanzaSearch ? bonanzaProducts.filter(p => p.name.toLowerCase().includes(bonanzaSearch.toLowerCase())) : bonanzaProducts;
+  const cpPaginated        = filteredProducts.slice((currentPage - 1) * PRODUCTS_PAGE_SIZE, currentPage * PRODUCTS_PAGE_SIZE);
+  const totalPages         = Math.ceil(filteredProducts.length / PRODUCTS_PAGE_SIZE);
+  const newPaginated       = newFiltered.slice((newPage - 1) * PRODUCTS_PAGE_SIZE, newPage * PRODUCTS_PAGE_SIZE);
+  const newTotalPages      = Math.ceil(newFiltered.length / PRODUCTS_PAGE_SIZE);
+  const bonanzaPaginated   = bonanzaFiltered.slice((bonanzaPage - 1) * PRODUCTS_PAGE_SIZE, bonanzaPage * PRODUCTS_PAGE_SIZE);
+  const bonanzaTotalPages  = Math.ceil(bonanzaFiltered.length / PRODUCTS_PAGE_SIZE);
+
+  // Filtered categories for the searchable dropdown
+  const filteredCats = catSearch
+    ? categories.filter(c => c.name.toLowerCase().includes(catSearch.toLowerCase()))
+    : categories;
+  const selectedCatName = categories.find(c => c._id === selectedCategory)?.name || "All Categories";
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
@@ -411,24 +627,66 @@ const CustomerProducts = () => {
         {/* ── Filter bar ──────────────────────────────────────────────── */}
         <div className="flex flex-wrap gap-2.5 items-center bg-white rounded-2xl
           border border-gray-100 shadow-sm px-4 py-3">
-          <div className="relative">
-            <SlidersHorizontal size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            <select onChange={handleCategoryChange} value={selectedCategory}
-              className="appearance-none border border-gray-200 rounded-xl pl-8 pr-7 py-2
-                text-xs text-gray-700 bg-gray-50 focus:outline-none focus:ring-2
-                focus:ring-green-400 focus:border-transparent transition cursor-pointer">
-              <option value="">All Categories</option>
-              {categories.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
-            </select>
+
+          {/* Searchable category dropdown */}
+          <div className="relative" ref={catDropdownRef}>
+            <button
+              type="button"
+              onClick={() => { setShowCatDropdown(v => !v); setCatSearch(""); }}
+              className="inline-flex items-center gap-1.5 border border-gray-200 rounded-xl pl-3 pr-3 py-2
+                text-xs text-gray-700 bg-gray-50 hover:bg-white transition min-w-[130px] justify-between"
+            >
+              <SlidersHorizontal size={13} className="text-gray-400 shrink-0" />
+              <span className="truncate max-w-[90px]">{selectedCatName}</span>
+              <span className="text-gray-400 text-[10px]">▾</span>
+            </button>
+            {showCatDropdown && (
+              <div className="absolute top-full mt-1 left-0 z-50 w-56 bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden">
+                <div className="p-2 border-b border-gray-100">
+                  <div className="relative">
+                    <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <input
+                      autoFocus
+                      type="text"
+                      value={catSearch}
+                      onChange={e => setCatSearch(e.target.value)}
+                      placeholder="Search categories…"
+                      className="w-full pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-300"
+                    />
+                  </div>
+                </div>
+                <div className="max-h-52 overflow-y-auto">
+                  <button
+                    onClick={() => handleCategorySelect("")}
+                    className={`w-full text-left px-3 py-2 text-xs hover:bg-green-50 transition
+                      ${!selectedCategory ? "font-semibold text-green-700 bg-green-50" : "text-gray-700"}`}
+                  >All Categories</button>
+                  {filteredCats.map(c => (
+                    <button
+                      key={c._id}
+                      onClick={() => handleCategorySelect(c._id)}
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-green-50 transition
+                        ${selectedCategory === c._id ? "font-semibold text-green-700 bg-green-50" : "text-gray-700"}`}
+                    >{c.name}</button>
+                  ))}
+                  {filteredCats.length === 0 && (
+                    <p className="px-3 py-3 text-xs text-gray-400 text-center">No categories found</p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="relative flex-1 min-w-[160px] max-w-xs">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            <input type="text" placeholder="Search products…" value={searchQuery} onChange={handleSearch}
-              className="w-full border border-gray-200 rounded-xl pl-8 pr-4 py-2 text-xs
-                text-gray-700 bg-gray-50 focus:outline-none focus:ring-2
-                focus:ring-green-400 focus:border-transparent transition placeholder:text-gray-400" />
-          </div>
+          {/* Product name search — only on All tab */}
+          {activeTab === "all" && (
+            <div className="relative flex-1 min-w-[160px] max-w-xs">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <input type="text" placeholder="Search products…" value={searchQuery} onChange={handleSearch}
+                className="w-full border border-gray-200 rounded-xl pl-8 pr-4 py-2 text-xs
+                  text-gray-700 bg-gray-50 focus:outline-none focus:ring-2
+                  focus:ring-green-400 focus:border-transparent transition placeholder:text-gray-400" />
+            </div>
+          )}
 
           {user?.role === "staff" && (
             <button type="button"
@@ -444,33 +702,99 @@ const CustomerProducts = () => {
             </button>
           )}
 
-          {/* New Arrivals filter pill */}
-          {(() => {
-            const newCount = products.filter((p) => p.isNewArrival).length;
-            if (newCount === 0) return null;
-            return (
-              <button
-                type="button"
-                onClick={handleNewArrivalsToggle}
-                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition
-                  ${showNewArrivals
-                    ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                    : "bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-                  }`}
-              >
-                ✨ New Arrivals
-                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold
-                  ${showNewArrivals ? "bg-white/20 text-white" : "bg-indigo-100 text-indigo-700"}`}>
-                  {newCount}
-                </span>
-              </button>
-            );
-          })()}
+          {/* ✨ New Arrivals tab pill */}
+          {newArrivalProducts.length > 0 && (
+            <button type="button" onClick={handleNewArrivalsToggle}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition
+                ${activeTab === "new"
+                  ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                  : "bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50"}`}>
+              ✨ New Arrivals
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold
+                ${activeTab === "new" ? "bg-white/20 text-white" : "bg-indigo-100 text-indigo-700"}`}>
+                {newArrivalProducts.length}
+              </span>
+            </button>
+          )}
+
+          {/* 🎉 Bonanza tab pill */}
+          {bonanzaProducts.length > 0 && (
+            <button type="button" onClick={handleBonanzaToggle}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition
+                ${activeTab === "bonanza"
+                  ? "bg-orange-500 text-white border-orange-500 shadow-sm"
+                  : "bg-white text-orange-600 border-orange-200 hover:bg-orange-50"}`}>
+              🎉 Bonanza
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold
+                ${activeTab === "bonanza" ? "bg-white/20 text-white" : "bg-orange-100 text-orange-700"}`}>
+                {bonanzaProducts.length}
+              </span>
+            </button>
+          )}
         </div>
 
         {/* ── Content ─────────────────────────────────────────────────── */}
         {loading ? (
           <CustomerProductsSkeleton />
+        ) : activeTab === "new" ? (
+          /* ── New Arrivals tab ── */
+          <div className="space-y-4">
+            {/* Tab header + search */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-base font-bold text-indigo-700">✨ New Arrivals</span>
+                <span className="text-xs text-indigo-500 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full font-semibold">{newArrivalProducts.length}</span>
+              </div>
+              <div className="relative flex-1 max-w-xs">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                <input type="text" placeholder="Search new arrivals…" value={newSearch}
+                  onChange={e => { setNewSearch(e.target.value); setNewPage(1); }}
+                  className="w-full border border-gray-200 rounded-xl pl-8 pr-4 py-2 text-xs bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition" />
+              </div>
+            </div>
+            {newFiltered.length === 0 ? (
+              <div className="flex flex-col items-center py-16 gap-3">
+                <Package size={32} className="text-gray-300" />
+                <p className="text-gray-400 text-sm">{newSearch ? `No new arrivals match "${newSearch}"` : "No new arrivals yet"}</p>
+              </div>
+            ) : (
+              <>
+                <div ref={pageTopRef} className="grid grid-cols-2 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 md:gap-3">
+                  {newPaginated.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} />)}
+                </div>
+                <TabPagination current={newPage} total={newTotalPages} count={newFiltered.length} pageSize={PRODUCTS_PAGE_SIZE} jump={newJump} setJump={setNewJump} goTo={goToNewPage} color="indigo" />
+              </>
+            )}
+          </div>
+        ) : activeTab === "bonanza" ? (
+          /* ── Bonanza tab ── */
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-base font-bold text-orange-700">🎉 Bonanza Deals</span>
+                <span className="text-xs text-orange-600 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-full font-semibold">{bonanzaProducts.length}</span>
+              </div>
+              <div className="relative flex-1 max-w-xs">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                <input type="text" placeholder="Search bonanza deals…" value={bonanzaSearch}
+                  onChange={e => { setBonanzaSearch(e.target.value); setBonanzaPage(1); }}
+                  className="w-full border border-gray-200 rounded-xl pl-8 pr-4 py-2 text-xs bg-gray-50 focus:outline-none focus:ring-2 focus:ring-orange-300 transition" />
+              </div>
+            </div>
+            {bonanzaFiltered.length === 0 ? (
+              <div className="flex flex-col items-center py-16 gap-3">
+                <Package size={32} className="text-gray-300" />
+                <p className="text-gray-400 text-sm">{bonanzaSearch ? `No deals match "${bonanzaSearch}"` : "No bonanza deals yet"}</p>
+              </div>
+            ) : (
+              <>
+                <div ref={pageTopRef} className="grid grid-cols-2 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 md:gap-3">
+                  {bonanzaPaginated.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} />)}
+                </div>
+                <TabPagination current={bonanzaPage} total={bonanzaTotalPages} count={bonanzaFiltered.length} pageSize={PRODUCTS_PAGE_SIZE} jump={bonanzaJump} setJump={setBonanzaJump} goTo={goToBonanzaPage} color="orange" />
+              </>
+            )}
+          </div>
         ) : cpPaginated.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4">
             <div className="w-20 h-20 rounded-3xl bg-gray-100 flex items-center justify-center">
@@ -481,167 +805,11 @@ const CustomerProducts = () => {
           </div>
         ) : (
           <>
-            {/* ── Product card grid ── */}
-            <div className="grid grid-cols-2 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 md:gap-3">
-              {cpPaginated.map((product, index) => {
-                const cartItem = cartMap[product._id] || null;
-                const inCart   = !!cartItem;
-                const thumb    = product.images?.[0] || product.image || null;
-                const price    = user?.role === "wholesale"
-                  ? (product.wholesalePrice ?? product.price)
-                  : product.price;
-                const oos = product.stock === 0;
-
-                return (
-                  <motion.div
-                    key={product._id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: Math.min(index * 0.02, 0.25) }}
-                    onClick={() => handleOrderChange(product)}
-                    className={`relative group flex flex-col bg-white rounded-2xl border overflow-hidden
-                      cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5
-                      ${inCart ? "border-green-200 shadow-sm shadow-green-100/60" : "border-gray-100 shadow-sm"}
-                      ${oos ? "opacity-60" : ""}`}
-                  >
-                    {/* ── Image area ── */}
-                    <div className="relative w-full h-32 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden shrink-0">
-                      {thumb ? (
-                        <img src={thumb} alt={product.name} loading="lazy"
-                          className="w-full h-full object-contain p-1
-                            group-hover:scale-105 transition-transform duration-300" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Package size={28} className="text-gray-200" />
-                        </div>
-                      )}
-
-                      {/* New Arrival badge */}
-                      {product.isNewArrival && (
-                        <span className="absolute top-2 left-2 text-[9px] font-bold bg-indigo-600
-                          text-white px-2 py-0.5 rounded-full shadow-sm flex items-center gap-0.5">
-                          ✨ NEW
-                        </span>
-                      )}
-
-                      {/* Multiple images badge */}
-                      {Array.isArray(product.images) && product.images.length > 1 && (
-                        <span className="absolute top-2 left-2 text-[9px] font-bold bg-black/50
-                          text-white px-1.5 py-0.5 rounded-full">
-                          {product.images.length} photos
-                        </span>
-                      )}
-
-                      {/* In-cart badge */}
-                      {inCart && (
-                        <div className="absolute top-2 right-2 bg-green-500 text-white
-                          text-[10px] font-bold px-2 py-0.5 rounded-full shadow flex items-center gap-1">
-                          <ShoppingCart size={8} />{cartItem.quantity}
-                        </div>
-                      )}
-
-                      {/* Out of stock overlay */}
-                      {oos && (
-                        <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
-                          <span className="bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow">
-                            Out of stock
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* ── Card body ────────────────────────────────── */}
-                    <div className="p-2.5 flex flex-col gap-1.5">
-                      {/* Category chip */}
-                      <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50
-                        border border-indigo-100 px-2 py-0.5 rounded-full w-fit max-w-full truncate tracking-wide uppercase">
-                        {product.categoryId?.name || "—"}
-                      </span>
-
-                      {/* Product name — 2 lines max */}
-                      <p className="font-bold text-gray-900 text-sm leading-snug line-clamp-2 min-h-[1.75rem]">
-                        {product.name}
-                      </p>
-
-                      {/* Description — 1 line only to keep card compact */}
-                      {product.description && (
-                        <p className="text-[11px] text-gray-400 line-clamp-1 leading-relaxed">
-                          {product.description}
-                        </p>
-                      )}
-
-                      {/* Wholesale price for staff */}
-                      {user?.role === "staff" && showWholesaleCol && (
-                        <p className="text-[11px] text-amber-600 font-semibold">
-                          WS: {product.wholesalePrice != null ? `₦${Number(product.wholesalePrice).toLocaleString()}` : "—"}
-                        </p>
-                      )}
-
-                      {/* Stock badge */}
-                      {canSeeStock && <div><StockBadge stock={product.stock} /></div>}
-
-                      {/* ── Price + action row — stacked so long prices never fight the button ── */}
-                      <div className="mt-auto pt-1.5 border-t border-gray-50 flex flex-col gap-1.5"
-                        onClick={(e) => e.stopPropagation()}>
-                        {/* Price — full width, no constraint */}
-                        <div>
-                          <p className="text-base font-extrabold text-gray-900 leading-none break-all">
-                            ₦{Number(price).toLocaleString()}
-                          </p>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            {user?.role === "wholesale" && (
-                              <span className="text-[9px] text-amber-600 font-bold tracking-wide">WSP</span>
-                            )}
-                            {user?.role === "customer" && (
-                              <span className="text-[9px] text-indigo-500 font-bold tracking-wide">RTP</span>
-                            )}
-                          </div>
-                        </div>
-                        {/* Action button — full row, easy to tap */}
-                        <div className="flex justify-end">
-                          <QuickAddButton
-                            product={product}
-                            cartItem={cartItem}
-                            onAdd={() => handleQuickAdd(product)}
-                            onIncrease={() => handleQuickIncrease(product._id)}
-                            onDecrease={() => handleQuickDecrease(product._id)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
+            {/* ── All products grid ── */}
+            <div ref={pageTopRef} className="grid grid-cols-2 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 md:gap-3">
+              {cpPaginated.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} />)}
             </div>
-
-            {/* ── Pagination ────────────────────────────────────────── */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 pt-2 flex-wrap">
-                <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}
-                  className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium
-                    text-gray-600 hover:bg-white disabled:opacity-40 transition shadow-sm">
-                  ← Prev
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-                  .reduce((acc, p, i, arr) => { if (i > 0 && p - arr[i - 1] > 1) acc.push("…"); acc.push(p); return acc; }, [])
-                  .map((p, i) => p === "…"
-                    ? <span key={`e${i}`} className="text-gray-400 text-sm px-1">…</span>
-                    : <button key={p} onClick={() => setCurrentPage(p)}
-                        className={`w-9 h-9 rounded-xl text-sm font-semibold border transition shadow-sm
-                          ${p === currentPage
-                            ? "bg-green-600 text-white border-green-600 shadow-green-200"
-                            : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
-                        {p}
-                      </button>
-                  )}
-                <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-                  className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium
-                    text-gray-600 hover:bg-white disabled:opacity-40 transition shadow-sm">
-                  Next →
-                </button>
-              </div>
-            )}
+            <TabPagination current={currentPage} total={totalPages} count={filteredProducts.length} pageSize={PRODUCTS_PAGE_SIZE} jump={jumpInput} setJump={setJumpInput} goTo={goToPage} color="green" />
           </>
         )}
       </div>
