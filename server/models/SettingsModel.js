@@ -22,6 +22,9 @@ const settingsSchema = new mongoose.Schema(
       default: "repeat",
     },
 
+    // Master switch — when false the cron sends NO expiry emails at all
+    expiryReminderEnabled: { type: Boolean, default: true },
+
     reminderIntervalHours:  { type: Number, default: 6 },
     storeName:              { type: String, default: "Melech Store" },
     adminNotificationEmail: { type: String, default: "" },
@@ -54,8 +57,25 @@ const settingsSchema = new mongoose.Schema(
     ],
 
     // ── Inventory alert thresholds ────────────────────────────────────────
-    lowStockThreshold: { type: Number, default: 10, min: 1 },
-    productExpiryWarningWeeks: { type: Number, default: 3, min: 1 },
+    lowStockThreshold:             { type: Number, default: 10, min: 1 },
+    productExpiryWarningWeeks:     { type: Number, default: 3,  min: 1 },
+    // Master switch — when false the daily product expiry digest email is NOT sent
+    productExpiryEmailEnabled:     { type: Boolean, default: true },
+
+    // ── Bank / Payment account details (shown on staff preview invoices) ─────
+    // Up to two accounts so admin can list e.g. GTB + Opay
+    bankName:       { type: String, default: "" },
+    accountName:    { type: String, default: "" },
+    accountNumber:  { type: String, default: "" },
+    bankName2:      { type: String, default: "" },
+    accountName2:   { type: String, default: "" },
+    accountNumber2: { type: String, default: "" },
+
+    // ── Store contact info (shown publicly on the landing page) ─────────────
+    contactEmail:    { type: String, default: "" },
+    contactPhone:    { type: String, default: "" },
+    contactWhatsapp: { type: String, default: "" },
+    contactAddress:  { type: String, default: "" },
 
     // ── Appearance ────────────────────────────────────────────────────────
     // globalTheme: the admin-chosen brand palette applied to all users.

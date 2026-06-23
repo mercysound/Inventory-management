@@ -41,6 +41,7 @@ export const updateSettings = async (req, res) => {
       lowStockThreshold,
       productExpiryWarningWeeks,
       globalTheme,
+      expiryReminderEnabled,
     } = req.body;
 
     const update = {};
@@ -51,10 +52,21 @@ export const updateSettings = async (req, res) => {
     if (adminNotificationEmail  !== undefined) update.adminNotificationEmail  = adminNotificationEmail;
     if (lowStockThreshold       !== undefined) update.lowStockThreshold       = Math.max(1, Number(lowStockThreshold));
     if (productExpiryWarningWeeks !== undefined) update.productExpiryWarningWeeks = Math.max(1, Number(productExpiryWarningWeeks));
+    if (req.body.productExpiryEmailEnabled !== undefined) update.productExpiryEmailEnabled = Boolean(req.body.productExpiryEmailEnabled);
+    // Bank account details
+    const bankFields = ["bankName","accountName","accountNumber","bankName2","accountName2","accountNumber2"];
+    bankFields.forEach((f) => {
+      if (req.body[f] !== undefined) update[f] = String(req.body[f] || "").trim();
+    });
     if (globalTheme             !== undefined) {
       const valid = ["default", "ocean", "forest", "royal", "sunset"];
       if (valid.includes(globalTheme)) update.globalTheme = globalTheme;
     }
+    if (expiryReminderEnabled   !== undefined) update.expiryReminderEnabled   = Boolean(expiryReminderEnabled);
+    if (req.body.contactEmail    !== undefined) update.contactEmail    = String(req.body.contactEmail    || "").trim();
+    if (req.body.contactPhone    !== undefined) update.contactPhone    = String(req.body.contactPhone    || "").trim();
+    if (req.body.contactWhatsapp !== undefined) update.contactWhatsapp = String(req.body.contactWhatsapp || "").trim();
+    if (req.body.contactAddress  !== undefined) update.contactAddress  = String(req.body.contactAddress  || "").trim();
 
     const settings = await SettingsModel.findOneAndUpdate(
       { userId: req.user._id },
@@ -161,6 +173,7 @@ export const getExpiryConfigForCron = async () => {
     reminderMode:           settings?.reminderMode           ?? "repeat",
     reminderIntervalHours:  settings?.reminderIntervalHours  ?? 6,
     adminNotificationEmail: settings?.adminNotificationEmail ?? "",
+    expiryReminderEnabled:  settings?.expiryReminderEnabled  ?? true,
   };
 };
 
@@ -342,7 +355,29 @@ export const getMyDelegationStatus = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /settings/theme   (PUBLIC — no auth required)
+// GET /settings/contact-info   (PUBLIC — no auth required)
+// Returns only the store contact fields so the landing page can show them
+// without any authenticated session.
+// ─────────────────────────────────────────────────────────────────────────────
+export const getContactInfo = async (req, res) => {
+  try {
+    const settings = await SettingsModel.findOne({}).sort({ createdAt: 1 })
+      .select("storeName contactEmail contactPhone contactWhatsapp contactAddress");
+    return sendResponse(res, 200, {
+      storeName:       settings?.storeName       || "",
+      contactEmail:    settings?.contactEmail    || "",
+      contactPhone:    settings?.contactPhone    || "",
+      contactWhatsapp: settings?.contactWhatsapp || "",
+      contactAddress:  settings?.contactAddress  || "",
+    }, "Contact info retrieved");
+  } catch (err) {
+    console.error("getContactInfo error:", err.message);
+    return sendResponse(res, 200, {
+      storeName: "", contactEmail: "", contactPhone: "",
+      contactWhatsapp: "", contactAddress: "",
+    }, "Default contact info");
+  }
+};
 // Returns only the globalTheme so any user can sync the brand palette on load
 // without needing admin-level access to the full settings document.
 // ─────────────────────────────────────────────────────────────────────────────

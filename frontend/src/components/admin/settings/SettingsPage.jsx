@@ -6,7 +6,7 @@ import {
   Clock, Mail, RefreshCw, Save, AlertTriangle, CheckCircle2,
   Users, ShieldCheck, X, UserCheck, Loader2, Palette, Moon, Sun,
   Store, Package, Settings2, User, Phone, MapPin, Lock, Eye, EyeOff,
-  Pencil,
+  Pencil, MessageCircle, CreditCard,
 } from "lucide-react";
 import { useTheme, GLOBAL_THEMES, PERSONAL_MODES } from "../../../context/ThemeContext";
 
@@ -24,6 +24,18 @@ const SettingsPage = () => {
     adminNotificationEmail:    "",
     lowStockThreshold:         10,
     productExpiryWarningWeeks: 3,
+    expiryReminderEnabled:     true,
+    productExpiryEmailEnabled: true,
+    bankName:       "",
+    accountName:    "",
+    accountNumber:  "",
+    bankName2:      "",
+    accountName2:   "",
+    accountNumber2: "",
+    contactEmail:              "",
+    contactPhone:              "",
+    contactWhatsapp:           "",
+    contactAddress:            "",
   });
 
   const [delegation,        setDelegation]        = useState({ delegateToAllStaff: false, delegatedStaffIds: [] });
@@ -59,6 +71,18 @@ const SettingsPage = () => {
           adminNotificationEmail:    s.adminNotificationEmail    ?? "",
           lowStockThreshold:         s.lowStockThreshold         ?? 10,
           productExpiryWarningWeeks: s.productExpiryWarningWeeks ?? 3,
+          expiryReminderEnabled:     s.expiryReminderEnabled     ?? true,
+          productExpiryEmailEnabled: s.productExpiryEmailEnabled ?? true,
+          bankName:       s.bankName       ?? "",
+          accountName:    s.accountName    ?? "",
+          accountNumber:  s.accountNumber  ?? "",
+          bankName2:      s.bankName2      ?? "",
+          accountName2:   s.accountName2   ?? "",
+          accountNumber2: s.accountNumber2 ?? "",
+          contactEmail:              s.contactEmail              ?? "",
+          contactPhone:              s.contactPhone              ?? "",
+          contactWhatsapp:           s.contactWhatsapp           ?? "",
+          contactAddress:            s.contactAddress            ?? "",
         });
       }
     } catch { toast.error("Failed to load settings"); }
@@ -335,13 +359,52 @@ const SettingsPage = () => {
       {/* Order Pickup Expiry */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
         className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-6">
-        <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1 flex items-center gap-2">
-          <Clock size={16} className="text-amber-500" /> Order Pickup Expiry
-        </h2>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">
+
+        {/* Card header — title + ON/OFF email reminder toggle */}
+        <div className="flex items-start justify-between gap-4 mb-1">
+          <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+            <Clock size={16} className="text-amber-500" /> Order Pickup Expiry
+          </h2>
+
+          {/* Email reminder master switch */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <span className={`text-xs font-semibold ${settings.expiryReminderEnabled ? "text-green-600 dark:text-green-400" : "text-gray-400"}`}>
+              {settings.expiryReminderEnabled ? "Emails ON" : "Emails OFF"}
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={settings.expiryReminderEnabled}
+              title={settings.expiryReminderEnabled ? "Click to stop sending expiry reminder emails" : "Click to enable expiry reminder emails"}
+              onClick={() => handleChange("expiryReminderEnabled", !settings.expiryReminderEnabled)}
+              className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1
+                ${settings.expiryReminderEnabled
+                  ? "bg-green-500 focus:ring-green-400"
+                  : "bg-gray-300 dark:bg-gray-600 focus:ring-gray-400"}`}
+            >
+              <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform
+                ${settings.expiryReminderEnabled ? "translate-x-5" : "translate-x-1"}`}
+              />
+            </button>
+          </div>
+        </div>
+
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">
           When a paid order exceeds this time limit without being picked up, you are notified by email.
         </p>
-        <div className="space-y-5">
+
+        {/* Subtle OFF banner — explains what's paused */}
+        {!settings.expiryReminderEnabled && (
+          <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2 mb-4 mt-2">
+            <span className="text-amber-500 text-base">🔕</span>
+            <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+              Expiry reminder emails are paused. Orders will still appear on the Expiring Orders page — only the email notifications are silenced.
+            </p>
+          </div>
+        )}
+
+        {/* Controls — dimmed when reminders are OFF */}
+        <div className={`space-y-5 mt-4 transition-opacity duration-200 ${settings.expiryReminderEnabled ? "opacity-100" : "opacity-40 pointer-events-none"}`}>
           <div>
             <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Expiry Threshold (hours)</label>
             <div className="flex items-center gap-3">
@@ -400,14 +463,216 @@ const SettingsPage = () => {
         <p className="text-xs text-gray-400 mt-1.5">Covers: new order alerts, expiry alerts, and repeat reminders.</p>
       </motion.div>
 
+      {/* Store Contact Info */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.11 }}
+        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-6">
+        <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1 flex items-center gap-2">
+          <MapPin size={16} className="text-green-500" /> Store Contact Info
+        </h2>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">
+          These details appear publicly on the landing page so customers know how to reach you.
+        </p>
+        <div className="space-y-4">
+          {/* Contact email */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+              <Mail size={11} /> Contact Email
+            </label>
+            <input
+              type="email"
+              value={settings.contactEmail}
+              onChange={(e) => handleChange("contactEmail", e.target.value)}
+              placeholder="store@yourdomain.com"
+              className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
+                focus:outline-none focus:ring-2 focus:ring-green-300 bg-gray-50 dark:bg-gray-900
+                dark:text-gray-100 dark:placeholder-gray-500"
+            />
+          </div>
+
+          {/* Contact phone */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+              <Phone size={11} /> Contact Phone
+            </label>
+            <input
+              type="tel"
+              value={settings.contactPhone}
+              onChange={(e) => handleChange("contactPhone", e.target.value)}
+              placeholder="e.g. 08012345678"
+              className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
+                focus:outline-none focus:ring-2 focus:ring-green-300 bg-gray-50 dark:bg-gray-900
+                dark:text-gray-100 dark:placeholder-gray-500"
+            />
+          </div>
+
+          {/* WhatsApp */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+              <MessageCircle size={11} /> WhatsApp Number
+              <span className="normal-case font-normal text-gray-400 text-[10px] ml-1">optional</span>
+            </label>
+            <input
+              type="tel"
+              value={settings.contactWhatsapp}
+              onChange={(e) => handleChange("contactWhatsapp", e.target.value)}
+              placeholder="e.g. 2348012345678 (with country code)"
+              className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
+                focus:outline-none focus:ring-2 focus:ring-green-300 bg-gray-50 dark:bg-gray-900
+                dark:text-gray-100 dark:placeholder-gray-500"
+            />
+            <p className="text-xs text-gray-400 mt-1">Enter with country code for the WhatsApp link to work (e.g. 234 for Nigeria).</p>
+          </div>
+
+          {/* Address */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+              <MapPin size={11} /> Physical Address
+            </label>
+            <textarea
+              rows={3}
+              value={settings.contactAddress}
+              onChange={(e) => handleChange("contactAddress", e.target.value)}
+              placeholder="e.g. 12 Market Street, Lagos, Nigeria"
+              className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
+                focus:outline-none focus:ring-2 focus:ring-green-300 bg-gray-50 dark:bg-gray-900
+                dark:text-gray-100 dark:placeholder-gray-500 resize-none"
+            />
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Payment / Bank Account Details */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
+        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-6">
+        <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1 flex items-center gap-2">
+          <CreditCard size={16} className="text-indigo-500" /> Payment / Bank Account Details
+        </h2>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">
+          These details appear on staff preview invoices so customers know where to send payment. Leave blank to hide.
+        </p>
+
+        {/* Account 1 */}
+        <div className="space-y-3 mb-5">
+          <p className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">Account 1</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Bank Name</label>
+              <input type="text" value={settings.bankName}
+                onChange={(e) => handleChange("bankName", e.target.value)}
+                placeholder="e.g. GTBank"
+                className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
+                  focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50 dark:bg-gray-900
+                  dark:text-gray-100 dark:placeholder-gray-500" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Account Name</label>
+              <input type="text" value={settings.accountName}
+                onChange={(e) => handleChange("accountName", e.target.value)}
+                placeholder="e.g. Melech Stores Ltd"
+                className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
+                  focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50 dark:bg-gray-900
+                  dark:text-gray-100 dark:placeholder-gray-500" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Account Number</label>
+              <input type="text" value={settings.accountNumber}
+                onChange={(e) => handleChange("accountNumber", e.target.value)}
+                placeholder="e.g. 0123456789"
+                maxLength={20}
+                className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
+                  focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50 dark:bg-gray-900
+                  dark:text-gray-100 dark:placeholder-gray-500 font-mono tracking-wider" />
+            </div>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-dashed border-gray-200 dark:border-gray-700 my-4" />
+
+        {/* Account 2 */}
+        <div className="space-y-3">
+          <p className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+            Account 2
+            <span className="ml-2 normal-case font-normal text-gray-400 text-[10px]">optional — for a second bank</span>
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Bank Name</label>
+              <input type="text" value={settings.bankName2}
+                onChange={(e) => handleChange("bankName2", e.target.value)}
+                placeholder="e.g. Opay"
+                className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
+                  focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50 dark:bg-gray-900
+                  dark:text-gray-100 dark:placeholder-gray-500" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Account Name</label>
+              <input type="text" value={settings.accountName2}
+                onChange={(e) => handleChange("accountName2", e.target.value)}
+                placeholder="e.g. Melech Stores Ltd"
+                className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
+                  focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50 dark:bg-gray-900
+                  dark:text-gray-100 dark:placeholder-gray-500" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Account Number</label>
+              <input type="text" value={settings.accountNumber2}
+                onChange={(e) => handleChange("accountNumber2", e.target.value)}
+                placeholder="e.g. 0987654321"
+                maxLength={20}
+                className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
+                  focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50 dark:bg-gray-900
+                  dark:text-gray-100 dark:placeholder-gray-500 font-mono tracking-wider" />
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
       {/* Inventory Alerts */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.13 }}
         className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-6">
-        <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1 flex items-center gap-2">
-          <AlertTriangle size={16} className="text-red-500" /> Inventory Alerts
-        </h2>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">Configure thresholds that trigger notifications.</p>
-        <div className="space-y-5">
+
+        {/* Card header with product expiry email toggle */}
+        <div className="flex items-start justify-between gap-4 mb-1">
+          <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+            <AlertTriangle size={16} className="text-red-500" /> Inventory Alerts
+          </h2>
+          {/* Product expiry email master switch */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <span className={`text-xs font-semibold ${settings.productExpiryEmailEnabled ? "text-green-600 dark:text-green-400" : "text-gray-400"}`}>
+              {settings.productExpiryEmailEnabled ? "Emails ON" : "Emails OFF"}
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={settings.productExpiryEmailEnabled}
+              title={settings.productExpiryEmailEnabled ? "Click to stop sending product expiry emails" : "Click to enable product expiry emails"}
+              onClick={() => handleChange("productExpiryEmailEnabled", !settings.productExpiryEmailEnabled)}
+              className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1
+                ${settings.productExpiryEmailEnabled
+                  ? "bg-green-500 focus:ring-green-400"
+                  : "bg-gray-300 dark:bg-gray-600 focus:ring-gray-400"}`}
+            >
+              <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform
+                ${settings.productExpiryEmailEnabled ? "translate-x-5" : "translate-x-1"}`} />
+            </button>
+          </div>
+        </div>
+
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">Configure thresholds that trigger notifications.</p>
+
+        {/* OFF banner */}
+        {!settings.productExpiryEmailEnabled && (
+          <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2 mb-4 mt-2">
+            <span className="text-amber-500 text-base">🔕</span>
+            <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+              Product expiry emails are paused. Products will still appear on the Products page with expiry badges — only the daily digest email is silenced.
+            </p>
+          </div>
+        )}
+
+        {/* Controls — dimmed when OFF */}
+        <div className={`space-y-5 mt-4 transition-opacity duration-200 ${settings.productExpiryEmailEnabled ? "opacity-100" : "opacity-40 pointer-events-none"}`}>
           <div>
             <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Low Stock Alert Threshold (units)</label>
             <div className="flex items-center gap-3">
