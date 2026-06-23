@@ -122,8 +122,8 @@ const FloatingCartButton = () => {
           transition={{ type: "spring", stiffness: 420, damping: 26 }}
           onClick={() => navigate(productsRoute)}
           aria-label="Go to Products"
-          className="fixed z-40 flex items-center gap-2
-            px-4 h-14 rounded-full
+          className="fixed z-40 flex items-center justify-center
+            w-14 h-14 rounded-full
             bg-green-600 hover:bg-green-700 active:scale-95
             shadow-lg shadow-green-300/50
             transition-colors duration-200
@@ -134,10 +134,7 @@ const FloatingCartButton = () => {
             WebkitTapHighlightColor: "transparent",
           }}
         >
-          <ShoppingBag size={20} className="text-white shrink-0" />
-          <span className="text-white text-sm font-semibold pr-1 whitespace-nowrap">
-            Products
-          </span>
+          <ShoppingBag size={22} className="text-white" />
         </motion.button>
       </AnimatePresence>
     );
