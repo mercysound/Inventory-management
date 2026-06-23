@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ShoppingCart, FileText, Clock, RefreshCw, PackageOpen,
+  ShoppingCart, ShoppingBag, FileText, Clock, RefreshCw, PackageOpen,
 } from "lucide-react";
 import axiosInstance from "../../../utils/axiosInstance";
 import CustomerOrderTable from "./CustomerOrderTable";
@@ -73,8 +74,16 @@ const parseOrderError = (err) => {
 
 // ── Main component ────────────────────────────────────────────────────────────
 const CustomerOrderPortal = () => {
-  const { user } = useAuth();
-  const { resetCart } = useCart();
+  const { user }    = useAuth();
+  const { resetCart, cartCount } = useCart();
+  const navigate    = useNavigate();
+
+  // Product page route per role
+  const productsPath = user?.role === "wholesale"
+    ? "/wholesale-dashboard"
+    : user?.role === "staff"
+      ? "/customer-dashboard"
+      : "/user-dashboard";
 
   // Full profile (phone + address) fetched once — used to pre-fill FulfillmentModal
   const [userProfile, setUserProfile] = useState({
@@ -85,18 +94,23 @@ const CustomerOrderPortal = () => {
 
   const [orders,         setOrders]         = useState([]);
   const [priceMode,      setPriceMode]      = useState(() => {
-    // Wholesale-role users are always in wholesale pricing mode
     if (user?.role === "wholesale") return "wholesale";
     try {
       return localStorage.getItem("melech_staff_price_mode") === "wholesale" ? "wholesale" : "retail";
-    } catch {
-      return "retail";
-    }
+    } catch { return "retail"; }
   });
-  const [pendingOrders,  setPendingOrders]  = useState([]);
+  const [pendingOrders,    setPendingOrders]    = useState([]);
   const [showPendingModal, setShowPendingModal] = useState(false);
-  const [loading,        setLoading]        = useState(true);
-  const [refreshing,     setRefreshing]     = useState(false);
+
+  // ── Single status machine — prevents all flash states ────────────────────
+  // "loading"  → initial fetch in progress     → show CartSkeleton
+  // "ready"    → data loaded, cart shown        → normal UI
+  // "clearing" → payment complete, blob loading → show success overlay
+  // "paid"     → blob ready                     → receipt modal opens, orders already empty
+  const [cartStatus, setCartStatus] = useState("loading");
+
+  const [refreshing,        setRefreshing]        = useState(false);
+  const [paymentClearing,   setPaymentClearing]   = useState(false);
   // Incremented each time SSE fires — tells the modal to silently re-fetch
   // its cancelled-pending list without any prop-sync loop.
   const [modalRefreshKey, setModalRefreshKey] = useState(0);
@@ -122,7 +136,7 @@ const CustomerOrderPortal = () => {
   // ── Fetch orders + pending history ───────────────────────────────────────
   const fetchOrders = useCallback(async (silent = false) => {
     try {
-      if (!silent) setLoading(true);
+      if (!silent) setCartStatus("loading");
       else setRefreshing(true);
 
       const [orderRes, historyRes] = await Promise.all([
@@ -163,7 +177,7 @@ const CustomerOrderPortal = () => {
       console.error(err);
       toast.error("Failed to fetch orders");
     } finally {
-      setLoading(false);
+      setCartStatus("ready");
       setRefreshing(false);
     }
   }, [user]);
@@ -373,17 +387,19 @@ const CustomerOrderPortal = () => {
         toast.error(completeRes.data.message || "Order completion failed");
         return;
       }
-      toast.success("Payment successful! 🎉");
 
-      // Immediately clear the floating cart button — don't wait for re-fetch
+      // ── Instant wipe: clear orders AND switch status BEFORE blob fetch ────
+      // Cart table is gone from DOM the moment this runs — no flash possible.
       setOrders([]);
       resetCart();
-      fulfillmentDataRef.current = null; // reset for next order
+      setCartStatus("clearing");  // renders success overlay, hides cart table
+      fulfillmentDataRef.current = null;
       setFulfillmentData(null);
       try {
         window.dispatchEvent(new CustomEvent("ordersUpdated", { detail: { total: 0 } }));
       } catch (_) {}
 
+      // Fetch invoice blob while overlay is showing
       const query = new URLSearchParams({
         customerName:  user?.name || "Customer",
         paymentMethod: "Paystack",
@@ -393,9 +409,12 @@ const CustomerOrderPortal = () => {
       }).toString();
       const res = await axiosInstance.get(`/orders/invoice?${query}`, { responseType: "blob" });
       setReceiptBlob(res.data);
-      setShowReceiptPrompt(true);
+      setCartStatus("ready");     // clear overlay
+      setShowReceiptPrompt(true); // invoice modal opens immediately
       fetchOrders(true);
     } catch (err) {
+      setCartStatus("ready");
+      setPaymentClearing(false);
       console.error("Order completion failed:", err);
       const { title, message, type } = parseOrderError(err);
       if (type === "stock") {
@@ -495,10 +514,57 @@ const CustomerOrderPortal = () => {
     setReceiptBlob(null);
   };
 
-  if (loading) return <CartSkeleton />;
+  if (cartStatus === "loading") return <CartSkeleton />;
+
+  // ── Payment clearing overlay — full screen, replaces cart entirely ────────
+  // Shown from the moment /orders/complete succeeds until invoice blob is ready.
+  // Cart table is already wiped from state so nothing old can bleed through.
+  if (cartStatus === "clearing") {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white gap-6">
+        <motion.div
+          animate={{ scale: [1, 1.1, 1] }}
+          transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+          className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center shadow-lg"
+        >
+          <span className="text-5xl">✅</span>
+        </motion.div>
+        <div className="text-center px-6">
+          <p className="text-2xl font-bold text-gray-800">Payment Successful!</p>
+          <p className="text-sm text-gray-500 mt-2">Generating your receipt…</p>
+        </div>
+        <div className="flex gap-2">
+          {[0, 0.2, 0.4].map((delay) => (
+            <motion.div
+              key={delay}
+              animate={{ opacity: [0.3, 1, 0.3], scale: [0.7, 1, 0.7] }}
+              transition={{ duration: 1, repeat: Infinity, delay }}
+              className="w-2.5 h-2.5 rounded-full bg-green-500"
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
+
+      {/* ── Soft refresh indicator — appears when silently revalidating ─────── */}
+      <AnimatePresence>
+        {refreshing && (
+          <motion.div
+            key="refreshing"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="fixed top-16 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 bg-indigo-600 text-white text-xs font-medium px-4 py-2 rounded-full shadow-lg pointer-events-none"
+          >
+            <RefreshCw size={12} className="animate-spin" />
+            Updating cart…
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Page header */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4">
@@ -518,6 +584,16 @@ const CustomerOrderPortal = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Browse Products shortcut */}
+          <motion.button
+            onClick={() => navigate(productsPath)}
+            whileTap={{ scale: 0.94 }}
+            className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-green-200 text-green-700 bg-green-50 hover:bg-green-100 transition font-medium"
+          >
+            <ShoppingBag size={14} />
+            Products
+          </motion.button>
+
           <motion.button
             onClick={() => fetchOrders(true)}
             disabled={refreshing}
@@ -525,7 +601,7 @@ const CustomerOrderPortal = () => {
             className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition disabled:opacity-40"
           >
             <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
-            Refresh
+            <span className="hidden sm:inline">Refresh</span>
           </motion.button>
 
           {/* Pending Orders button — shows count badge */}
