@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, ShoppingBag } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 import { useCart } from "../../../context/CartContext";
 
@@ -12,6 +12,13 @@ const CART_ROUTES = [
   "/wholesale-dashboard/orders",
   "/customer-dashboard/orders",
 ];
+
+// Product page for each cart route — used for the "back to products" button
+const PRODUCTS_ROUTE = {
+  "/user-dashboard/orders":      "/user-dashboard",
+  "/wholesale-dashboard/orders": "/wholesale-dashboard",
+  "/customer-dashboard/orders":  "/customer-dashboard",
+};
 
 // How long (ms) after the last hide-request before the button reappears.
 // Short enough to feel instant, long enough not to flicker during rapid events.
@@ -100,8 +107,41 @@ const FloatingCartButton = () => {
   // ── Guard: don't render for admin or roles without a cart ───────────────
   if (!user || user.role === "admin" || !hasCart) return null;
 
-  const isCartPage = CART_ROUTES.some((r) => location.pathname === r);
-  if (isCartPage) return null;
+  const isCartPage    = CART_ROUTES.some((r) => location.pathname === r);
+  const productsRoute = PRODUCTS_ROUTE[location.pathname];
+
+  // ── On cart pages: show a "Go to Products" shortcut instead ─────────────
+  if (isCartPage && productsRoute) {
+    return (
+      <AnimatePresence>
+        <motion.button
+          key="floating-products"
+          initial={{ opacity: 0, scale: 0.6, y: 20 }}
+          animate={{ opacity: 1, scale: 1,   y: 0  }}
+          exit={{    opacity: 0, scale: 0.6, y: 20  }}
+          transition={{ type: "spring", stiffness: 420, damping: 26 }}
+          onClick={() => navigate(productsRoute)}
+          aria-label="Go to Products"
+          className="fixed z-40 flex items-center gap-2
+            px-4 h-14 rounded-full
+            bg-green-600 hover:bg-green-700 active:scale-95
+            shadow-lg shadow-green-300/50
+            transition-colors duration-200
+            focus:outline-none focus:ring-4 focus:ring-green-300"
+          style={{
+            bottom: "max(24px, calc(env(safe-area-inset-bottom, 0px) + 24px))",
+            right:  "max(16px, calc(env(safe-area-inset-right,  0px) + 16px))",
+            WebkitTapHighlightColor: "transparent",
+          }}
+        >
+          <ShoppingBag size={20} className="text-white shrink-0" />
+          <span className="text-white text-sm font-semibold pr-1 whitespace-nowrap">
+            Products
+          </span>
+        </motion.button>
+      </AnimatePresence>
+    );
+  }
 
   const visible = cartCount > 0 && !modalOpen && !suppressed;
 

@@ -6,7 +6,7 @@ import { Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Sidebar from "../components/share-component/sidebar/Sidebar";
 import FloatingCartButton from "../components/share-component/cart/FloatingCartButton";
-import ScrollToTop from "../components/share-component/ScrollToTop";
+import FloatingScrollButtons from "../components/share-component/scroll/FloatingScrollButtons";
 import { useAuth } from "../context/AuthContext";
 import axiosInstance from "../utils/axiosInstance";
 
@@ -109,15 +109,15 @@ const Dashboard = () => {
         )}
 
         {/* Route outlet */}
-        <main id="main-scroll" className="flex-1 p-4 md:p-6 overflow-y-auto theme-page">
+        <main id="main-scroll" data-scroll-root className="flex-1 p-4 md:p-6 overflow-y-auto theme-page">
           <Outlet />
         </main>
       </div>
 
       {/* Floating cart — non-admin users on any non-cart page */}
       <FloatingCartButton />
-      {/* Scroll to top — appears after 300px scroll on any page */}
-      <ScrollToTop />
+      {/* Scroll up/down floating buttons — all users, all pages */}
+      <FloatingScrollButtons />
     </div>
   );
 };
