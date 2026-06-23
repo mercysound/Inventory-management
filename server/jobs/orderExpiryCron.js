@@ -18,7 +18,13 @@ export const startOrderExpiryCron = () => {
         reminderMode,
         reminderIntervalHours,
         adminNotificationEmail,
+        expiryReminderEnabled,
       } = await getExpiryConfigForCron();
+
+      // Master switch — skip everything if reminders are disabled
+      if (expiryReminderEnabled === false) {
+        return;
+      }
 
       // Resolve admin notification email
       let targetEmail = adminNotificationEmail?.trim() || "";

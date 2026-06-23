@@ -24,10 +24,18 @@ export const startProductExpiryCron = () => {
       // ── Read admin settings ─────────────────────────────────────────────
       const settings = await SettingsModel.findOne({}).sort({ createdAt: 1 });
 
+      // Master switch — skip everything when product expiry emails are disabled
+      if (settings?.productExpiryEmailEnabled === false) {
+        console.log("[ProductExpiryCron] Product expiry emails are disabled — skipping");
+        return;
+      }
+
       const warningWeeks = settings?.productExpiryWarningWeeks ?? 3;
       const warningMs    = warningWeeks * 7 * 24 * 60 * 60 * 1000;
 
-      // Resolve notification email
+      // Resolve notification email — same priority as order expiry cron:
+      // 1. adminNotificationEmail from settings
+      // 2. admin account email from DB
       let adminEmail = settings?.adminNotificationEmail?.trim() || "";
       if (!adminEmail) {
         const adminUser = await UserModel.findOne({ role: "admin" }).select("email");

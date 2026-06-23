@@ -3,16 +3,32 @@ import OrderModel from "../models/OrderModel.js";
 import ProductModel from "../models/ProductModel.js";
 import AllOrdersPlacedModel from "../models/AllOrdersPlacedModel.js";
 import CompletedOrderHistoryModel from "../models/CompletedOrderHistoryModel.js";
+import SettingsModel from "../models/SettingsModel.js";
 import { sendAdminOrderPlacedEmail } from "../utils/email/adminOrderPlaced.js";
 import { sendResponse, sendError } from "../utils/apiResponse.js";
 import { getPaginationParams, getPaginationMeta } from "../utils/pagination.js";
 import { getAdminEmail } from "../controllers/settingsController.js";
 import mongoose from "mongoose";
 
-const STORE_ACCOUNT = {
-  bankName:      "XYZ Bank",
-  accountName:   "MELECH STORE",
-  accountNumber: "1234567890",
+// ── Helper: fetch live bank/payment details from settings ─────────────────────
+// Falls back to empty strings — if admin hasn't filled them in, the payment
+// section simply shows nothing on the invoice.
+const getBankDetails = async () => {
+  try {
+    const s = await SettingsModel.findOne({}).sort({ createdAt: 1 })
+      .select("bankName accountName accountNumber bankName2 accountName2 accountNumber2 storeName");
+    return {
+      storeName:      s?.storeName      || "MELECH STORE",
+      bankName:       s?.bankName       || "",
+      accountName:    s?.accountName    || "",
+      accountNumber:  s?.accountNumber  || "",
+      bankName2:      s?.bankName2      || "",
+      accountName2:   s?.accountName2   || "",
+      accountNumber2: s?.accountNumber2 || "",
+    };
+  } catch {
+    return { storeName: "MELECH STORE", bankName: "", accountName: "", accountNumber: "", bankName2: "", accountName2: "", accountNumber2: "" };
+  }
 };
 
 
@@ -412,6 +428,9 @@ const escapeHtml = (value) => {
 
 const generateInvoice = async (req, res) => {
   try {
+    // Fetch live bank/payment details from settings — used in HTML + PDF
+    const bank = await getBankDetails();
+
     const {
       customerName = "Guest Customer",
       paymentMethod = "Not Specified",
@@ -778,15 +797,37 @@ const generateInvoice = async (req, res) => {
             .text("PAYMENT INSTRUCTIONS", margin, doc.y, {
               align: "center", width: contentWidth });
           doc.font("Helvetica").fillColor("#000").moveDown(0.3);
-          [
-            ["Bank:", STORE_ACCOUNT.bankName],
-            ["Account Name:", STORE_ACCOUNT.accountName],
-            ["Account No:", STORE_ACCOUNT.accountNumber],
-          ].forEach(([label, value]) => {
-            const ly = doc.y;
-            doc.font("Helvetica-Bold").text(label, margin, ly, { width: 75 });
-            doc.font("Helvetica").text(value, margin + 77, ly, { width: contentWidth - 77 });
-            doc.moveDown(0.3);
+
+          const pdfAccounts = [];
+          if (bank.bankName || bank.accountName || bank.accountNumber) {
+            pdfAccounts.push([
+              ["Bank:", bank.bankName],
+              ["Account Name:", bank.accountName],
+              ["Account No:", bank.accountNumber],
+            ]);
+          }
+          if (bank.bankName2 || bank.accountName2 || bank.accountNumber2) {
+            pdfAccounts.push([
+              ["Bank:", bank.bankName2],
+              ["Account Name:", bank.accountName2],
+              ["Account No:", bank.accountNumber2],
+            ]);
+          }
+
+          pdfAccounts.forEach((rows, ai) => {
+            if (ai > 0) {
+              doc.moveDown(0.4);
+              doc.fontSize(7).font("Helvetica-Bold").fillColor("#555")
+                .text("— OR —", margin, doc.y, { align: "center", width: contentWidth });
+              doc.moveDown(0.3);
+            }
+            rows.forEach(([label, value]) => {
+              if (!value) return;
+              const ly = doc.y;
+              doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#000").text(label, margin, ly, { width: 75 });
+              doc.font("Helvetica").text(value, margin + 77, ly, { width: contentWidth - 77 });
+              doc.moveDown(0.3);
+            });
           });
         }
 
@@ -844,13 +885,27 @@ const generateInvoice = async (req, res) => {
       );
     }).join("");
 
-    const payBlock = (paymentStatus === "Unpaid" && req.user.role === "staff")
+    // Build HTML payment block dynamically from settings
+    const htmlPayRows = (name, number, bankN) => {
+      const rows = [];
+      if (bankN)   rows.push('<div class="pay-row"><span class="pay-lbl">Bank</span><span class="pay-acct">' + escapeHtml(bankN)   + "</span></div>");
+      if (name)    rows.push('<div class="pay-row"><span class="pay-lbl">Account name</span><span class="pay-acct">' + escapeHtml(name)   + "</span></div>");
+      if (number)  rows.push('<div class="pay-row"><span class="pay-lbl">Account no.</span><span class="pay-acct">' + escapeHtml(number) + "</span></div>");
+      return rows.join("");
+    };
+
+    const hasAccount1 = bank.bankName || bank.accountName || bank.accountNumber;
+    const hasAccount2 = bank.bankName2 || bank.accountName2 || bank.accountNumber2;
+
+    const payBlock = (paymentStatus === "Unpaid" && req.user.role === "staff" && (hasAccount1 || hasAccount2))
       ? (
         '<div class="pay-box">' +
         '<div class="pay-title">Payment instructions</div>' +
-        '<div class="pay-row"><span class="pay-lbl">Bank</span><span>' + escapeHtml(STORE_ACCOUNT.bankName) + "</span></div>" +
-        '<div class="pay-row"><span class="pay-lbl">Account name</span><span>' + escapeHtml(STORE_ACCOUNT.accountName) + "</span></div>" +
-        '<div class="pay-row"><span class="pay-lbl">Account no.</span><span>' + escapeHtml(STORE_ACCOUNT.accountNumber) + "</span></div>" +
+        (hasAccount1 ? htmlPayRows(bank.accountName, bank.accountNumber, bank.bankName) : "") +
+        (hasAccount1 && hasAccount2
+          ? '<div class="pay-row" style="margin:4px 0;border-top:1px dashed #d1d5db;padding-top:4px"><span style="color:#6b7280;font-size:.72rem;font-style:italic">— or transfer to —</span></div>'
+          : "") +
+        (hasAccount2 ? htmlPayRows(bank.accountName2, bank.accountNumber2, bank.bankName2) : "") +
         "</div>"
       )
       : "";
