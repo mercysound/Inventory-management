@@ -1,13 +1,55 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { FaPlus, FaMinus, FaTrash, FaImage } from "react-icons/fa";
+import { Search, X } from "lucide-react";
 
 const StaffTable = ({ orders, onIncreaseQty, onReduceQty, onRemoveOrder, isWholesale }) => {
-  if (!orders.length) return null; // parent handles empty state
+  const [search, setSearch] = useState("");
+
+  const visible = search.trim()
+    ? orders.filter((o) =>
+        (o.product?.name || "").toLowerCase().includes(search.trim().toLowerCase())
+      )
+    : orders;
+
+  if (!orders.length) return null;
 
   return (
     <div className="space-y-3">
+
+      {/* ── Search bar ── */}
+      {orders.length > 1 && (
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={`Search ${orders.length} items…`}
+            className="w-full pl-8 pr-9 py-2.5 text-sm border border-gray-200 rounded-xl bg-white
+              focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+              aria-label="Clear search"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* No match */}
+      {visible.length === 0 && search && (
+        <div className="py-8 text-center text-gray-400 bg-white rounded-xl border border-dashed border-gray-200">
+          <p className="text-sm">No items match "<span className="text-gray-600">{search}</span>"</p>
+          <button onClick={() => setSearch("")} className="mt-1.5 text-xs text-indigo-500 hover:underline">Clear</button>
+        </div>
+      )}
       {/* ── Desktop table ─────────────────────────────────────────────────── */}
+      {visible.length > 0 && (
       <div className="hidden lg:block rounded-xl overflow-hidden border border-gray-100">
         <table className="w-full text-sm">
           <thead>
@@ -22,7 +64,7 @@ const StaffTable = ({ orders, onIncreaseQty, onReduceQty, onRemoveOrder, isWhole
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {orders.map((o, i) => (
+            {visible.map((o, i) => (
               <motion.tr
                 key={o._id}
                 initial={{ opacity: 0, x: -8 }}
@@ -110,10 +152,12 @@ const StaffTable = ({ orders, onIncreaseQty, onReduceQty, onRemoveOrder, isWhole
           </tbody>
         </table>
       </div>
+      )}
 
       {/* ── Mobile cards ──────────────────────────────────────────────────── */}
+      {visible.length > 0 && (
       <div className="lg:hidden space-y-3">
-        {orders.map((o, i) => (
+        {visible.map((o, i) => (
           <motion.div
             key={o._id}
             initial={{ opacity: 0, y: 8 }}
@@ -153,42 +197,49 @@ const StaffTable = ({ orders, onIncreaseQty, onReduceQty, onRemoveOrder, isWhole
               </motion.button>
             </div>
 
-            {/* Price + qty */}
-            <div className="flex items-center justify-between px-4 py-3">
-              <div>
-                <p className="text-xs text-gray-400 mb-0.5">Unit price</p>
-                <p className="font-semibold text-gray-700">₦{o.price?.toLocaleString()}</p>
+            {/* Price + qty — responsive layout */}
+            <div className="px-4 py-3 space-y-2.5">
+              {/* Prices row */}
+              <div className="flex items-center justify-between">
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-400 mb-0.5">Unit price</p>
+                  <p className="font-semibold text-gray-700 text-sm truncate">
+                    ₦{o.price?.toLocaleString()}
+                  </p>
+                </div>
+                <div className="text-right min-w-0 ml-2">
+                  <p className="text-xs text-gray-400 mb-0.5">Subtotal</p>
+                  <p className="font-bold text-indigo-600 text-sm truncate">
+                    ₦{(o.totalPrice || o.quantity * o.price)?.toLocaleString()}
+                  </p>
+                </div>
               </div>
 
-              {/* Qty controls */}
-              <div className="flex items-center gap-2">
+              {/* Qty controls — full width, centered */}
+              <div className="flex items-center justify-center gap-3 bg-gray-50 rounded-xl py-2">
                 <motion.button
                   onClick={() => onReduceQty(o._id)}
                   whileTap={{ scale: 0.9 }}
-                  className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-yellow-100 text-gray-600 rounded-xl transition"
+                  className="w-9 h-9 flex items-center justify-center bg-white border border-gray-200 hover:bg-yellow-50 hover:border-yellow-300 text-gray-600 rounded-xl transition shadow-sm"
                 >
                   <FaMinus size={11} />
                 </motion.button>
-                <span className="w-8 text-center font-bold text-gray-800">{o.quantity}</span>
+                <span className="w-10 text-center font-bold text-gray-800 text-base select-none">
+                  {o.quantity}
+                </span>
                 <motion.button
                   onClick={() => onIncreaseQty(o._id)}
                   whileTap={{ scale: 0.9 }}
-                  className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-green-100 text-gray-600 rounded-xl transition"
+                  className="w-9 h-9 flex items-center justify-center bg-white border border-gray-200 hover:bg-green-50 hover:border-green-300 text-gray-600 rounded-xl transition shadow-sm"
                 >
                   <FaPlus size={11} />
                 </motion.button>
-              </div>
-
-              <div className="text-right">
-                <p className="text-xs text-gray-400 mb-0.5">Subtotal</p>
-                <p className="font-bold text-indigo-600">
-                  ₦{(o.totalPrice || o.quantity * o.price)?.toLocaleString()}
-                </p>
               </div>
             </div>
           </motion.div>
         ))}
       </div>
+      )}
     </div>
   );
 };

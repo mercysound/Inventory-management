@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -50,7 +51,8 @@ const StatCard = ({ icon: Icon, label, value, color, iconColor }) => (
 );
 
 const StaffOrders = () => {
-  const { user } = useAuth();
+  const { user }  = useAuth();
+  const navigate  = useNavigate();
   const [orders,        setOrders]        = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [paymentMethod, setPaymentMethod] = useState("");
@@ -278,20 +280,32 @@ const StaffOrders = () => {
               </p>
             </div>
 
-            {/* Wholesale badge */}
-            <AnimatePresence>
-              {isWholesale && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.85 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.85 }}
-                  className="flex items-center gap-1.5 bg-amber-100 border border-amber-300 text-amber-800 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm"
-                >
-                  <Store size={13} />
-                  WHOLESALE PRICING ACTIVE
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Right side: Products shortcut + Wholesale badge */}
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              <motion.button
+                onClick={() => navigate("/customer-dashboard")}
+                whileTap={{ scale: 0.94 }}
+                className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-green-200 text-green-700 bg-green-50 hover:bg-green-100 transition font-medium shrink-0"
+              >
+                <ShoppingBag size={14} />
+                Products
+              </motion.button>
+
+              {/* Wholesale badge */}
+              <AnimatePresence>
+                {isWholesale && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    className="flex items-center gap-1.5 bg-amber-100 border border-amber-300 text-amber-800 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm"
+                  >
+                    <Store size={13} />
+                    WHOLESALE PRICING ACTIVE
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
           {/* ── Stats row ───────────────────────────────────────────────────── */}
@@ -345,13 +359,13 @@ const StaffOrders = () => {
                 </div>
               </div>
 
-              {/* Wholesale toggle + action buttons */}
-              <div className="flex flex-wrap items-center gap-3 pt-1">
-                {/* Wholesale toggle */}
+              {/* Wholesale toggle + action buttons — responsive grid on mobile */}
+              <div className="space-y-3 pt-1">
+                {/* Wholesale toggle — full width on mobile */}
                 <button
                   type="button"
                   onClick={handleToggleWholesale}
-                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border font-semibold text-sm transition-all ${
+                  className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border font-semibold text-sm transition-all ${
                     isWholesale
                       ? "bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-200"
                       : "bg-white border-gray-200 text-gray-600 hover:border-amber-400 hover:text-amber-600"
@@ -361,48 +375,44 @@ const StaffOrders = () => {
                   {isWholesale ? "Wholesale ON" : "Switch to Wholesale"}
                 </button>
 
-                <div className="flex-1" />
-
-                {/* Clear cart */}
-                {displayOrders.length > 0 && (
-                  <button
-                    onClick={handleClearAll}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition"
-                  >
-                    <Trash2 size={14} />
-                    Clear
-                  </button>
-                )}
-
-                {/* Preview invoice */}
-                <button
-                  onClick={previewInvoice}
-                  disabled={processing || !orders.length}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 text-sm font-semibold disabled:opacity-40 transition"
-                >
-                  <Receipt size={14} />
-                  Preview Invoice
-                </button>
-
-                {/* Complete order */}
-                <motion.button
-                  onClick={completeOrder}
-                  disabled={processing || !orders.length || !paymentMethod}
-                  whileTap={{ scale: 0.97 }}
-                  className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-md shadow-indigo-200 disabled:opacity-40 transition"
-                >
-                  {processing ? (
-                    <>
-                      <RotateCcw size={14} className="animate-spin" />
-                      Processing…
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 size={14} />
-                      Complete Order
-                    </>
+                {/* Action buttons — 2-col on mobile, single row on sm+ */}
+                <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+                  {displayOrders.length > 0 && (
+                    <button
+                      onClick={handleClearAll}
+                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition"
+                    >
+                      <Trash2 size={14} />
+                      Clear Cart
+                    </button>
                   )}
-                </motion.button>
+                  <button
+                    onClick={previewInvoice}
+                    disabled={processing || !orders.length}
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 text-sm font-semibold disabled:opacity-40 transition"
+                  >
+                    <Receipt size={14} />
+                    Preview
+                  </button>
+                  <motion.button
+                    onClick={completeOrder}
+                    disabled={processing || !orders.length || !paymentMethod}
+                    whileTap={{ scale: 0.97 }}
+                    className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-md shadow-indigo-200 disabled:opacity-40 transition"
+                  >
+                    {processing ? (
+                      <>
+                        <RotateCcw size={14} className="animate-spin" />
+                        Processing…
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 size={14} />
+                        Complete Order
+                      </>
+                    )}
+                  </motion.button>
+                </div>
               </div>
 
               {/* Wholesale info banner */}
