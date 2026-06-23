@@ -130,7 +130,7 @@ const FloatingCartButton = () => {
             focus:outline-none focus:ring-4 focus:ring-green-300"
           style={{
             bottom: "max(24px, calc(env(safe-area-inset-bottom, 0px) + 24px))",
-            right:  "max(16px, calc(env(safe-area-inset-right,  0px) + 16px))",
+            left:   "max(16px, calc(env(safe-area-inset-left,   0px) + 16px))",
             WebkitTapHighlightColor: "transparent",
           }}
         >
@@ -163,10 +163,8 @@ const FloatingCartButton = () => {
             transition-colors duration-200
             focus:outline-none focus:ring-4 focus:ring-indigo-300"
           style={{
-            // Use CSS env() for safe area on notched phones / browser chrome.
-            // Falls back to fixed pixel values on browsers that don't support it.
-            bottom:   "max(24px, calc(env(safe-area-inset-bottom, 0px) + 24px))",
-            right:    "max(16px, calc(env(safe-area-inset-right,  0px) + 16px))",
+            bottom: "max(24px, calc(env(safe-area-inset-bottom, 0px) + 24px))",
+            left:   "max(16px, calc(env(safe-area-inset-left,   0px) + 16px))",
             WebkitTapHighlightColor: "transparent",
           }}
         >

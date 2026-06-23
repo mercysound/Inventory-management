@@ -109,7 +109,16 @@ const Dashboard = () => {
         )}
 
         {/* Route outlet */}
-        <main id="main-scroll" data-scroll-root className="flex-1 p-4 md:p-6 overflow-y-auto theme-page">
+        <main
+          id="main-scroll"
+          data-scroll-root
+          className="flex-1 p-4 md:p-6 overflow-y-auto theme-page"
+          style={{
+            WebkitOverflowScrolling: "touch",  // iOS momentum scrolling
+            scrollBehavior: "smooth",
+            overscrollBehaviorY: "contain",    // prevent page bounce at scroll edges
+          }}
+        >
           <Outlet />
         </main>
       </div>

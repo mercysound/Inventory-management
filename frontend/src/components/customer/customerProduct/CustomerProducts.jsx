@@ -423,7 +423,7 @@ const CustomerProducts = () => {
   }, [dispatchOrdersUpdated]);
 
   // ── Quick increase ─────────────────────────────────────────────────────────
-  const handleQuickIncrease = useCallback((productId) => {
+  const handleQuickIncrease = useCallback(async (productId) => {
     const item = cartMapRef.current[productId];
     if (!item) return;
     const product = products.find((p) => p._id === productId);
@@ -433,7 +433,11 @@ const CustomerProducts = () => {
     cartMapRef.current = next; setCartMap(next); dispatchOrdersUpdated(next);
     const storedMode = (() => { try { return localStorage.getItem("melech_staff_price_mode"); } catch { return null; } })();
     const isWS = user?.role === "wholesale" || storedMode === "wholesale";
-    if (!item.orderId) {
+
+    // Resolve orderId — may be "" if add is still in flight
+    const orderId = await resolveOrderId(productId);
+    if (!orderId) {
+      // No server record — create one
       const price = isWS ? (product.wholesalePrice ?? product.price) : product.price;
       axiosInstance.post("/orders/add", { productId, quantity: 1, price, priceMode: isWS ? "wholesale" : "retail", isWholesale: isWS })
         .then((res) => {
@@ -445,7 +449,7 @@ const CustomerProducts = () => {
         .catch(() => { cartMapRef.current = snapshot; setCartMap(snapshot); dispatchOrdersUpdated(snapshot); });
       return;
     }
-    axiosInstance.post(`/orders/increase/${item.orderId}`)
+    axiosInstance.post(`/orders/increase/${orderId}`)
       .then((res) => {
         if (res.data?._id && res.data.quantity !== undefined) {
           const c = { ...cartMapRef.current, [productId]: { orderId: res.data._id, quantity: res.data.quantity } };
@@ -453,37 +457,71 @@ const CustomerProducts = () => {
         }
       })
       .catch(() => { cartMapRef.current = snapshot; setCartMap(snapshot); dispatchOrdersUpdated(snapshot); });
-  }, [dispatchOrdersUpdated, products, user]);
+  }, [dispatchOrdersUpdated, products, user, resolveOrderId]);
+
+  // ── Resolve orderId for a productId — fetches from server if missing ─────────
+  // This prevents ghost-item bug: optimistic add sets orderId:"" temporarily;
+  // if user decreases during that window the API call was silently skipped.
+  const resolveOrderId = useCallback(async (productId) => {
+    const item = cartMapRef.current[productId];
+    if (item?.orderId) return item.orderId; // already have it
+    try {
+      const res = await axiosInstance.get(`/orders/product/${productId}`);
+      const oid = res.data?._id || res.data?.orderId;
+      if (oid) {
+        // Patch ref + state with the real orderId so future calls are instant
+        const updated = { ...cartMapRef.current };
+        if (updated[productId]) {
+          updated[productId] = { ...updated[productId], orderId: oid };
+          cartMapRef.current = updated;
+          setCartMap(updated);
+        }
+        return oid;
+      }
+    } catch {}
+    return null;
+  }, []);
 
   // ── Quick decrease ─────────────────────────────────────────────────────────
-  const handleQuickDecrease = useCallback((productId) => {
+  const handleQuickDecrease = useCallback(async (productId) => {
     const item = cartMapRef.current[productId];
     if (!item) return;
     const snapshot = { ...cartMapRef.current };
+
+    // Optimistically remove/reduce in UI immediately
     const next = item.quantity <= 1
       ? (() => { const n = { ...cartMapRef.current }; delete n[productId]; return n; })()
       : { ...cartMapRef.current, [productId]: { ...item, quantity: item.quantity - 1 } };
     cartMapRef.current = next; setCartMap(next); dispatchOrdersUpdated(next);
-    if (!item.orderId) return;
-    axiosInstance.post(`/orders/reduce/${item.orderId}`)
-      .then((res) => {
-        if (res.data?.deleted) {
-          const n = { ...cartMapRef.current }; delete n[productId];
-          cartMapRef.current = n; setCartMap(n); dispatchOrdersUpdated(n);
-        } else if (res.data?._id && res.data.quantity !== undefined) {
-          const c = { ...cartMapRef.current, [productId]: { orderId: res.data._id, quantity: res.data.quantity } };
-          cartMapRef.current = c; setCartMap(c); dispatchOrdersUpdated(c);
-        }
-      })
-      .catch((err) => {
-        if (err?.response?.status === 404) {
-          const n = { ...cartMapRef.current }; delete n[productId];
-          cartMapRef.current = n; setCartMap(n); dispatchOrdersUpdated(n);
-        } else {
-          cartMapRef.current = snapshot; setCartMap(snapshot); dispatchOrdersUpdated(snapshot);
-        }
-      });
-  }, [dispatchOrdersUpdated]);
+
+    // Always resolve the real orderId — if orderId was "" (optimistic add still
+    // in-flight), fetch it now so we can actually delete from the server
+    const orderId = await resolveOrderId(productId);
+    if (!orderId) {
+      // No server record found — optimistic removal is the correct final state
+      return;
+    }
+
+    try {
+      const res = await axiosInstance.post(`/orders/reduce/${orderId}`);
+      if (res.data?.deleted) {
+        const n = { ...cartMapRef.current }; delete n[productId];
+        cartMapRef.current = n; setCartMap(n); dispatchOrdersUpdated(n);
+      } else if (res.data?._id && res.data.quantity !== undefined) {
+        const c = { ...cartMapRef.current, [productId]: { orderId: res.data._id, quantity: res.data.quantity } };
+        cartMapRef.current = c; setCartMap(c); dispatchOrdersUpdated(c);
+      }
+    } catch (err) {
+      if (err?.response?.status === 404) {
+        // Already deleted on server — keep the optimistic removal
+        const n = { ...cartMapRef.current }; delete n[productId];
+        cartMapRef.current = n; setCartMap(n); dispatchOrdersUpdated(n);
+      } else {
+        // Rollback on unexpected error
+        cartMapRef.current = snapshot; setCartMap(snapshot); dispatchOrdersUpdated(snapshot);
+      }
+    }
+  }, [dispatchOrdersUpdated, resolveOrderId]);
 
   // ── Patch cart (OrderModal) ────────────────────────────────────────────────
   const patchCart = useCallback((productId, newQty) => {

@@ -382,7 +382,11 @@ const ProductTable = ({
             if (scrollRef) scrollRef.current = el;
           }}
           className="hidden md:block overflow-y-auto"
-          style={{ maxHeight: "calc(100vh - 340px)" }}
+          style={{
+            maxHeight: "calc(100vh - 340px)",
+            WebkitOverflowScrolling: "touch",
+            overscrollBehaviorY: "contain",
+          }}
         >
           <table className="w-full border-collapse text-sm">
             <thead className="sticky top-0 z-10">
@@ -554,7 +558,11 @@ const ProductTable = ({
         <div
           ref={(el) => { mobileWrapRef.current = el; if (scrollRef) scrollRef.current = el; }}
           className="md:hidden overflow-y-auto"
-          style={{ maxHeight: "calc(100vh - 340px)" }}
+          style={{
+            maxHeight: "calc(100vh - 340px)",
+            WebkitOverflowScrolling: "touch",
+            overscrollBehaviorY: "contain",
+          }}
         >
           {visibleProducts.length > 0 ? (
             <div className="divide-y-2 divide-gray-100">

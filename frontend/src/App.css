@@ -1,5 +1,26 @@
 @import "tailwindcss";
 
+/* ─── Global smooth-scroll & touch momentum ────────────────────────────────
+   Gives iOS Safari native momentum scrolling on any overflow container.
+   overscroll-behavior: contain prevents the page from bouncing when the
+   user reaches the top or bottom of a nested scrollable area.
+   ─────────────────────────────────────────────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
+}
+
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+.overflow-y-auto,
+.overflow-y-scroll,
+.overflow-auto,
+.overflow-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    TAILWIND v4 — Class-based dark mode
    ThemeContext adds/removes class="dark" on <html>.
