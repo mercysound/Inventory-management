@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   FaSortUp, FaSortDown,
   FaSort, FaChevronDown, FaChevronUp,
@@ -37,8 +37,30 @@ const PlacedOrdersTable = ({
   onSort,
   currentPage,
   pageSize,
+  highlightId,
 }) => {
-  const [expandedRows, setExpandedRows] = useState({});
+  const [expandedRows, setExpandedRows] = useState(() =>
+    // Auto-expand the highlighted order on first render
+    highlightId ? { [highlightId]: true } : {}
+  );
+  const [flashId, setFlashId] = useState(highlightId || null);
+  const rowRefs = useRef({});
+
+  // Scroll to + flash the highlighted row once orders are rendered
+  useEffect(() => {
+    if (!highlightId) return;
+    const el = rowRefs.current[highlightId];
+    if (el) {
+      // Small delay to let the DOM settle after render
+      const t = setTimeout(() => {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setFlashId(highlightId);
+        // Remove flash after 3 seconds
+        setTimeout(() => setFlashId(null), 3000);
+      }, 300);
+      return () => clearTimeout(t);
+    }
+  }, [highlightId, orders]); // re-run when orders load
 
   const grandTotal = (allOrders || orders).reduce((sum, o) => sum + (o.totalPrice || 0), 0);
   const toggleExpand = (id) => setExpandedRows((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -81,7 +103,10 @@ const PlacedOrdersTable = ({
             {orders.map((order, i) => (
               <React.Fragment key={order._id}>
                 <tr
-                  className="border-t hover:bg-gray-50 transition duration-150 align-top cursor-pointer"
+                  key={order._id}
+                  ref={(el) => { if (el) rowRefs.current[order._id] = el; }}
+                  className={`border-t hover:bg-gray-50 transition duration-150 align-top cursor-pointer
+                    ${flashId === order._id ? "animate-pulse bg-amber-50 ring-2 ring-inset ring-amber-400" : ""}`}
                   onClick={() => toggleExpand(order._id)}
                 >
                   <td className="p-3 text-gray-500">{(currentPage - 1) * pageSize + i + 1}</td>
@@ -218,7 +243,14 @@ const PlacedOrdersTable = ({
       {/* ── MOBILE CARDS ── */}
       <div className="md:hidden p-3 space-y-4">
         {orders.map((order, i) => (
-          <div key={order._id} className="border border-gray-200 rounded-xl shadow-sm p-4 bg-white relative">
+          <div
+            key={order._id}
+            ref={(el) => { if (el) rowRefs.current[order._id] = el; }}
+            className={`border rounded-xl shadow-sm p-4 bg-white relative transition-colors duration-500
+              ${flashId === order._id
+                ? "border-amber-400 ring-2 ring-amber-300 bg-amber-50"
+                : "border-gray-200"}`}
+          >
             {updatingId === order._id && (
               <span className="absolute top-3 right-3 w-2 h-2 bg-indigo-400 rounded-full animate-ping" />
             )}

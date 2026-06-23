@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import axiosInstance from "../../../utils/axiosInstance";
 import { toast } from "react-toastify";
 import PlacedOrdersTable from "./PlacedOrdersTable";
@@ -29,10 +30,15 @@ const DateInput = ({ label, value, onChange }) => (
 );
 
 const PlacedOrders = () => {
+  const location = useLocation();
+  // When navigated from ExpiringOrders with a specific order ID, highlight it
+  const highlightOrderId = location.state?.highlightOrderId || null;
+
   const [orders,           setOrders]           = useState([]);
   const [loading,          setLoading]          = useState(true);
   const [updatingId,       setUpdatingId]       = useState(null);
-  const [searchOrderIdRaw, setSearchOrderIdRaw] = useState("");
+  // Pre-fill Order ID search if we arrived from ExpiringOrders
+  const [searchOrderIdRaw, setSearchOrderIdRaw] = useState(highlightOrderId || "");
   const [searchBuyerRaw,   setSearchBuyerRaw]   = useState("");
   const [filterStatus,     setFilterStatus]     = useState("");
   const [dateFrom,         setDateFrom]         = useState("");
@@ -262,6 +268,7 @@ const PlacedOrders = () => {
                 onSort={handleSort}
                 currentPage={currentPage}
                 pageSize={PAGE_SIZE}
+                highlightId={highlightOrderId}
               />
               {totalPages > 1 && (
                 <div className="flex justify-center items-center gap-3 mt-5">

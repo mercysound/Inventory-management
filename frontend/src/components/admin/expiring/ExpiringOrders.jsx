@@ -59,9 +59,9 @@ const ExpiringOrders = () => {
 
   const toggleExpand = (id) => setExpanded((p) => ({ ...p, [id]: !p[id] }));
 
-  // Navigate to Placed Orders page — the admin can find the order there and cancel it
-  const handleViewInPlacedOrders = () => {
-    navigate("/admin-dashboard/placed-orders");
+  // Navigate to Placed Orders page, passing the specific order ID so it gets highlighted
+  const handleViewInPlacedOrders = (orderId) => {
+    navigate("/admin-dashboard/placed-orders", { state: { highlightOrderId: orderId } });
   };
 
   if (loading) {
@@ -175,60 +175,60 @@ const ExpiringOrders = () => {
                   className="bg-white rounded-2xl border border-amber-200 shadow-sm overflow-hidden"
                 >
                   {/* Order card header */}
-                  <div className="flex items-start justify-between px-5 py-4 gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="font-bold text-gray-900 text-base">
-                          {order.buyerName || order.userOrdering?.name || "Unknown Buyer"}
-                        </span>
-                        <span className="text-xs bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-full px-2 py-0.5 font-medium">
-                          {order.userOrdering?.role || "customer"}
-                        </span>
-                        <HoursBadge hours={order.hoursElapsed} expiryHours={settings.orderExpiryHours} />
-                      </div>
-
-                      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-500">
-                        <span>
-                          Order ID:{" "}
-                          <span className="font-mono font-semibold text-gray-700">
-                            ...{String(order._id).slice(-8).toUpperCase()}
-                          </span>
-                        </span>
-                        <span>
-                          Placed:{" "}
-                          {new Date(order.createdAt).toLocaleString("en-NG", {
-                            day: "numeric", month: "short", year: "numeric",
-                            hour: "2-digit", minute: "2-digit",
-                          })}
-                        </span>
-                        <span>Payment: {order.paymentMethod}</span>
-                        <span className="font-semibold text-green-700">
-                          ₦{order.totalPrice?.toLocaleString()}
-                        </span>
-                      </div>
-
-                      {order.expiryEmailCount > 0 && (
-                        <p className="text-xs text-amber-600 mt-1">
-                          📧 {order.expiryEmailCount} reminder email{order.expiryEmailCount !== 1 ? "s" : ""} sent
-                          {order.lastExpiryReminderSentAt && (
-                            <> · Last sent: {new Date(order.lastExpiryReminderSentAt).toLocaleString("en-NG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</>
-                          )}
-                        </p>
-                      )}
+                  <div className="px-4 sm:px-5 py-4">
+                    {/* Top row: buyer info */}
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="font-bold text-gray-900 text-base">
+                        {order.buyerName || order.userOrdering?.name || "Unknown Buyer"}
+                      </span>
+                      <span className="text-xs bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-full px-2 py-0.5 font-medium">
+                        {order.userOrdering?.role || "customer"}
+                      </span>
+                      <HoursBadge hours={order.hoursElapsed} expiryHours={settings.orderExpiryHours} />
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex flex-col gap-2 flex-shrink-0">
+                    {/* Meta info — stacks naturally on mobile */}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mt-1">
+                      <span>
+                        Order ID:{" "}
+                        <span className="font-mono font-semibold text-gray-700">
+                          ...{String(order._id).slice(-8).toUpperCase()}
+                        </span>
+                      </span>
+                      <span>
+                        Placed:{" "}
+                        {new Date(order.createdAt).toLocaleString("en-NG", {
+                          day: "numeric", month: "short", year: "numeric",
+                          hour: "2-digit", minute: "2-digit",
+                        })}
+                      </span>
+                      <span>Payment: {order.paymentMethod}</span>
+                      <span className="font-semibold text-green-700">
+                        ₦{order.totalPrice?.toLocaleString()}
+                      </span>
+                    </div>
+
+                    {order.expiryEmailCount > 0 && (
+                      <p className="text-xs text-amber-600 mt-1.5">
+                        📧 {order.expiryEmailCount} reminder email{order.expiryEmailCount !== 1 ? "s" : ""} sent
+                        {order.lastExpiryReminderSentAt && (
+                          <> · Last sent: {new Date(order.lastExpiryReminderSentAt).toLocaleString("en-NG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</>
+                        )}
+                      </p>
+                    )}
+
+                    {/* Action buttons — full-width row on mobile, right-aligned on desktop */}
+                    <div className="flex flex-wrap gap-2 mt-3">
                       <button
-                        onClick={handleViewInPlacedOrders}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-lg transition shadow-sm whitespace-nowrap"
+                        onClick={handleViewInPlacedOrders.bind(null, order._id)}
+                        className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-lg transition shadow-sm whitespace-nowrap"
                       >
                         <ExternalLink size={12} />
                         View in Placed Orders
                       </button>
                       <button
                         onClick={() => toggleExpand(order._id)}
-                        className="inline-flex items-center justify-center gap-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 transition"
+                        className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 transition"
                       >
                         {expanded[order._id] ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                         {expanded[order._id] ? "Hide" : "Show"} items
@@ -246,7 +246,7 @@ const ExpiringOrders = () => {
                         transition={{ duration: 0.2 }}
                         className="overflow-hidden"
                       >
-                        <div className="px-5 pb-4 border-t border-amber-100 pt-3">
+                        <div className="px-4 sm:px-5 pb-4 border-t border-amber-100 pt-3">
                           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                             Order Items ({order.productList?.length || 0})
                           </p>
