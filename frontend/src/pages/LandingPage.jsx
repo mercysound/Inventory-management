@@ -8,6 +8,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import {
   Loader2, Eye, EyeOff, ShoppingCart, BarChart3,
   Users, Package, ChevronRight, Shield, Zap, Globe,
+  Mail, Phone, MapPin, MessageCircle,
 } from "lucide-react";
 
 // ── Dashboard path by role ────────────────────────────────────────────────────
@@ -87,6 +88,14 @@ const LandingPage = () => {
 
   const navigate = useNavigate();
   const { login } = useAuth();
+
+  // ── Store contact info — fetched once, no auth needed ────────────────────
+  const [contactInfo, setContactInfo] = useState(null);
+  useEffect(() => {
+    axiosInstance.get("/settings/contact-info")
+      .then((res) => { if (res.data.success) setContactInfo(res.data); })
+      .catch(() => {}); // silently fail — contact section just won't show
+  }, []);
 
   // Redirect already-logged-in users
   useEffect(() => {
@@ -477,6 +486,99 @@ const LandingPage = () => {
           </div>
         </motion.div>
       </main>
+
+      {/* ── Find Us section — only rendered when admin has set contact info ── */}
+      {contactInfo && (contactInfo.contactEmail || contactInfo.contactPhone || contactInfo.contactAddress || contactInfo.contactWhatsapp) && (
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="relative z-10 border-t border-white/5 py-12 px-6 md:px-12"
+        >
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-8">
+              <span className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-semibold px-3.5 py-1.5 rounded-full mb-3">
+                <MapPin size={11} /> Find Us
+              </span>
+              <h2 className="text-2xl font-bold text-white mt-2">
+                {contactInfo.storeName || "Contact Us"}
+              </h2>
+              <p className="text-gray-400 text-sm mt-1">Reach out through any of the channels below</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
+              {/* Email */}
+              {contactInfo.contactEmail && (
+                <a href={`mailto:${contactInfo.contactEmail}`}
+                  className="group flex flex-col items-center gap-3 p-5 rounded-2xl
+                    bg-white/5 border border-white/10 hover:bg-white/10 hover:border-indigo-500/40
+                    transition-all duration-200 text-center">
+                  <div className="w-11 h-11 rounded-xl bg-indigo-500/20 border border-indigo-500/30
+                    flex items-center justify-center group-hover:bg-indigo-500/30 transition">
+                    <Mail size={18} className="text-indigo-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Email</p>
+                    <p className="text-sm font-medium text-white break-all">{contactInfo.contactEmail}</p>
+                  </div>
+                </a>
+              )}
+
+              {/* Phone */}
+              {contactInfo.contactPhone && (
+                <a href={`tel:${contactInfo.contactPhone}`}
+                  className="group flex flex-col items-center gap-3 p-5 rounded-2xl
+                    bg-white/5 border border-white/10 hover:bg-white/10 hover:border-green-500/40
+                    transition-all duration-200 text-center">
+                  <div className="w-11 h-11 rounded-xl bg-green-500/20 border border-green-500/30
+                    flex items-center justify-center group-hover:bg-green-500/30 transition">
+                    <Phone size={18} className="text-green-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Phone</p>
+                    <p className="text-sm font-medium text-white">{contactInfo.contactPhone}</p>
+                  </div>
+                </a>
+              )}
+
+              {/* WhatsApp */}
+              {contactInfo.contactWhatsapp && (
+                <a href={`https://wa.me/${contactInfo.contactWhatsapp.replace(/\D/g, "")}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="group flex flex-col items-center gap-3 p-5 rounded-2xl
+                    bg-white/5 border border-white/10 hover:bg-white/10 hover:border-emerald-500/40
+                    transition-all duration-200 text-center">
+                  <div className="w-11 h-11 rounded-xl bg-emerald-500/20 border border-emerald-500/30
+                    flex items-center justify-center group-hover:bg-emerald-500/30 transition">
+                    <MessageCircle size={18} className="text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">WhatsApp</p>
+                    <p className="text-sm font-medium text-white">{contactInfo.contactWhatsapp}</p>
+                  </div>
+                </a>
+              )}
+
+              {/* Address */}
+              {contactInfo.contactAddress && (
+                <div className="group flex flex-col items-center gap-3 p-5 rounded-2xl
+                  bg-white/5 border border-white/10 text-center">
+                  <div className="w-11 h-11 rounded-xl bg-amber-500/20 border border-amber-500/30
+                    flex items-center justify-center">
+                    <MapPin size={18} className="text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Address</p>
+                    <p className="text-sm font-medium text-white leading-relaxed whitespace-pre-line">
+                      {contactInfo.contactAddress}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.section>
+      )}
 
       {/* ── Footer ───────────────────────────────────────────────────────── */}
       <footer className="relative z-10 border-t border-white/5 py-6 px-6 md:px-12">
