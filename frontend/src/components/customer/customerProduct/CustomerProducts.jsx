@@ -401,6 +401,29 @@ const CustomerProducts = () => {
     } catch {}
   }, []);
 
+  // ── Resolve orderId for a productId — fetches from server if missing ─────────
+  // Declared BEFORE handleQuickAdd/Increase/Decrease to avoid temporal dead zone.
+  // This prevents the ghost-item bug: optimistic add sets orderId:"" temporarily;
+  // if user decreases during that window the API call was silently skipped.
+  const resolveOrderId = useCallback(async (productId) => {
+    const item = cartMapRef.current[productId];
+    if (item?.orderId) return item.orderId; // already have it
+    try {
+      const res = await axiosInstance.get(`/orders/product/${productId}`);
+      const oid = res.data?._id || res.data?.orderId;
+      if (oid) {
+        const updated = { ...cartMapRef.current };
+        if (updated[productId]) {
+          updated[productId] = { ...updated[productId], orderId: oid };
+          cartMapRef.current = updated;
+          setCartMap(updated);
+        }
+        return oid;
+      }
+    } catch {}
+    return null;
+  }, []);
+
   // ── Quick add ──────────────────────────────────────────────────────────────
   const handleQuickAdd = useCallback((product) => {
     const prev = cartMapRef.current[product._id];
@@ -458,29 +481,6 @@ const CustomerProducts = () => {
       })
       .catch(() => { cartMapRef.current = snapshot; setCartMap(snapshot); dispatchOrdersUpdated(snapshot); });
   }, [dispatchOrdersUpdated, products, user, resolveOrderId]);
-
-  // ── Resolve orderId for a productId — fetches from server if missing ─────────
-  // This prevents ghost-item bug: optimistic add sets orderId:"" temporarily;
-  // if user decreases during that window the API call was silently skipped.
-  const resolveOrderId = useCallback(async (productId) => {
-    const item = cartMapRef.current[productId];
-    if (item?.orderId) return item.orderId; // already have it
-    try {
-      const res = await axiosInstance.get(`/orders/product/${productId}`);
-      const oid = res.data?._id || res.data?.orderId;
-      if (oid) {
-        // Patch ref + state with the real orderId so future calls are instant
-        const updated = { ...cartMapRef.current };
-        if (updated[productId]) {
-          updated[productId] = { ...updated[productId], orderId: oid };
-          cartMapRef.current = updated;
-          setCartMap(updated);
-        }
-        return oid;
-      }
-    } catch {}
-    return null;
-  }, []);
 
   // ── Quick decrease ─────────────────────────────────────────────────────────
   const handleQuickDecrease = useCallback(async (productId) => {
