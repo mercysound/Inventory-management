@@ -89,14 +89,8 @@ export const CartProvider = ({ children }) => {
     };
 
     const handlePriceChange = () => {
-      const total = cartCountRef.current;
-      window.dispatchEvent(new CustomEvent('ordersUpdated', {
-        detail: {
-          total,
-          priceChanged: true,
-          updatedAt: new Date().toISOString(),
-        },
-      }));
+      // Always re-fetch ground truth from server on price change —
+      // never re-broadcast a potentially stale local count
       scheduleRefresh();
     };
 
@@ -118,14 +112,23 @@ export const CartProvider = ({ children }) => {
     };
   }, [hasCart, fetchCartCount]);
 
-  // Listen for the custom event fired by order pages
+  // Listen for the custom event fired by order pages and product pages
+  // Rule: if event carries an explicit numeric `total`, trust it immediately.
+  //       This handles: clear-cart, add, increase, decrease, page-load sync.
+  //       fetchCartCount() is called as a follow-up safety-net only when no
+  //       total is provided (e.g. SSE events without a count).
   useEffect(() => {
     const handler = (e) => {
       const detail = e?.detail;
+      // Ignore our own internal source-tagged dispatches from fetchOrders
+      if (detail?._source === "fetchOrders") return;
       if (detail && typeof detail.total === "number") {
+        // Explicit total provided — trust it directly, no extra fetch needed
         setCartCount(detail.total);
+        cartCountRef.current = detail.total;
         return;
       }
+      // No total — re-fetch from server for ground truth
       fetchCartCount();
     };
     window.addEventListener("ordersUpdated", handler);

@@ -313,6 +313,14 @@ const CustomerProducts = () => {
       });
       cartMapRef.current = map;
       setCartMap(map);
+      // Always sync CartContext with ground-truth total from server —
+      // fixes stale floating-cart badge after reload or clear-cart
+      const freshTotal = cartOrders.reduce((s, o) => s + (o.quantity || 0), 0);
+      try {
+        window.dispatchEvent(new CustomEvent("ordersUpdated", {
+          detail: { total: freshTotal, _source: "fetchAll" },
+        }));
+      } catch {}
     } catch (err) {
       console.error("Error fetching data:", err);
     } finally {
@@ -359,7 +367,12 @@ const CustomerProducts = () => {
   }, [user]);
 
   useEffect(() => {
-    const h = (e) => { if (e?.detail?.priceChanged) fetchAll(); };
+    // Only re-fetch when server signals a price change that affects cart values.
+    // Skip our own fetchAll-sourced dispatches to prevent an infinite loop.
+    const h = (e) => {
+      if (e?.detail?._source === "fetchAll") return;
+      if (e?.detail?.priceChanged) fetchAll();
+    };
     window.addEventListener("ordersUpdated", h);
     return () => window.removeEventListener("ordersUpdated", h);
   }, [fetchAll]);

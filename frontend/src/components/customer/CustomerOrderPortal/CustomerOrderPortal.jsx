@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ShoppingCart, ShoppingBag, FileText, Clock, RefreshCw, PackageOpen,
+  ShoppingCart, ShoppingBag, FileText, Clock, RefreshCw, PackageOpen, Trash2,
 } from "lucide-react";
 import axiosInstance from "../../../utils/axiosInstance";
 import CustomerOrderTable from "./CustomerOrderTable";
@@ -318,7 +318,26 @@ const CustomerOrderPortal = () => {
     } catch { setOrders(prev); toast.error("Failed to remove item"); }
   };
 
-  // ── Price mode toggle (admin/staff only) ───────────────────────────
+  // ── Clear entire cart ─────────────────────────────────────────────────────
+  const handleClearCart = async () => {
+    if (!orders.length) return;
+    if (!window.confirm("Remove all items from your cart?")) return;
+    const prev = orders;
+    setOrders([]);
+    resetCart();
+    try {
+      window.dispatchEvent(new CustomEvent("ordersUpdated", { detail: { total: 0 } }));
+    } catch {}
+    try {
+      await axiosInstance.delete("/orders/clear");
+      toast.success("Cart cleared");
+    } catch {
+      // Rollback
+      setOrders(prev);
+      fetchOrders(true);
+      toast.error("Failed to clear cart");
+    }
+  };
   const togglePriceMode = async () => {
     const next = priceMode === "retail" ? "wholesale" : "retail";
     const previous = priceMode;
@@ -669,6 +688,18 @@ const CustomerOrderPortal = () => {
                       </button>
                     </div>
                   )}
+
+                  {/* Clear Cart */}
+                  <motion.button
+                    onClick={handleClearCart}
+                    disabled={!orders.length}
+                    whileTap={{ scale: 0.96 }}
+                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition text-sm font-semibold disabled:opacity-40"
+                  >
+                    <Trash2 size={14} />
+                    Clear Cart
+                  </motion.button>
+
                   <motion.button
                     onClick={handlePreviewInvoice}
                     disabled={previewLoading}

@@ -187,6 +187,8 @@ const StaffOrders = () => {
     try {
       await axiosInstance.delete("/orders/clear");
       setOrders([]);
+      // Tell CartContext immediately — floating cart badge resets to 0
+      try { window.dispatchEvent(new CustomEvent("ordersUpdated", { detail: { total: 0 } })); } catch {}
       toast.success("Cart cleared");
     } catch { toast.error("Failed to clear cart"); }
   };
