@@ -1,0 +1,49 @@
+services:
+  - type: web
+    name: melech-sh
+    runtime: node
+    region: oregon
+    plan: free
+
+    # Render runs this from the repo root
+    buildCommand: "npm run build && cd server && npm ci"
+    startCommand: "cd server && node index.js"
+
+    # Environment variables — add the secret values in the Render dashboard
+    # Do NOT put secret values here; this file is committed to git.
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+
+      # ── Set these in the Render dashboard (Environment tab) ──────────────
+      - key: MONGO_URI
+        sync: false           # fill in Render dashboard
+      - key: JWT_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_SECRET_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_USER
+        sync: false
+      - key: MAIL_PASS
+        sync: false
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      # FRONTEND_URL is the Render service URL — set after first deploy
+      - key: FRONTEND_URL
+        sync: false

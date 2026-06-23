@@ -51,8 +51,7 @@ const isDev = process.env.NODE_ENV === "development";
 // If CORS comes after rate limiters, 429 responses won't have CORS headers
 // and the browser will show a CORS error instead of the actual rate limit error.
 const allowedOrigins = [
-  // DEV MODE TESTING: uncomment these when running frontend locally.
-  // Do not leave local origins enabled in production.
+  // Local dev — comment out in production if you want a tighter CORS policy
   "http://localhost:5173",
   "http://127.0.0.1:5173",
   "http://localhost:5174",
@@ -61,9 +60,9 @@ const allowedOrigins = [
   "http://127.0.0.1:5175",
   "http://localhost:3000",
 
-  // Production origin for Render fullstack deployment.
-  // If you deploy to a different domain, set FRONTEND_URL in Render env vars.
-  process.env.FRONTEND_URL || "https://inventory-management-zs8z.onrender.com",
+  // Production — set FRONTEND_URL in Render dashboard
+  // e.g. https://melech-sh.onrender.com
+  process.env.FRONTEND_URL,
 ].filter(Boolean);
 
 // In development, set NODE_ENV=development and if you serve the frontend locally,

@@ -3,9 +3,9 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "build": "cd frontend && npm ci && npm run build && cd ../server && npm ci",
-    "start": "cd server && npm run dev",
-    "start:prod": "cd server && npm start",
+    "build": "cd frontend && npm ci && npm run build",
+    "start": "cd server && npm start",
+    "dev": "cd server && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
     "install:all": "npm install && cd frontend && npm install && cd ../server && npm install"
   },
