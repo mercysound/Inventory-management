@@ -1,8 +1,8 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Pencil, Trash2, Plus, Trash,
   Phone, Mail, Package, AlertTriangle,
-  Copy, Check, Eye, EyeOff,
+  Copy, Check, ScanLine, CalendarClock,
 } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 
@@ -81,7 +81,114 @@ const ReorderHint = ({ supplier }) => {
   );
 };
 
-// ── Skeletons ─────────────────────────────────────────────────────────────────
+// ── Expiry badge ──────────────────────────────────────────────────────────────
+const ExpiryBadge = ({ expiryDate, highlight = false }) => {
+  if (!expiryDate) return <span className="text-gray-300 text-xs">—</span>;
+
+  const today    = new Date();
+  today.setHours(0, 0, 0, 0);
+  const exp      = new Date(expiryDate);
+  exp.setHours(0, 0, 0, 0);
+  const diffDays = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
+  const label    = exp.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
+
+  if (diffDays < 0)
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-600 border border-red-100 ${highlight ? "ring-1 ring-red-300" : ""}`}>
+        <CalendarClock size={10} /> Expired · {label}
+      </span>
+    );
+  if (diffDays <= 7)
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-600 border border-red-100 ${highlight ? "ring-1 ring-red-300" : ""}`}>
+        <CalendarClock size={10} /> {diffDays}d left · {label}
+      </span>
+    );
+  if (diffDays <= 30)
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-orange-50 text-orange-600 border border-orange-100 ${highlight ? "ring-1 ring-orange-300" : ""}`}>
+        <CalendarClock size={10} /> {diffDays}d left · {label}
+      </span>
+    );
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-50 text-gray-500 border border-gray-100 ${highlight ? "ring-1 ring-purple-200" : ""}`}>
+      <CalendarClock size={10} /> {label}
+    </span>
+  );
+};
+
+// ── Batch number badge ────────────────────────────────────────────────────────
+const BatchBadge = ({ batchNumber, highlight = false }) => {
+  if (!batchNumber) return <span className="text-gray-300 text-xs">—</span>;
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-purple-50 text-purple-700 border border-purple-100 ${highlight ? "ring-1 ring-purple-400 bg-purple-100" : ""}`}>
+      <ScanLine size={10} /> {batchNumber}
+    </span>
+  );
+};
+
+
+// ── Pagination bar ────────────────────────────────────────────────────────────
+const PaginationBar = ({
+  currentPage, totalPages, totalItems, pageSize,
+  startIdx, jumpInput, setJumpInput, goToPage, handleJumpSubmit,
+}) => {
+  const pages = [];
+  const addPage = (n) => { if (!pages.includes(n) && n >= 1 && n <= totalPages) pages.push(n); };
+  addPage(1);
+  addPage(currentPage - 1);
+  addPage(currentPage);
+  addPage(currentPage + 1);
+  addPage(totalPages);
+  pages.sort((a, b) => a - b);
+
+  const withGaps = [];
+  for (let i = 0; i < pages.length; i++) {
+    if (i > 0 && pages[i] - pages[i - 1] > 1) withGaps.push("...");
+    withGaps.push(pages[i]);
+  }
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 bg-gray-50/60 flex-wrap">
+      <p className="text-[11px] text-gray-400 order-2 sm:order-1">
+        Showing <span className="font-semibold text-gray-600">{startIdx + 1}</span>–<span className="font-semibold text-gray-600">{Math.min(startIdx + pageSize, totalItems)}</span> of <span className="font-semibold text-gray-600">{totalItems}</span> &nbsp;·&nbsp; Page <span className="font-semibold text-gray-600">{currentPage}</span> of <span className="font-semibold text-gray-600">{totalPages}</span>
+      </p>
+      <div className="flex items-center gap-1 order-1 sm:order-2 flex-wrap justify-center">
+        <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-xs font-medium border border-gray-200 text-gray-500 hover:bg-white hover:border-blue-300 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed transition"
+          aria-label="Previous page">&#8592;</button>
+        {withGaps.map((item, i) =>
+          item === "..." ? (
+            <span key={`gap-${i}`} className="w-8 text-center text-xs text-gray-400">…</span>
+          ) : (
+            <button key={item} onClick={() => goToPage(item)} aria-current={item === currentPage ? "page" : undefined}
+              className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-medium border transition
+                ${item === currentPage ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "border-gray-200 text-gray-600 hover:bg-white hover:border-blue-300 hover:text-blue-600"}`}
+            >{item}</button>
+          )
+        )}
+        <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-xs font-medium border border-gray-200 text-gray-500 hover:bg-white hover:border-blue-300 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed transition"
+          aria-label="Next page">&#8594;</button>
+      </div>
+      <form onSubmit={handleJumpSubmit} className="flex items-center gap-1.5 order-3">
+        <span className="text-[11px] text-gray-400">Go to</span>
+        <input type="number" min={1} max={totalPages} value={jumpInput}
+          onChange={(e) => setJumpInput(e.target.value)}
+          onWheel={(e) => e.currentTarget.blur()}
+          placeholder="pg"
+          className="w-14 h-8 text-center text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+        />
+        <button type="submit"
+          className="h-8 px-2.5 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition">
+          Go
+        </button>
+      </form>
+    </div>
+  );
+};
+
+
 const UpdatingRowSkeleton = () => (
   <tr className="border-b border-gray-50 bg-blue-50/40">
     <td colSpan={8} className="px-4 py-3.5">
@@ -99,33 +206,6 @@ const UpdatingRowSkeleton = () => (
   </tr>
 );
 
-const SkeletonRows = () =>
-  [...Array(3)].map((_, i) => (
-    <tr key={i} className="animate-pulse border-b border-gray-50">
-      <td className="px-4 py-3"><div className="h-3 w-4 bg-gray-200 rounded" /></td>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gray-200 flex-shrink-0" />
-          <div className="space-y-1.5">
-            <div className="h-3 bg-gray-200 rounded w-28" />
-            <div className="h-2 bg-gray-100 rounded w-16" />
-          </div>
-        </div>
-      </td>
-      <td className="px-4 py-3"><div className="h-5 w-20 bg-gray-100 rounded-full" /></td>
-      <td className="px-4 py-3"><div className="h-3 w-16 bg-gray-200 rounded" /></td>
-      <td className="px-4 py-3"><div className="h-3 w-16 bg-gray-100 rounded" /></td>
-      <td className="px-4 py-3"><div className="h-5 w-24 bg-gray-100 rounded-full" /></td>
-      <td className="px-4 py-3"><div className="h-3 bg-gray-100 rounded w-32" /></td>
-      <td className="px-4 py-3">
-        <div className="flex gap-1.5">
-          <div className="w-8 h-8 bg-gray-200 rounded-lg" />
-          <div className="w-8 h-8 bg-gray-200 rounded-lg" />
-        </div>
-      </td>
-    </tr>
-  ));
-
 // ── Main component ────────────────────────────────────────────────────────────
 const ProductTable = ({
   products,
@@ -137,6 +217,10 @@ const ProductTable = ({
   scrollRef,
   lowStockThreshold = 10,
   onToggleNewArrival,
+  onToggleBonanza,
+  onToggleStaffOnly,
+  batchSearch = "",
+  expiryDateFilter = "",
 }) => {
   const { user } = useAuth();
   const role = (user?.role || "").toString().toLowerCase();
@@ -161,67 +245,78 @@ const ProductTable = ({
     });
   };
 
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [isLoading,    setIsLoading]    = useState(false);
-  const sentinelRef  = useRef(null);
-  const tableWrapRef = useRef(null);
-  const mobileWrapRef= useRef(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [jumpInput,   setJumpInput]   = useState("");
+  const tableWrapRef  = useRef(null);
+  const mobileWrapRef = useRef(null);
 
-  const visibleProducts = products.slice(0, visibleCount);
-  const hasMore         = visibleCount < products.length;
-  const outOfStock = products.filter((p) => p.stock === 0).length;
-  const lowStock   = products.filter((p) => p.stock > 0 && p.stock <= lowStockThreshold).length;
-  const totalValue      = products.reduce((sum, p) => sum + (p.price * p.stock), 0);
+  const totalPages    = Math.max(1, Math.ceil(products.length / PAGE_SIZE));
+  const safePage      = Math.min(currentPage, totalPages);
+  const startIdx      = (safePage - 1) * PAGE_SIZE;
+  const visibleProducts = products.slice(startIdx, startIdx + PAGE_SIZE);
 
-  const loadMore = useCallback(() => {
-    if (isLoading || !hasMore) return;
-    setIsLoading(true);
-    setTimeout(() => {
-      setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, products.length));
-      setIsLoading(false);
-    }, 300);
-  }, [isLoading, hasMore, products.length]);
-
+  // Reset to page 1 whenever the product list changes (filter / re-fetch)
   useEffect(() => {
-    const sentinel = sentinelRef.current;
-    const wrap     = tableWrapRef.current;
-    if (!sentinel || !wrap) return;
-    const observer = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting) loadMore(); },
-      { root: wrap, threshold: 0.1 }
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [loadMore]);
-
-  // Reset visible count whenever the product list changes — catches both
-  // filtering down (fewer results) and switching back to "All Categories"
-  // (more results). Without this, the infinite-scroll window stays at the
-  // previous count and shows fewer items than exist.
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
+    setCurrentPage(1);
+    setJumpInput("");
   }, [products]);
+
+  // Scroll the table wrapper back to top on page change
+  useEffect(() => {
+    if (tableWrapRef.current)  tableWrapRef.current.scrollTop  = 0;
+    if (mobileWrapRef.current) mobileWrapRef.current.scrollTop = 0;
+  }, [currentPage]);
+
+  const goToPage = (p) => {
+    const clamped = Math.max(1, Math.min(p, totalPages));
+    setCurrentPage(clamped);
+    setJumpInput("");
+  };
+
+  const handleJumpSubmit = (e) => {
+    e.preventDefault();
+    const n = parseInt(jumpInput, 10);
+    if (!isNaN(n)) goToPage(n);
+  };
+  const lowStock    = products.filter((p) => p.stock > 0 && p.stock <= lowStockThreshold).length;
+  const outOfStock  = products.filter((p) => p.stock === 0).length;
+  const totalValue  = products.reduce((sum, p) => sum + (p.price * p.stock), 0);
+
+  // Expiry stats — calculated from full product list (not filtered)
+  const today        = new Date(); today.setHours(0, 0, 0, 0);
+  const expiringSoon = products.filter((p) => {
+    if (!p.expiryDate) return false;
+    const exp = new Date(p.expiryDate); exp.setHours(0, 0, 0, 0);
+    const diff = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
+    return diff >= 0 && diff <= 30;
+  }).length;
 
   // Determine desktop table columns
   // Admin always sees both prices; staff sees retail + optional wholesale column
+  // Batch + Expiry columns always shown (they show "—" when not set)
   const showWholesale = isAdmin || (isStaff && showWholesaleCol);
 
   const desktopHeaders = [
     "#", "Product", "Category", "RT (₦)",
     ...(showWholesale ? ["WP (₦)"] : []),
-    "Stock", "Description", "Actions",
+    "Stock",
+    "Batch No.",
+    "Expiry",
+    "Description",
+    "Actions",
   ];
 
   return (
     <div className="w-full flex flex-col gap-4">
 
       {/* ── STATS CARDS ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
-          { label: "Total products",   value: products.length,             icon: <Package size={16} className="text-blue-500" />,   bg: "bg-blue-50",   text: "text-blue-700" },
-          { label: "Inventory value",  value: `₦${totalValue.toLocaleString()}`, icon: <span className="text-green-500 font-bold text-sm">₦</span>, bg: "bg-green-50", text: "text-green-700" },
-          { label: "Low stock",        value: lowStock,                    icon: <AlertTriangle size={15} className="text-amber-500" />, bg: "bg-amber-50", text: "text-amber-700" },
-          { label: "Out of stock",     value: outOfStock,                  icon: <AlertTriangle size={15} className="text-red-500" />,  bg: "bg-red-50",   text: "text-red-700" },
+          { label: "Total products",   value: products.length,                  icon: <Package size={16} className="text-blue-500" />,           bg: "bg-blue-50",   text: "text-blue-700" },
+          { label: "Inventory value",  value: `₦${totalValue.toLocaleString()}`, icon: <span className="text-green-500 font-bold text-sm">₦</span>, bg: "bg-green-50",  text: "text-green-700" },
+          { label: "Low stock",        value: lowStock,                          icon: <AlertTriangle size={15} className="text-amber-500" />,     bg: "bg-amber-50",  text: "text-amber-700" },
+          { label: "Out of stock",     value: outOfStock,                        icon: <AlertTriangle size={15} className="text-red-500" />,       bg: "bg-red-50",    text: "text-red-700" },
+          { label: "Expiring ≤30d",    value: expiringSoon,                      icon: <CalendarClock size={15} className="text-orange-500" />,    bg: "bg-orange-50", text: "text-orange-700" },
         ].map(({ label, value, icon, bg, text }) => (
           <div key={label} className={`${bg} rounded-xl p-3 flex items-center gap-3 border border-white shadow-sm`}>
             <div className="flex-shrink-0">{icon}</div>
@@ -241,14 +336,18 @@ const ProductTable = ({
           <div>
             <h2 className="text-sm font-semibold text-gray-800">Product list</h2>
             <p className="text-[11px] text-gray-400 mt-0.5">
-              Showing {visibleProducts.length} of {products.length}
+              {products.length === 0
+                ? "No products"
+                : `${startIdx + 1}–${Math.min(startIdx + PAGE_SIZE, products.length)} of ${products.length} products`
+              }
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
             {/* ✅ Wholesale column toggle — staff only */}
             {isStaff && (
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-gray-500">Wholesale column</span>
+              <div className="flex items-center gap-2">
+                {/* Label hidden on small screens to save space — toggle is still visible */}
+                <span className="hidden sm:inline text-xs text-gray-500">Wholesale col</span>
                 <button
                   onClick={toggleWholesaleCol}
                   role="switch"
@@ -328,6 +427,16 @@ const ProductTable = ({
                                     ✨ NEW
                                   </span>
                                 )}
+                                {product.isBonanza && (
+                                  <span className="ml-1.5 text-[9px] font-bold bg-orange-100 text-orange-600 border border-orange-200 px-1.5 py-0.5 rounded-full align-middle">
+                                    🎉 BONANZA
+                                  </span>
+                                )}
+                                {product.isStaffOnly && (
+                                  <span className="ml-1.5 text-[9px] font-bold bg-red-100 text-red-500 border border-red-200 px-1.5 py-0.5 rounded-full align-middle">
+                                    🔒 STAFF ONLY
+                                  </span>
+                                )}
                               </p>
                               {product.supplierId && (
                                 <p className="text-[10px] text-gray-400 mt-0.5">{product.supplierId.name}</p>
@@ -365,6 +474,16 @@ const ProductTable = ({
                           )}
                         </td>
 
+                        {/* Batch number */}
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                          <BatchBadge batchNumber={product.batchNumber} highlight={!!batchSearch && !!(product.batchNumber || "").toLowerCase().includes(batchSearch.toLowerCase())} />
+                        </td>
+
+                        {/* Expiry date */}
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                          <ExpiryBadge expiryDate={product.expiryDate} highlight={!!expiryDateFilter} />
+                        </td>
+
                         {/* Description */}
                         <td className="px-4 py-3.5 text-gray-400 text-xs max-w-[200px]">
                           <p className="line-clamp-2 leading-relaxed">{product.description || "—"}</p>
@@ -383,6 +502,26 @@ const ProductTable = ({
                                   : "text-gray-300 hover:bg-indigo-50 hover:text-indigo-400"
                                 }`}
                             >✨</button>
+                            {/* Bonanza quick-toggle */}
+                            <button
+                              onClick={() => onToggleBonanza?.(product._id, product.isBonanza)}
+                              title={product.isBonanza ? "Remove from Bonanza" : "Add to Bonanza"}
+                              className={`w-8 h-8 flex items-center justify-center rounded-lg transition text-base
+                                ${product.isBonanza
+                                  ? "bg-orange-100 text-orange-600 hover:bg-orange-200"
+                                  : "text-gray-300 hover:bg-orange-50 hover:text-orange-400"
+                                }`}
+                            >🎉</button>
+                            {/* Staff-only quick-toggle */}
+                            <button
+                              onClick={() => onToggleStaffOnly?.(product._id, product.isStaffOnly)}
+                              title={product.isStaffOnly ? "Make visible to all (remove staff-only)" : "Mark as Staff-Only (hide from online)"}
+                              className={`w-8 h-8 flex items-center justify-center rounded-lg transition text-base
+                                ${product.isStaffOnly
+                                  ? "bg-red-100 text-red-500 hover:bg-red-200"
+                                  : "text-gray-300 hover:bg-red-50 hover:text-red-400"
+                                }`}
+                            >🔒</button>
                             <button onClick={() => onEdit(product)}
                               className="w-8 h-8 flex items-center justify-center rounded-lg text-blue-500 hover:bg-blue-100 transition"
                               title="Edit product"><Pencil size={14} /></button>
@@ -394,7 +533,7 @@ const ProductTable = ({
                       </tr>
                     )
                   )}
-                  {isLoading && <SkeletonRows />}
+                  {/* no loading skeleton needed — pages are instant */}
                 </>
               ) : (
                 <tr>
@@ -409,13 +548,6 @@ const ProductTable = ({
               )}
             </tbody>
           </table>
-
-          <div ref={sentinelRef} style={{ height: 1 }} />
-          {!hasMore && products.length > 0 && (
-            <p className="text-center text-xs text-gray-300 py-4 border-t border-gray-50">
-              All {products.length} products loaded
-            </p>
-          )}
         </div>
 
         {/* ── MOBILE CARDS ── */}
@@ -425,7 +557,7 @@ const ProductTable = ({
           style={{ maxHeight: "calc(100vh - 340px)" }}
         >
           {visibleProducts.length > 0 ? (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y-2 divide-gray-100">
               {visibleProducts.map((product) =>
                 updatingProductId === product._id ? (
                   <div key={product._id} className="p-4 bg-blue-50/40 animate-pulse">
@@ -438,7 +570,7 @@ const ProductTable = ({
                     </div>
                   </div>
                 ) : (
-                  <div key={product._id} className="p-4 hover:bg-gray-50 transition-colors">
+                  <div key={product._id} className="px-4 py-4 hover:bg-gray-50/70 transition-colors">
                     <div className="flex gap-3">
                       <div className="w-16 h-16 rounded-xl border border-gray-100 overflow-hidden bg-gray-50 flex items-center justify-center flex-shrink-0 shadow-sm">
                         {product.image
@@ -448,12 +580,54 @@ const ProductTable = ({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="font-semibold text-gray-800 text-sm leading-tight truncate">{product.name}</p>
+                            <p className="font-semibold text-gray-800 text-sm leading-tight">
+                              {product.name}
+                              {product.isNewArrival && (
+                                <span className="ml-1.5 text-[9px] font-bold bg-indigo-100 text-indigo-600 border border-indigo-200 px-1.5 py-0.5 rounded-full align-middle">
+                                  ✨ NEW
+                                </span>
+                              )}
+                              {product.isBonanza && (
+                                <span className="ml-1.5 text-[9px] font-bold bg-orange-100 text-orange-600 border border-orange-200 px-1.5 py-0.5 rounded-full align-middle">
+                                  🎉 BONANZA
+                                </span>
+                              )}
+                              {product.isStaffOnly && (
+                                <span className="ml-1.5 text-[9px] font-bold bg-red-100 text-red-500 border border-red-200 px-1.5 py-0.5 rounded-full align-middle">
+                                  🔒 STAFF
+                                </span>
+                              )}
+                            </p>
                             {product.supplierId && (
                               <p className="text-[10px] text-gray-400 mt-0.5">{product.supplierId.name}</p>
                             )}
                           </div>
+                          {/* Action buttons — edit, delete, new-arrival toggle */}
                           <div className="flex gap-1 flex-shrink-0">
+                            <button
+                              onClick={() => onToggleNewArrival?.(product._id, product.isNewArrival)}
+                              title={product.isNewArrival ? "Remove from New Arrivals" : "Mark as New Arrival"}
+                              className={`w-8 h-8 flex items-center justify-center rounded-lg transition text-sm
+                                ${product.isNewArrival
+                                  ? "bg-indigo-100 text-indigo-600"
+                                  : "text-gray-300 hover:bg-indigo-50 hover:text-indigo-400"}`}
+                            >✨</button>
+                            <button
+                              onClick={() => onToggleBonanza?.(product._id, product.isBonanza)}
+                              title={product.isBonanza ? "Remove from Bonanza" : "Add to Bonanza"}
+                              className={`w-8 h-8 flex items-center justify-center rounded-lg transition text-sm
+                                ${product.isBonanza
+                                  ? "bg-orange-100 text-orange-600"
+                                  : "text-gray-300 hover:bg-orange-50 hover:text-orange-400"}`}
+                            >🎉</button>
+                            <button
+                              onClick={() => onToggleStaffOnly?.(product._id, product.isStaffOnly)}
+                              title={product.isStaffOnly ? "Remove staff-only" : "Mark staff-only"}
+                              className={`w-8 h-8 flex items-center justify-center rounded-lg transition text-sm
+                                ${product.isStaffOnly
+                                  ? "bg-red-100 text-red-500"
+                                  : "text-gray-300 hover:bg-red-50 hover:text-red-400"}`}
+                            >🔒</button>
                             <button onClick={() => onEdit(product)}
                               className="w-8 h-8 flex items-center justify-center rounded-lg text-blue-500 hover:bg-blue-100 transition">
                               <Pencil size={14} />
@@ -480,6 +654,20 @@ const ProductTable = ({
                         <div className="mt-1.5">
                           <StockBadge stock={product.stock} threshold={lowStockThreshold} />
                         </div>
+                        {/* Batch + Expiry on mobile */}
+                        {(product.batchNumber || product.expiryDate) && (
+                          <div className="flex flex-wrap gap-1.5 mt-1.5">
+                            {product.batchNumber && (
+                              <BatchBadge
+                                batchNumber={product.batchNumber}
+                                highlight={!!batchSearch && (product.batchNumber || "").toLowerCase().includes(batchSearch.toLowerCase())}
+                              />
+                            )}
+                            {product.expiryDate && (
+                              <ExpiryBadge expiryDate={product.expiryDate} highlight={!!expiryDateFilter} />
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                     {product.description && (
@@ -492,26 +680,7 @@ const ProductTable = ({
                 )
               )}
 
-              {isLoading && (
-                <div className="p-4 space-y-3">
-                  {[...Array(3)].map((_, i) => (
-                    <div key={i} className="animate-pulse bg-white rounded-xl border border-gray-100 p-4 flex gap-3">
-                      <div className="w-16 h-16 rounded-xl bg-gray-200 flex-shrink-0" />
-                      <div className="flex-1 space-y-2">
-                        <div className="h-3 bg-gray-200 rounded w-3/4" />
-                        <div className="h-3 bg-gray-100 rounded w-1/2" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div ref={sentinelRef} style={{ height: 1 }} />
-              {!hasMore && products.length > 0 && (
-                <p className="text-center text-xs text-gray-300 py-4 border-t border-gray-50">
-                  All {products.length} products loaded
-                </p>
-              )}
+              {/* no loading skeleton — pages are instant */}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-20 gap-2">
@@ -525,6 +694,21 @@ const ProductTable = ({
             </div>
           )}
         </div>
+
+        {/* ── PAGINATION BAR — shown below both desktop table and mobile cards ── */}
+        {totalPages > 1 && (
+          <PaginationBar
+            currentPage={safePage}
+            totalPages={totalPages}
+            totalItems={products.length}
+            pageSize={PAGE_SIZE}
+            startIdx={startIdx}
+            jumpInput={jumpInput}
+            setJumpInput={setJumpInput}
+            goToPage={goToPage}
+            handleJumpSubmit={handleJumpSubmit}
+          />
+        )}
       </div>
     </div>
   );

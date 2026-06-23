@@ -24,6 +24,17 @@ const productSchema = new mongoose.Schema({
   // newArrivalAt tracks when it was promoted (for sorting newest-first).
   isNewArrival:  { type: Boolean, default: false },
   newArrivalAt:  { type: Date,    default: null  },
+
+  // ── Bonanza flag ──────────────────────────────────────────────────────────
+  // Admin can mark any product as a "Bonanza" (special deal / cheap offer).
+  // These show in the Bonanza tab on the customer product page.
+  isBonanza:   { type: Boolean, default: false },
+
+  // ── Staff-only flag ───────────────────────────────────────────────────────
+  // When true the product is hidden from online customer/wholesale listings.
+  // Only staff can purchase it at the physical counter.
+  isStaffOnly: { type: Boolean, default: false },
+
   // ─────────────────────────────────────────────────────────────────────────
   categoryId: {
     type: mongoose.Schema.Types.ObjectId,

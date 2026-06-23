@@ -62,6 +62,8 @@ const resolveImages = (product) => {
 
 // ─── Helper: sanitize product for role ───────────────────────────────────────
 // Always injects the resolved `images` array so every frontend consumer gets it.
+// Staff-only products are excluded from customer and wholesale responses
+// at the DATA level — they simply won't be in the returned array.
 const sanitizeProductForRole = (product, role) => {
   const obj = product.toObject ? product.toObject() : { ...product };
 
@@ -69,19 +71,23 @@ const sanitizeProductForRole = (product, role) => {
   obj.images = resolveImages(product);
 
   if (role === 'customer') {
+    // Hide staff-only products from online customers entirely
+    if (obj.isStaffOnly) return null;
     delete obj.wholesalePrice;
     delete obj.batchNumber;
     delete obj.expiryDate;
     return obj;
   }
   if (role === 'wholesale') {
+    // Hide staff-only products from wholesale online customers
+    if (obj.isStaffOnly) return null;
     obj.price = obj.wholesalePrice ?? obj.price;
     delete obj.wholesalePrice;
     delete obj.batchNumber;
     delete obj.expiryDate;
     return obj;
   }
-  // admin, staff → full object including batchNumber and expiryDate
+  // admin, staff → full object including all flags
   return obj;
 };
 
@@ -103,7 +109,7 @@ const getProducts = async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    const sanitized = products.map((p) => sanitizeProductForRole(p, role));
+    const sanitized = products.map((p) => sanitizeProductForRole(p, role)).filter(Boolean);
     const suppliers  = await SupplierModel.find();
     const categories = await CategoryModel.find();
     const meta       = getPaginationMeta(total, limit, page);
@@ -146,8 +152,11 @@ const addProduct = async (req, res) => {
       images:         uploadedUrls,
       image:          uploadedUrls[0] || null,
       // Optional fields
-      expiryDate:  req.body.expiryDate  || null,
-      batchNumber: req.body.batchNumber || null,
+      expiryDate:   req.body.expiryDate   || null,
+      batchNumber:  req.body.batchNumber  || null,
+      isNewArrival: req.body.isNewArrival === 'true' || req.body.isNewArrival === true,
+      isBonanza:    req.body.isBonanza    === 'true' || req.body.isBonanza    === true,
+      isStaffOnly:  req.body.isStaffOnly  === 'true' || req.body.isStaffOnly  === true,
     });
 
     const out = product.toObject();
@@ -401,6 +410,44 @@ const toggleNewArrival = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH /products/:id/bonanza
+// Admin toggles the isBonanza flag on a product.
+// ─────────────────────────────────────────────────────────────────────────────
+const toggleBonanza = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await ProductModel.findById(id);
+    if (!product) return sendError(res, 404, 'Product not found');
+    const next = !product.isBonanza;
+    product.isBonanza = next;
+    await product.save();
+    return sendResponse(res, 200, { isBonanza: next }, next ? 'Added to Bonanza' : 'Removed from Bonanza');
+  } catch (error) {
+    console.error('toggleBonanza error:', error);
+    return sendError(res, 500, 'Failed to update bonanza status');
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH /products/:id/staff-only
+// Admin toggles the isStaffOnly flag on a product.
+// ─────────────────────────────────────────────────────────────────────────────
+const toggleStaffOnly = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await ProductModel.findById(id);
+    if (!product) return sendError(res, 404, 'Product not found');
+    const next = !product.isStaffOnly;
+    product.isStaffOnly = next;
+    await product.save();
+    return sendResponse(res, 200, { isStaffOnly: next }, next ? 'Marked as Staff-Only' : 'Now visible to all');
+  } catch (error) {
+    console.error('toggleStaffOnly error:', error);
+    return sendError(res, 500, 'Failed to update staff-only status');
+  }
+};
+
 export {
   getProducts,
   addProduct,
@@ -410,4 +457,6 @@ export {
   restoreProduct,
   deleteProductPermanent,
   toggleNewArrival,
+  toggleBonanza,
+  toggleStaffOnly,
 };

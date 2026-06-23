@@ -100,7 +100,7 @@ export const createOrderSchema = Joi.object({
 });
 
 export const completeOrderSchema = Joi.object({
-  paymentMethod:         Joi.string().valid("card", "bank_transfer", "cash_on_delivery", "Paystack").required(),
+  paymentMethod:         Joi.string().valid("cash", "card", "bank_transfer", "cash_on_delivery", "Paystack").required(),
   buyerName:             Joi.string().trim().max(100).optional(),
   paystackReference:     Joi.string().optional(),
   isWholesale:           Joi.boolean().optional(),

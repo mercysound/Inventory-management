@@ -487,6 +487,73 @@ const ProductForm = ({
                 </p>
               </div>
             </div>
+
+            {/* ── Bonanza toggle ────────────────────────────────────────── */}
+            <div className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-all cursor-pointer
+              ${formData.isBonanza
+                ? "border-orange-400 bg-orange-50"
+                : "border-gray-200 hover:border-gray-300 bg-white"
+              }`}
+              onClick={() => {
+                const updated = { ...formData, isBonanza: !formData.isBonanza };
+                setFormData(updated);
+                debouncedSaveDraft(updated);
+              }}
+            >
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all
+                ${formData.isBonanza ? "bg-orange-500" : "bg-gray-100"}`}>
+                <span className="text-lg">{formData.isBonanza ? "🎉" : "🏷️"}</span>
+              </div>
+              <div className="flex-1">
+                <p className={`text-sm font-bold ${formData.isBonanza ? "text-orange-700" : "text-gray-700"}`}>
+                  Bonanza / Special Deal
+                  {formData.isBonanza && (
+                    <span className="ml-2 text-[10px] font-semibold bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
+                      Active
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
+                  {formData.isBonanza
+                    ? "This product appears in the Bonanza tab — visible to all buyers."
+                    : "Feature this product in the Bonanza tab for special deals and cheap offers. Optional."}
+                </p>
+              </div>
+            </div>
+
+            {/* ── Staff-only toggle ─────────────────────────────────────── */}
+            <div className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-all cursor-pointer
+              ${formData.isStaffOnly
+                ? "border-red-400 bg-red-50"
+                : "border-gray-200 hover:border-gray-300 bg-white"
+              }`}
+              onClick={() => {
+                const updated = { ...formData, isStaffOnly: !formData.isStaffOnly };
+                setFormData(updated);
+                debouncedSaveDraft(updated);
+              }}
+            >
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all
+                ${formData.isStaffOnly ? "bg-red-500" : "bg-gray-100"}`}>
+                <span className="text-lg">{formData.isStaffOnly ? "🔒" : "🌐"}</span>
+              </div>
+              <div className="flex-1">
+                <p className={`text-sm font-bold ${formData.isStaffOnly ? "text-red-700" : "text-gray-700"}`}>
+                  Staff-Only (In-store)
+                  {formData.isStaffOnly && (
+                    <span className="ml-2 text-[10px] font-semibold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">
+                      Hidden from online
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
+                  {formData.isStaffOnly
+                    ? "Only staff can purchase this at the physical counter. Not visible to online customers."
+                    : "Mark this as staff-only to hide it from online customer and wholesale product pages. Optional."}
+                </p>
+              </div>
+            </div>
+
             {/* Expiry info note */}
             {(formData.expiryDate) && (() => {
               const days = Math.ceil((new Date(formData.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
+import { Search, ScanLine, CalendarClock, X } from "lucide-react";
 import ProductTable from "./ProductTable";
 import ProductForm from "./ProductForm";
 import ProductSkeleton from "./ProductSkeleton";
@@ -24,6 +25,8 @@ const EMPTY_FORM = {
   batchNumber:    "",
   expiryDate:     "",
   isNewArrival:   false,
+  isBonanza:      false,
+  isStaffOnly:    false,
 };
 
 const Product = () => {
@@ -35,9 +38,14 @@ const Product = () => {
   const [filteredProducts,  setFilteredProducts]  = useState([]);
   const [selectedCategory,  setSelectedCategory]  = useState("");
   const [searchValue,       setSearchValue]       = useState("");
+  const [batchSearch,       setBatchSearch]       = useState("");
+  const [expiryDaysFilter,  setExpiryDaysFilter]  = useState("");   // "" = off; number string = "show expiring within N days"
   const productsRef         = useRef([]);
   const selectedCategoryRef = useRef("");
   const searchValueRef      = useRef("");
+  const batchSearchRef      = useRef("");
+  const expiryDaysRef       = useRef("");
+  const batchScanInputRef   = useRef(null);
   const [loading,           setLoading]           = useState(false);
   const [imageFiles,        setImageFiles]        = useState([]);
   const [keptImageUrls,     setKeptImageUrls]     = useState([]);
@@ -66,6 +74,8 @@ const Product = () => {
         setProducts(newProducts);
         const currentCat    = selectedCategoryRef.current;
         const currentSearch = searchValueRef.current;
+        const currentBatch  = batchSearchRef.current;
+        const currentExpiry = expiryDaysRef.current;
         setFilteredProducts(
           newProducts.filter((p) => {
             const matchesSearch   = currentSearch
@@ -74,7 +84,13 @@ const Product = () => {
             const matchesCategory = currentCat
               ? (p.categoryId?._id ?? p.categoryId) === currentCat
               : true;
-            return matchesSearch && matchesCategory;
+            const matchesBatch = currentBatch
+              ? (p.batchNumber || "").toLowerCase().includes(currentBatch.toLowerCase())
+              : true;
+            const matchesExpiry = currentExpiry
+              ? p.expiryDate && new Date(p.expiryDate) <= new Date(currentExpiry)
+              : true;
+            return matchesSearch && matchesCategory && matchesBatch && matchesExpiry;
           })
         );
       } else {
@@ -95,15 +111,29 @@ const Product = () => {
 
   // ── Central filter — reads from refs so it never has a stale closure ────────
   // Always call this after updating the ref values.
-  const applyFilters = (search, category) => {
-    const s = search   !== undefined ? search   : searchValueRef.current;
-    const c = category !== undefined ? category : selectedCategoryRef.current;
+  const applyFilters = (search, category, batch, expiryDays) => {
+    const s = search      !== undefined ? search      : searchValueRef.current;
+    const c = category    !== undefined ? category    : selectedCategoryRef.current;
+    const b = batch       !== undefined ? batch       : batchSearchRef.current;
+    const d = expiryDays  !== undefined ? expiryDays  : expiryDaysRef.current;
+
+    // Build a cutoff date from "today + d days" so filtering is always relative to NOW
+    const cutoff = d !== "" && !isNaN(Number(d)) && Number(d) >= 0
+      ? (() => {
+          const dt = new Date();
+          dt.setHours(23, 59, 59, 999);          // end of today
+          dt.setDate(dt.getDate() + Number(d));   // + N days
+          return dt;
+        })()
+      : null;
 
     const result = productsRef.current.filter((p) => {
       const matchesSearch   = s ? p.name.toLowerCase().includes(s.toLowerCase()) : true;
-      // c === "" means "All Categories" — show everything
       const matchesCategory = c ? (p.categoryId?._id ?? p.categoryId) === c : true;
-      return matchesSearch && matchesCategory;
+      const matchesBatch    = b ? (p.batchNumber || "").toLowerCase().includes(b.toLowerCase()) : true;
+      // When a cutoff exists: show products that HAVE an expiry date AND it falls on or before the cutoff
+      const matchesExpiry   = cutoff ? (p.expiryDate && new Date(p.expiryDate) <= cutoff) : true;
+      return matchesSearch && matchesCategory && matchesBatch && matchesExpiry;
     });
     setFilteredProducts(result);
   };
@@ -112,15 +142,67 @@ const Product = () => {
     const value = e.target.value;
     searchValueRef.current = value;
     setSearchValue(value);
-    applyFilters(value, selectedCategoryRef.current);
+    applyFilters(value, undefined, undefined, undefined);
   };
 
   const handleCategoryChange = (e) => {
-    const category = e.target.value;   // "" = All Categories
+    const category = e.target.value;
     selectedCategoryRef.current = category;
     setSelectedCategory(category);
-    applyFilters(searchValueRef.current, category);
+    applyFilters(undefined, category, undefined, undefined);
   };
+
+  const handleBatchSearch = (value) => {
+    batchSearchRef.current = value;
+    setBatchSearch(value);
+    applyFilters(undefined, undefined, value, undefined);
+  };
+
+  const handleExpiryDaysChange = (value) => {
+    // Allow empty string (clear) or positive integers only
+    if (value !== "" && (isNaN(Number(value)) || Number(value) < 0)) return;
+    expiryDaysRef.current = value;
+    setExpiryDaysFilter(value);
+    applyFilters(undefined, undefined, undefined, value);
+  };
+
+  const clearAllFilters = () => {
+    searchValueRef.current    = "";
+    selectedCategoryRef.current = "";
+    batchSearchRef.current    = "";
+    expiryDaysRef.current     = "";
+    setSearchValue("");
+    setSelectedCategory("");
+    setBatchSearch("");
+    setExpiryDaysFilter("");
+    setFilteredProducts(productsRef.current);
+  };
+
+  // ── Camera / barcode scan handler ─────────────────────────────────────────
+  // Uses native <input capture="environment"> — no extra library needed.
+  // Modern mobile browsers decode barcodes via the OS camera app or image OCR.
+  // For a proper in-browser scan, we use the BarcodeDetector API where available,
+  // falling back to prompting the user to type the batch number.
+  const handleScanResult = useCallback(async (file) => {
+    if (!file) return;
+    if (typeof window.BarcodeDetector !== "undefined") {
+      try {
+        const detector = new window.BarcodeDetector({ formats: ["qr_code", "code_128", "code_39", "ean_13", "ean_8", "upc_a", "upc_e"] });
+        const bitmap   = await createImageBitmap(file);
+        const barcodes = await detector.detect(bitmap);
+        if (barcodes.length > 0) {
+          handleBatchSearch(barcodes[0].rawValue);
+          toast.success(`Scanned: ${barcodes[0].rawValue}`);
+        } else {
+          toast.info("No barcode detected in image. Enter batch number manually.");
+        }
+      } catch {
+        toast.error("Scan failed. Enter batch number manually.");
+      }
+    } else {
+      toast.info("Barcode scanning not supported on this device. Enter batch number manually.");
+    }
+  }, []);
 
   // ── Edit ─────────────────────────────────────────────────────────────────
   const handleEdit = (product) => {
@@ -143,6 +225,8 @@ const Product = () => {
         ? new Date(product.expiryDate).toISOString().slice(0, 10)
         : "",
       isNewArrival: product.isNewArrival || false,
+      isBonanza:    product.isBonanza    || false,
+      isStaffOnly:  product.isStaffOnly  || false,
     });
     setOpenModal(true);
   };
@@ -217,7 +301,7 @@ const Product = () => {
               const newProducts = products.map((p) => p._id === targetId ? updatedProduct : p);
               productsRef.current = newProducts;
               setProducts(newProducts);
-              applyFilters(searchValueRef.current, selectedCategoryRef.current);
+              applyFilters(searchValueRef.current, selectedCategoryRef.current, batchSearchRef.current, expiryDaysRef.current);
             }
           }
         } else {
@@ -276,7 +360,6 @@ const Product = () => {
       if (res.data.success) {
         toast.success(res.data.message || "Updated");
       } else {
-        // Rollback
         fetchProducts();
         toast.error("Failed to update new arrival status");
       }
@@ -284,6 +367,36 @@ const Product = () => {
       fetchProducts();
       toast.error("Failed to update new arrival status");
     }
+  }, [fetchProducts]);
+
+  const handleToggleBonanza = useCallback(async (productId, currentValue) => {
+    const update = (list) => list.map((p) =>
+      p._id === productId ? { ...p, isBonanza: !currentValue } : p
+    );
+    productsRef.current = update(productsRef.current);
+    setProducts((prev) => update(prev));
+    setFilteredProducts((prev) => update(prev));
+    try {
+      const res = await axiosInstance.patch(`/products/${productId}/bonanza`);
+      if (res.data.success) {
+        toast.success(res.data.message || "Updated");
+      } else { fetchProducts(); toast.error("Failed to update bonanza status"); }
+    } catch { fetchProducts(); toast.error("Failed to update bonanza status"); }
+  }, [fetchProducts]);
+
+  const handleToggleStaffOnly = useCallback(async (productId, currentValue) => {
+    const update = (list) => list.map((p) =>
+      p._id === productId ? { ...p, isStaffOnly: !currentValue } : p
+    );
+    productsRef.current = update(productsRef.current);
+    setProducts((prev) => update(prev));
+    setFilteredProducts((prev) => update(prev));
+    try {
+      const res = await axiosInstance.patch(`/products/${productId}/staff-only`);
+      if (res.data.success) {
+        toast.success(res.data.message || "Updated");
+      } else { fetchProducts(); toast.error("Failed to update staff-only status"); }
+    } catch { fetchProducts(); toast.error("Failed to update staff-only status"); }
   }, [fetchProducts]);
 
   const handleViewDeleted = () => { fetchDeletedProducts(); setShowDeletedPopup(true); };
@@ -314,25 +427,128 @@ const Product = () => {
     <div className="w-full h-full flex flex-col gap-4 p-4">
       <h1 className="text-2xl font-bold mb-2">Product Management</h1>
 
-      {/* Search + Category filter */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <input
-          type="text"
-          placeholder="Search product..."
-          value={searchValue}
-          onChange={handleSearch}
-          className="border border-gray-300 rounded-md px-3 py-2 w-full sm:w-1/2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <select
-          value={selectedCategory}
-          onChange={handleCategoryChange}
-          className="border border-gray-300 rounded-md px-3 py-2 w-full sm:w-1/3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">All Categories</option>
-          {categories.map((cat) => (
-            <option key={cat._id} value={cat._id}>{cat.name}</option>
-          ))}
-        </select>
+      {/* Search + Category filter + Batch search + Expiry filter */}
+      <div className="flex flex-col gap-3">
+        {/* Row 1: Name search + Category */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <input
+            type="text"
+            placeholder="Search by product name..."
+            value={searchValue}
+            onChange={handleSearch}
+            className="border border-gray-300 rounded-md px-3 py-2 w-full sm:w-1/2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <select
+            value={selectedCategory}
+            onChange={handleCategoryChange}
+            className="border border-gray-300 rounded-md px-3 py-2 w-full sm:w-1/3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">All Categories</option>
+            {categories.map((cat) => (
+              <option key={cat._id} value={cat._id}>{cat.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Row 2: Batch number search + Expiry days filter + Clear */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          {/* Batch number text search */}
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search by batch number..."
+              value={batchSearch}
+              onChange={(e) => handleBatchSearch(e.target.value)}
+              className="border border-gray-300 rounded-md pl-8 pr-10 py-2 w-full focus:outline-none focus:ring-2 focus:ring-purple-400 text-sm"
+            />
+            {/* Camera scan button */}
+            <label
+              title="Scan barcode with camera"
+              className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 hover:text-purple-600 transition"
+            >
+              <ScanLine size={16} />
+              <input
+                ref={batchScanInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => handleScanResult(e.target.files?.[0])}
+              />
+            </label>
+          </div>
+
+          {/* Expiry days filter — "show products expiring within next N days" */}
+          <div className="relative flex-1">
+            <CalendarClock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <input
+              type="number"
+              min="0"
+              max="3650"
+              placeholder="Expiring within... (days)"
+              value={expiryDaysFilter}
+              onChange={(e) => handleExpiryDaysChange(e.target.value)}
+              onWheel={(e) => e.currentTarget.blur()}
+              title="Show products expiring within this many days from today"
+              className="border border-gray-300 rounded-md pl-8 pr-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-orange-400 text-sm text-gray-700"
+            />
+          </div>
+
+          {/* Quick-select day presets */}
+          <div className="flex gap-1.5 flex-wrap">
+            {[7, 14, 30, 60, 90].map((d) => (
+              <button
+                key={d}
+                onClick={() => handleExpiryDaysChange(expiryDaysFilter === String(d) ? "" : String(d))}
+                className={`px-2.5 py-1.5 rounded-md text-xs font-medium border transition whitespace-nowrap
+                  ${expiryDaysFilter === String(d)
+                    ? "bg-orange-500 text-white border-orange-500"
+                    : "border-gray-200 text-gray-500 hover:bg-orange-50 hover:border-orange-300 hover:text-orange-700"
+                  }`}
+              >
+                {d}d
+              </button>
+            ))}
+          </div>
+
+          {/* Clear all filters */}
+          {(searchValue || selectedCategory || batchSearch || expiryDaysFilter) && (
+            <button
+              onClick={clearAllFilters}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium border border-gray-200 text-gray-500 hover:bg-gray-50 whitespace-nowrap transition"
+            >
+              <X size={13} /> Clear
+            </button>
+          )}
+        </div>
+
+        {/* Active filter pills */}
+        {(batchSearch || expiryDaysFilter) && (
+          <div className="flex flex-wrap gap-2">
+            {batchSearch && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-100">
+                <ScanLine size={11} />
+                Batch: <span className="font-bold">{batchSearch}</span>
+                <button onClick={() => handleBatchSearch("")} className="ml-1 hover:text-purple-900">
+                  <X size={10} />
+                </button>
+              </span>
+            )}
+            {expiryDaysFilter && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-700 border border-orange-100">
+                <CalendarClock size={11} />
+                Expiring within <span className="font-bold">{expiryDaysFilter} day{expiryDaysFilter === "1" ? "" : "s"}</span>
+                <button
+                  onClick={() => handleExpiryDaysChange("")}
+                  className="ml-1 hover:text-orange-900"
+                >
+                  <X size={10} />
+                </button>
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="mt-3">
@@ -349,6 +565,10 @@ const Product = () => {
             scrollRef={scrollRef}
             lowStockThreshold={lowStockThreshold}
             onToggleNewArrival={handleToggleNewArrival}
+            onToggleBonanza={handleToggleBonanza}
+            onToggleStaffOnly={handleToggleStaffOnly}
+            batchSearch={batchSearch}
+            expiryDateFilter={expiryDaysFilter}
           />
         )}
       </div>
