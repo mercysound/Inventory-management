@@ -1,9 +1,19 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { FiPlus, FiMinus, FiTrash2 } from "react-icons/fi";
 import { FaImage } from "react-icons/fa";
+import { Search, X } from "lucide-react";
 
 const CustomerOrderTable = ({ orders, onIncrease, onReduce, onDelete }) => {
+  const [search, setSearch] = useState("");
+
+  // Filter purely on display — all orders remain in state, API calls use real IDs
+  const visible = search.trim()
+    ? orders.filter((o) =>
+        (o?.product?.name || "").toLowerCase().includes(search.trim().toLowerCase())
+      )
+    : orders;
+
   if (!orders.length) {
     return (
       <div className="p-8 text-center text-gray-500 bg-white rounded-lg border border-dashed">
@@ -14,7 +24,40 @@ const CustomerOrderTable = ({ orders, onIncrease, onReduce, onDelete }) => {
 
   return (
     <div className="space-y-4">
+
+      {/* ── Search bar ──────────────────────────────────────────────────────── */}
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={`Search ${orders.length} item${orders.length !== 1 ? "s" : ""} in cart…`}
+          className="w-full pl-8 pr-9 py-2.5 text-sm border border-gray-200 rounded-xl bg-white
+            focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition"
+        />
+        {search && (
+          <button
+            onClick={() => setSearch("")}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+            aria-label="Clear search"
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
+      {/* No match state */}
+      {visible.length === 0 && search && (
+        <div className="py-10 text-center text-gray-400 bg-white rounded-xl border border-dashed border-gray-200">
+          <p className="text-sm font-medium">No items match "<span className="text-gray-600">{search}</span>"</p>
+          <button onClick={() => setSearch("")} className="mt-2 text-xs text-indigo-500 hover:underline">
+            Clear search
+          </button>
+        </div>
+      )}
       {/* Desktop Table View */}
+      {visible.length > 0 && (
       <div className="hidden lg:block">
         <div className="overflow-hidden rounded-lg shadow-lg border border-gray-200">
           <table className="w-full text-sm">
@@ -29,7 +72,7 @@ const CustomerOrderTable = ({ orders, onIncrease, onReduce, onDelete }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {orders.map((order) => (
+              {visible.map((order) => (
                 <motion.tr
                   key={order._id}
                   initial={{ opacity: 0 }}
@@ -96,10 +139,12 @@ const CustomerOrderTable = ({ orders, onIncrease, onReduce, onDelete }) => {
           </table>
         </div>
       </div>
+      )}
 
       {/* Mobile & Tablet Card View */}
+      {visible.length > 0 && (
       <div className="lg:hidden space-y-4">
-        {orders.map((order, i) => (
+        {visible.map((order, i) => (
           <motion.div key={order._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-lg border border-gray-200 shadow-md overflow-hidden hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between p-3 bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-gray-200">
               <span className="text-sm font-semibold text-indigo-600 bg-indigo-100 px-3 py-1 rounded-full">Item {i + 1}</span>
@@ -149,6 +194,7 @@ const CustomerOrderTable = ({ orders, onIncrease, onReduce, onDelete }) => {
           </motion.div>
         ))}
       </div>
+      )}
     </div>
   );
 };
