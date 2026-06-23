@@ -8,7 +8,7 @@ import {
 import axiosInstance from "../../../utils/axiosInstance";
 import CustomerOrderTable from "./CustomerOrderTable";
 import PaystackButton from "./PaystackButton";
-import CartSkeleton from "./Cartskeleton";
+import CartSkeleton from "./CartSkeleton";
 import PendingOrdersModal from "./PendingOrdersModal";
 import FulfillmentModal from "./FulfillmentModal";
 import ReceiptModal from "../../share-component/receipt/ReceiptModal";
