@@ -9,13 +9,22 @@
 //   - Phone pattern is kept loose (international + local) — server enforces final regex.
 //   - No transport fare is charged here; the buyer is notified it will be agreed separately.
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, MapPin, Phone, User, Truck, Store, AlertTriangle } from "lucide-react";
 
 const inputCls = "w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm " +
   "focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent " +
   "bg-white transition placeholder:text-gray-400";
+
+// Scrolls the focused element above the on-screen keyboard on mobile
+const scrollToInput = (e) => {
+  setTimeout(() => {
+    try {
+      e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+    } catch {}
+  }, 300); // wait for keyboard to finish opening
+};
 
 const FulfillmentModal = ({ isOpen, onClose, onConfirm, userProfile = null }) => {
   const [type,      setType]      = useState("pickup");
@@ -152,10 +161,17 @@ const FulfillmentModal = ({ isOpen, onClose, onConfirm, userProfile = null }) =>
                       <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
                         <User size={11} /> Recipient Name
                       </label>
-                      <input type="text" value={recipient}
+                      <input
+                        type="text"
+                        value={recipient}
                         onChange={(e) => { setRecipient(e.target.value); setErrors((p) => ({ ...p, recipient: "" })); }}
+                        onFocus={scrollToInput}
                         placeholder="Full name of the person receiving the order"
-                        className={inputCls} />
+                        inputMode="text"
+                        enterKeyHint="next"
+                        autoComplete="name"
+                        className={inputCls}
+                      />
                       {userProfile?.name && recipient === userProfile.name && (
                         <p className="text-[10px] text-indigo-400 mt-0.5">Pre-filled from your profile — edit if different</p>
                       )}
@@ -167,10 +183,17 @@ const FulfillmentModal = ({ isOpen, onClose, onConfirm, userProfile = null }) =>
                       <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
                         <Phone size={11} /> Recipient Phone
                       </label>
-                      <input type="tel" value={phone}
+                      <input
+                        type="tel"
+                        value={phone}
                         onChange={(e) => { setPhone(e.target.value); setErrors((p) => ({ ...p, phone: "" })); }}
+                        onFocus={scrollToInput}
                         placeholder="Phone number we can call for delivery"
-                        className={inputCls} />
+                        inputMode="tel"
+                        enterKeyHint="next"
+                        autoComplete="tel"
+                        className={inputCls}
+                      />
                       {userProfile?.phone && phone === userProfile.phone && (
                         <p className="text-[10px] text-indigo-400 mt-0.5">Pre-filled from your profile — edit if different</p>
                       )}
@@ -182,11 +205,17 @@ const FulfillmentModal = ({ isOpen, onClose, onConfirm, userProfile = null }) =>
                       <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
                         <MapPin size={11} /> Delivery Address
                       </label>
-                      <textarea value={address}
+                      <textarea
+                        value={address}
                         onChange={(e) => { setAddress(e.target.value); setErrors((p) => ({ ...p, address: "" })); }}
+                        onFocus={scrollToInput}
                         placeholder="Full delivery address including street, area, city..."
                         rows={3}
-                        className={inputCls + " resize-none"} />
+                        inputMode="text"
+                        enterKeyHint="done"
+                        autoComplete="street-address"
+                        className={inputCls + " resize-none"}
+                      />
                       {userProfile?.address && address === userProfile.address && (
                         <p className="text-[10px] text-indigo-400 mt-0.5">Pre-filled from your profile — edit if different</p>
                       )}
