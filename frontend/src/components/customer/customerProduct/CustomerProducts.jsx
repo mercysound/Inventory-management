@@ -355,10 +355,25 @@ const CustomerProducts = () => {
     const token = localStorage.getItem("pos-token");
     if (!token) return;
     const base = import.meta.env.VITE_API_URL || "/api";
-    const es = new EventSource(`${base}/placed-orders/stream?token=${encodeURIComponent(token)}`);
-    es.addEventListener("placedOrderUpdated", () => fetchAll());
-    es.addEventListener("error", () => es.close());
-    return () => es.close();
+    // Placed-order updates
+    const es1 = new EventSource(`${base}/placed-orders/stream?token=${encodeURIComponent(token)}`);
+    es1.addEventListener("placedOrderUpdated", () => fetchAll());
+    es1.addEventListener("error", () => es1.close());
+    // Product flag updates — patch in-place, no full reload
+    const es2 = new EventSource(`${base}/products/stream?token=${encodeURIComponent(token)}`);
+    es2.addEventListener("productFlagChanged", (e) => {
+      try {
+        const { productId, ...flags } = JSON.parse(e.data);
+        setProducts((prev) => prev.map((p) =>
+          p._id === productId ? { ...p, ...flags } : p
+        ));
+        setFilteredProducts((prev) => prev.map((p) =>
+          p._id === productId ? { ...p, ...flags } : p
+        ));
+      } catch {}
+    });
+    es2.addEventListener("error", () => es2.close());
+    return () => { es1.close(); es2.close(); };
   }, [fetchAll]);
 
   useEffect(() => {

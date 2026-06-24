@@ -6,6 +6,7 @@ import { sendResponse, sendError } from '../utils/apiResponse.js';
 import { getPaginationParams, getPaginationMeta } from '../utils/pagination.js';
 import OrderModel from '../models/OrderModel.js';
 import orderNotifier from '../utils/orderNotifier.js';
+import productNotifier from '../utils/productNotifier.js';
 
 // ─── Helper: upload a buffer to Cloudinary, return secure URL ────────────────
 // Explicitly re-applies the cloudinary config at call time so the api_key is
@@ -394,12 +395,16 @@ const toggleNewArrival = async (req, res) => {
     const { id } = req.params;
     const product = await ProductModel.findById(id);
     if (!product) return sendError(res, 404, 'Product not found');
-
     const next = !product.isNewArrival;
     product.isNewArrival = next;
     product.newArrivalAt  = next ? new Date() : null;
     await product.save();
-
+    // Emit real-time flag change to all connected product SSE clients
+    productNotifier.emit('productFlagChanged', {
+      productId:   id,
+      isNewArrival: next,
+      newArrivalAt: product.newArrivalAt,
+    });
     return sendResponse(res, 200, {
       isNewArrival: product.isNewArrival,
       newArrivalAt: product.newArrivalAt,
@@ -422,6 +427,7 @@ const toggleBonanza = async (req, res) => {
     const next = !product.isBonanza;
     product.isBonanza = next;
     await product.save();
+    productNotifier.emit('productFlagChanged', { productId: id, isBonanza: next });
     return sendResponse(res, 200, { isBonanza: next }, next ? 'Added to Bonanza' : 'Removed from Bonanza');
   } catch (error) {
     console.error('toggleBonanza error:', error);
@@ -441,10 +447,67 @@ const toggleStaffOnly = async (req, res) => {
     const next = !product.isStaffOnly;
     product.isStaffOnly = next;
     await product.save();
+    productNotifier.emit('productFlagChanged', { productId: id, isStaffOnly: next });
     return sendResponse(res, 200, { isStaffOnly: next }, next ? 'Marked as Staff-Only' : 'Now visible to all');
   } catch (error) {
     console.error('toggleStaffOnly error:', error);
     return sendError(res, 500, 'Failed to update staff-only status');
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /products/batch/delete  — soft-delete multiple products
+// POST /products/batch/permanent-delete  — hard-delete multiple products
+// POST /products/batch/flag  — toggle a flag on multiple products
+// ─────────────────────────────────────────────────────────────────────────────
+const batchDelete = async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) return sendError(res, 400, 'No product IDs provided');
+    await ProductModel.updateMany({ _id: { $in: ids } }, { isDeleted: true });
+    return sendResponse(res, 200, { deleted: ids.length }, `${ids.length} product(s) deleted`);
+  } catch (error) {
+    console.error('batchDelete error:', error);
+    return sendError(res, 500, 'Failed to delete products');
+  }
+};
+
+const batchPermanentDelete = async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) return sendError(res, 400, 'No product IDs provided');
+    // Delete images from Cloudinary for each product
+    const products = await ProductModel.find({ _id: { $in: ids } });
+    for (const p of products) {
+      const imgs = resolveImages(p);
+      for (const url of imgs) { await destroyCloudinaryUrl(url); }
+    }
+    await ProductModel.deleteMany({ _id: { $in: ids } });
+    return sendResponse(res, 200, { deleted: ids.length }, `${ids.length} product(s) permanently deleted`);
+  } catch (error) {
+    console.error('batchPermanentDelete error:', error);
+    return sendError(res, 500, 'Failed to permanently delete products');
+  }
+};
+
+const VALID_FLAGS = ['isNewArrival', 'isBonanza', 'isStaffOnly'];
+
+const batchToggleFlag = async (req, res) => {
+  try {
+    const { ids, flag, value } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) return sendError(res, 400, 'No product IDs provided');
+    if (!VALID_FLAGS.includes(flag)) return sendError(res, 400, `Invalid flag. Must be one of: ${VALID_FLAGS.join(', ')}`);
+    const updateObj = { [flag]: Boolean(value) };
+    if (flag === 'isNewArrival') updateObj.newArrivalAt = Boolean(value) ? new Date() : null;
+    await ProductModel.updateMany({ _id: { $in: ids } }, updateObj);
+    // Emit SSE for each changed product so customer pages update in real-time
+    ids.forEach((productId) => {
+      productNotifier.emit('productFlagChanged', { productId, ...updateObj });
+    });
+    return sendResponse(res, 200, { updated: ids.length }, `${ids.length} product(s) updated`);
+  } catch (error) {
+    console.error('batchToggleFlag error:', error);
+    return sendError(res, 500, 'Failed to update product flags');
   }
 };
 
@@ -459,4 +522,7 @@ export {
   toggleNewArrival,
   toggleBonanza,
   toggleStaffOnly,
+  batchDelete,
+  batchPermanentDelete,
+  batchToggleFlag,
 };

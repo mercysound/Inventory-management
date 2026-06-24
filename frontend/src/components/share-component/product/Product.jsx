@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
-import { Search, ScanLine, CalendarClock, X } from "lucide-react";
+import { Search, ScanLine, CalendarClock, X, Trash2, Star, ShieldOff, Tag } from "lucide-react";
 import ProductTable from "./ProductTable";
 import ProductForm from "./ProductForm";
 import ProductSkeleton from "./ProductSkeleton";
@@ -57,6 +57,53 @@ const Product = () => {
   const scrollRef = useRef(null);
 
   const [formData, setFormData] = useState(EMPTY_FORM);
+
+  // ── Bulk selection state ──────────────────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  const handleSelectId = useCallback((id, checked) => {
+    setSelectedIds((prev) => checked ? [...prev, id] : prev.filter((x) => x !== id));
+  }, []);
+
+  const handleSelectPage = useCallback((pageIds, checked) => {
+    setSelectedIds((prev) => {
+      const without = prev.filter((id) => !pageIds.includes(id));
+      return checked ? [...without, ...pageIds] : without;
+    });
+  }, []);
+
+  const clearSelection = () => setSelectedIds([]);
+
+  // ── Bulk actions ──────────────────────────────────────────────────────────
+  const handleBulkDelete = async () => {
+    if (!selectedIds.length) return;
+    if (!confirm(`Soft-delete ${selectedIds.length} product(s)? They will move to the bin.`)) return;
+    try {
+      await axiosInstance.post("/products/batch/delete", { ids: selectedIds });
+      toast.success(`${selectedIds.length} product(s) deleted`);
+      clearSelection();
+      fetchProducts();
+    } catch { toast.error("Bulk delete failed"); }
+  };
+
+  const handleBulkFlag = async (flag, value) => {
+    if (!selectedIds.length) return;
+    const label = { isNewArrival: "New Arrival", isBonanza: "Bonanza", isStaffOnly: "Staff-Only" }[flag];
+    try {
+      await axiosInstance.post("/products/batch/flag", { ids: selectedIds, flag, value });
+      toast.success(`${selectedIds.length} product(s) — ${label} ${value ? "ON" : "OFF"}`);
+      // Optimistic update
+      const update = (list) => list.map((p) =>
+        selectedIds.includes(p._id)
+          ? { ...p, [flag]: value, ...(flag === "isNewArrival" && value ? { newArrivalAt: new Date().toISOString() } : {}) }
+          : p
+      );
+      productsRef.current = update(productsRef.current);
+      setProducts((prev) => update(prev));
+      setFilteredProducts((prev) => update(prev));
+      clearSelection();
+    } catch { toast.error("Bulk flag update failed"); }
+  };
 
   // ── Fetch all products ────────────────────────────────────────────────────
   const fetchProducts = useCallback(async () => {
@@ -176,6 +223,7 @@ const Product = () => {
     setBatchSearch("");
     setExpiryDaysFilter("");
     setFilteredProducts(productsRef.current);
+    setSelectedIds([]);   // clear selection when filters reset
   };
 
   // ── Camera / barcode scan handler ─────────────────────────────────────────
@@ -423,6 +471,14 @@ const Product = () => {
     } catch { toast.error("Failed to delete product permanently"); }
   };
 
+  const handleBulkPermanentDelete = async (ids) => {
+    try {
+      await axiosInstance.post("/products/batch/permanent-delete", { ids });
+      toast.success(`${ids.length} product(s) permanently deleted`);
+      fetchDeletedProducts();
+    } catch { toast.error("Bulk permanent delete failed"); }
+  };
+
   return (
     <div className="w-full h-full flex flex-col gap-4 p-4">
       <h1 className="text-2xl font-bold mb-2">Product Management</h1>
@@ -552,6 +608,49 @@ const Product = () => {
       </div>
 
       <div className="mt-3">
+        {/* ── Bulk action bar — shown when items are selected ── */}
+        {selectedIds.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 mb-3 px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-xl">
+            <span className="text-sm font-semibold text-indigo-700">
+              {selectedIds.length} selected
+            </span>
+            <div className="flex flex-wrap gap-2 ml-2">
+              <button onClick={handleBulkDelete}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-100 text-red-700 hover:bg-red-200 transition border border-red-200">
+                <Trash2 size={12} /> Delete
+              </button>
+              <button onClick={() => handleBulkFlag("isNewArrival", true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition border border-indigo-200">
+                ✨ New Arrival ON
+              </button>
+              <button onClick={() => handleBulkFlag("isNewArrival", false)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition border border-gray-200">
+                ✨ OFF
+              </button>
+              <button onClick={() => handleBulkFlag("isBonanza", true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-orange-100 text-orange-700 hover:bg-orange-200 transition border border-orange-200">
+                🎉 Bonanza ON
+              </button>
+              <button onClick={() => handleBulkFlag("isBonanza", false)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition border border-gray-200">
+                🎉 OFF
+              </button>
+              <button onClick={() => handleBulkFlag("isStaffOnly", true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-100 text-red-600 hover:bg-red-200 transition border border-red-200">
+                🔒 Staff-Only ON
+              </button>
+              <button onClick={() => handleBulkFlag("isStaffOnly", false)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition border border-gray-200">
+                🔒 OFF
+              </button>
+            </div>
+            <button onClick={clearSelection}
+              className="ml-auto inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-gray-500 hover:bg-gray-100 transition border border-gray-200">
+              <X size={12} /> Clear
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <ProductSkeleton />
         ) : (
@@ -569,6 +668,9 @@ const Product = () => {
             onToggleStaffOnly={handleToggleStaffOnly}
             batchSearch={batchSearch}
             expiryDateFilter={expiryDaysFilter}
+            selectedIds={selectedIds}
+            onSelectId={handleSelectId}
+            onSelectPage={handleSelectPage}
           />
         )}
       </div>
@@ -596,6 +698,7 @@ const Product = () => {
         products={deletedProducts}
         onRestore={handleRestore}
         onPermanentDelete={handlePermanentDelete}
+        onBulkPermanentDelete={handleBulkPermanentDelete}
         fetchDeletedProducts={fetchDeletedProducts}
         loading={loadingDeleted}
       />

@@ -221,6 +221,10 @@ const ProductTable = ({
   onToggleStaffOnly,
   batchSearch = "",
   expiryDateFilter = "",
+  // ── Bulk selection props ──────────────────────────────────────────────────
+  selectedIds = [],
+  onSelectId,        // (id, checked) => void
+  onSelectPage,      // (ids, checked) => void  — select/deselect all on current page
 }) => {
   const { user } = useAuth();
   const role = (user?.role || "").toString().toLowerCase();
@@ -296,7 +300,13 @@ const ProductTable = ({
   // Batch + Expiry columns always shown (they show "—" when not set)
   const showWholesale = isAdmin || (isStaff && showWholesaleCol);
 
+  // ── Selection helpers ────────────────────────────────────────────────────
+  const pageIds         = visibleProducts.map((p) => p._id);
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
+  const somePageSelected = pageIds.some((id) => selectedIds.includes(id)) && !allPageSelected;
+
   const desktopHeaders = [
+    ...(isAdmin ? ["☑"] : []),
     "#", "Product", "Category", "RT (₦)",
     ...(showWholesale ? ["WP (₦)"] : []),
     "Stock",
@@ -392,14 +402,25 @@ const ProductTable = ({
             <thead className="sticky top-0 z-10">
               <tr>
                 {desktopHeaders.map((h, i) => (
-                  <th key={i}
-                    className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wide bg-gray-50 border-b border-gray-100 text-gray-500 whitespace-nowrap">
-                    {h === "WP (₦)" ? (
-                      <span className={`flex items-center gap-1 ${isAdmin ? 'text-amber-700 font-semibold' : ''}`}>
-                        {h}
-                      </span>
-                    ) : h}
-                  </th>
+                  h === "☑" ? (
+                    <th key="sel" className="px-3 py-3 bg-gray-50 border-b border-gray-100 w-8">
+                      <input
+                        type="checkbox"
+                        checked={allPageSelected}
+                        ref={(el) => { if (el) el.indeterminate = somePageSelected; }}
+                        onChange={(e) => onSelectPage?.(pageIds, e.target.checked)}
+                        className="w-4 h-4 rounded accent-indigo-600 cursor-pointer"
+                        title="Select / deselect all on this page"
+                      />
+                    </th>
+                  ) : (
+                    <th key={i}
+                      className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wide bg-gray-50 border-b border-gray-100 text-gray-500 whitespace-nowrap">
+                      {h === "WP (₦)" ? (
+                        <span className={`flex items-center gap-1 ${isAdmin ? 'text-amber-700 font-semibold' : ''}`}>{h}</span>
+                      ) : h}
+                    </th>
+                  )
                 ))}
               </tr>
             </thead>
@@ -411,7 +432,21 @@ const ProductTable = ({
                       <UpdatingRowSkeleton key={product._id} />
                     ) : (
                       <tr key={product._id}
-                        className="group hover:bg-blue-50/30 transition-colors border-b border-gray-50 last:border-none align-top">
+                        className={`group hover:bg-blue-50/30 transition-colors border-b border-gray-50 last:border-none align-top
+                          ${selectedIds.includes(product._id) ? "bg-indigo-50/40" : ""}`}
+                      >
+                        {/* Checkbox — admin only */}
+                        {isAdmin && (
+                          <td className="px-3 py-3.5 w-8">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.includes(product._id)}
+                              onChange={(e) => onSelectId?.(product._id, e.target.checked)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-4 h-4 rounded accent-indigo-600 cursor-pointer"
+                            />
+                          </td>
+                        )}
                         {/* # */}
                         <td className="px-4 py-3.5 text-gray-400 text-xs w-8">{index + 1}</td>
 
@@ -578,8 +613,19 @@ const ProductTable = ({
                     </div>
                   </div>
                 ) : (
-                  <div key={product._id} className="px-4 py-4 hover:bg-gray-50/70 transition-colors">
+                  <div key={product._id} className={`px-4 py-4 hover:bg-gray-50/70 transition-colors ${selectedIds.includes(product._id) ? "bg-indigo-50/40" : ""}`}>
                     <div className="flex gap-3">
+                      {/* Checkbox — admin only, mobile */}
+                      {isAdmin && (
+                        <div className="flex items-start pt-1 shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(product._id)}
+                            onChange={(e) => onSelectId?.(product._id, e.target.checked)}
+                            className="w-4 h-4 rounded accent-indigo-600 cursor-pointer"
+                          />
+                        </div>
+                      )}
                       <div className="w-16 h-16 rounded-xl border border-gray-100 overflow-hidden bg-gray-50 flex items-center justify-center flex-shrink-0 shadow-sm">
                         {product.image
                           ? <img src={product.image} alt={product.name} className="w-full h-full object-cover" loading="lazy" />
