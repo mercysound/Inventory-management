@@ -26,6 +26,9 @@ const orderSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 orderSchema.index({ userOrdering: 1 });
+// Unique compound index: one cart entry per user per product
+// Prevents duplicate documents even under high-concurrency rapid taps
+orderSchema.index({ userOrdering: 1, product: 1 }, { unique: true });
 
 const OrderModel = mongoose.model("Order", orderSchema);
 export default OrderModel;

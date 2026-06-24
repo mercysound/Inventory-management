@@ -45,10 +45,9 @@ const addOrder = async (req, res) => {
     if (!product) return sendError(res, 404, "Product not found in order");
     if (quantity > product.stock) return sendError(res, 400, "Not enough stock");
 
-    const existing = await OrderModel.findOne({ userOrdering: userId, product: productId });
     const ONE_HOUR = new Date(Date.now() + 60 * 60 * 1000);
 
-    // Wholesale-role users always get wholesale pricing — never trust client to send correct priceMode
+    // Wholesale-role users always get wholesale pricing
     const forceWholesale = userRole === "wholesale";
     const requestedMode = ["retail", "wholesale"].includes(priceMode) ? priceMode : (isWholesale ? "wholesale" : "retail");
     const finalPriceMode = forceWholesale ? "wholesale" : requestedMode;
@@ -57,29 +56,45 @@ const addOrder = async (req, res) => {
       ? (product.wholesalePrice ?? product.price)
       : product.price;
 
-    if (existing) {
-      const newQty = existing.quantity + quantity;
-      if (newQty > product.stock) return sendError(res, 400, "Not enough stock available");
-      existing.quantity      = newQty;
-      existing.price         = unitPrice;
-      existing.totalPrice    = newQty * unitPrice;
-      existing.priceMode     = finalPriceMode;
-      existing.cartExpiresAt = ONE_HOUR;
-      await existing.save();
-      return sendResponse(res, 200, existing, "Order updated instead of duplicate");
+    // ── Atomic upsert: findOneAndUpdate with upsert:true prevents duplicate
+    // documents when the user taps + rapidly (two concurrent requests both
+    // see no existing doc and try to create one — classic race condition).
+    const order = await OrderModel.findOneAndUpdate(
+      { userOrdering: userId, product: productId },
+      {
+        $inc: { quantity: quantity },
+        $set: {
+          price:         unitPrice,
+          priceMode:     finalPriceMode,
+          cartExpiresAt: ONE_HOUR,
+          paymentStatus: "Unpaid",
+          paid:          false,
+        },
+        $setOnInsert: {
+          userOrdering: userId,
+          product:      productId,
+          totalPrice:   quantity * unitPrice,
+          orderDate:    new Date(),
+        },
+      },
+      { new: true, upsert: true, runValidators: false }
+    );
+
+    // Recalculate totalPrice based on final quantity (after increment)
+    order.totalPrice = order.quantity * order.price;
+    await order.save();
+
+    // Validate final quantity against stock
+    if (order.quantity > product.stock) {
+      // Rollback the increment
+      await OrderModel.findByIdAndUpdate(order._id, {
+        $inc: { quantity: -quantity },
+        $set: { totalPrice: (order.quantity - quantity) * order.price },
+      });
+      return sendError(res, 400, "Not enough stock available");
     }
 
-    const orderObj  = new OrderModel({
-      userOrdering:  userId,
-      product:       productId,
-      quantity,
-      price:         unitPrice,
-      totalPrice:    total || (quantity * unitPrice),
-      priceMode:     finalPriceMode,
-      cartExpiresAt: ONE_HOUR,
-    });
-    await orderObj.save();
-    return sendResponse(res, 200, orderObj, "Order added successfully");
+    return sendResponse(res, 200, order, "Order added successfully");
   } catch (error) {
     console.error("addOrder error:", error);
     return sendError(res, 500, "Failed to add order");
