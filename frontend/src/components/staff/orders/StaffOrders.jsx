@@ -361,13 +361,13 @@ const StaffOrders = () => {
                 </div>
               </div>
 
-              {/* Wholesale toggle + action buttons — responsive grid on mobile */}
-              <div className="space-y-3 pt-1">
-                {/* Wholesale toggle — full width on mobile */}
+              {/* Action buttons — responsive stacked layout for mobile */}
+              <div className="space-y-2 pt-1">
+                {/* Top row: Wholesale toggle */}
                 <button
                   type="button"
                   onClick={handleToggleWholesale}
-                  className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border font-semibold text-sm transition-all ${
+                  className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border font-semibold text-sm transition-all ${
                     isWholesale
                       ? "bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-200"
                       : "bg-white border-gray-200 text-gray-600 hover:border-amber-400 hover:text-amber-600"
@@ -377,44 +377,46 @@ const StaffOrders = () => {
                   {isWholesale ? "Wholesale ON" : "Switch to Wholesale"}
                 </button>
 
-                {/* Action buttons — 2-col on mobile, single row on sm+ */}
-                <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+                {/* Middle row: Clear + Preview side by side */}
+                <div className="flex gap-2">
                   {displayOrders.length > 0 && (
                     <button
                       onClick={handleClearAll}
-                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition"
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition"
                     >
                       <Trash2 size={14} />
-                      Clear Cart
+                      Clear
                     </button>
                   )}
                   <button
                     onClick={previewInvoice}
                     disabled={processing || !orders.length}
-                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 text-sm font-semibold disabled:opacity-40 transition"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 text-sm font-semibold disabled:opacity-40 transition"
                   >
                     <Receipt size={14} />
                     Preview
                   </button>
-                  <motion.button
-                    onClick={completeOrder}
-                    disabled={processing || !orders.length || !paymentMethod}
-                    whileTap={{ scale: 0.97 }}
-                    className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-md shadow-indigo-200 disabled:opacity-40 transition"
-                  >
-                    {processing ? (
-                      <>
-                        <RotateCcw size={14} className="animate-spin" />
-                        Processing…
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 size={14} />
-                        Complete Order
-                      </>
-                    )}
-                  </motion.button>
                 </div>
+
+                {/* Bottom row: Complete Order — always full width */}
+                <motion.button
+                  onClick={completeOrder}
+                  disabled={processing || !orders.length || !paymentMethod}
+                  whileTap={{ scale: 0.97 }}
+                  className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-md shadow-indigo-200 disabled:opacity-40 transition"
+                >
+                  {processing ? (
+                    <>
+                      <RotateCcw size={14} className="animate-spin" />
+                      Processing…
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={14} />
+                      Complete Order
+                    </>
+                  )}
+                </motion.button>
               </div>
 
               {/* Wholesale info banner */}

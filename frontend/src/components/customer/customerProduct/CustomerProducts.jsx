@@ -420,23 +420,41 @@ const CustomerProducts = () => {
   // Declared BEFORE handleQuickAdd/Increase/Decrease to avoid temporal dead zone.
   // This prevents the ghost-item bug: optimistic add sets orderId:"" temporarily;
   // if user decreases during that window the API call was silently skipped.
+  // Uses a pending-promise map so concurrent calls for the same product share one fetch.
+  const pendingResolveRef = useRef({});
+
   const resolveOrderId = useCallback(async (productId) => {
     const item = cartMapRef.current[productId];
-    if (item?.orderId) return item.orderId; // already have it
-    try {
-      const res = await axiosInstance.get(`/orders/product/${productId}`);
-      const oid = res.data?._id || res.data?.orderId;
-      if (oid) {
-        const updated = { ...cartMapRef.current };
-        if (updated[productId]) {
-          updated[productId] = { ...updated[productId], orderId: oid };
-          cartMapRef.current = updated;
-          setCartMap(updated);
+    if (item?.orderId) return item.orderId; // already have it — fast path
+
+    // If there's already a pending fetch for this product, wait for it
+    if (pendingResolveRef.current[productId]) {
+      return pendingResolveRef.current[productId];
+    }
+
+    // Start a new fetch and cache the promise
+    const promise = axiosInstance.get(`/orders/product/${productId}`)
+      .then((res) => {
+        const oid = res.data?._id || res.data?.orderId;
+        if (oid) {
+          const updated = { ...cartMapRef.current };
+          if (updated[productId]) {
+            updated[productId] = { ...updated[productId], orderId: oid };
+            cartMapRef.current = updated;
+            setCartMap(updated);
+          }
+          return oid;
         }
-        return oid;
-      }
-    } catch {}
-    return null;
+        return null;
+      })
+      .catch(() => null)
+      .finally(() => {
+        // Clean up pending ref when done
+        delete pendingResolveRef.current[productId];
+      });
+
+    pendingResolveRef.current[productId] = promise;
+    return promise;
   }, []);
 
   // ── Quick add ──────────────────────────────────────────────────────────────
@@ -450,15 +468,28 @@ const CustomerProducts = () => {
     const snapshot = { ...cartMapRef.current };
     const next = { ...snapshot, [product._id]: { orderId: prev?.orderId || "", quantity: qty + 1 } };
     cartMapRef.current = next; setCartMap(next); dispatchOrdersUpdated(next);
-    axiosInstance.post("/orders/add", { productId: product._id, quantity: 1, price, priceMode: isWS ? "wholesale" : "retail", isWholesale: isWS })
+
+    // Create a promise that resolves to the real orderId so concurrent decrease calls can wait
+    const addPromise = axiosInstance.post("/orders/add", {
+      productId: product._id, quantity: 1, price,
+      priceMode: isWS ? "wholesale" : "retail", isWholesale: isWS,
+    })
       .then((res) => {
         if (res.data?._id) {
           const c = { ...cartMapRef.current, [product._id]: { orderId: res.data._id, quantity: res.data.quantity || 1 } };
           cartMapRef.current = c; setCartMap(c); dispatchOrdersUpdated(c);
+          return res.data._id;
         }
+        return null;
       })
-      .catch(() => { cartMapRef.current = snapshot; setCartMap(snapshot); dispatchOrdersUpdated(snapshot); });
-  }, [dispatchOrdersUpdated]);
+      .catch(() => { cartMapRef.current = snapshot; setCartMap(snapshot); dispatchOrdersUpdated(snapshot); return null; })
+      .finally(() => { delete pendingResolveRef.current[product._id]; });
+
+    // Register as pending so resolveOrderId can await it if decrease fires immediately
+    if (!pendingResolveRef.current[product._id]) {
+      pendingResolveRef.current[product._id] = addPromise;
+    }
+  }, [dispatchOrdersUpdated, user]);
 
   // ── Quick increase ─────────────────────────────────────────────────────────
   const handleQuickIncrease = useCallback(async (productId) => {
