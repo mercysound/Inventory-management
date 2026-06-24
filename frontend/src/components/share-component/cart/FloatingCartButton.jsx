@@ -129,7 +129,7 @@ const FloatingCartButton = () => {
             transition-colors duration-200
             focus:outline-none focus:ring-4 focus:ring-green-300"
           style={{
-            top:  "30vh",
+            top:  "80vh",
             left: "max(16px, calc(env(safe-area-inset-left, 0px) + 16px))",
             WebkitTapHighlightColor: "transparent",
           }}
@@ -160,7 +160,7 @@ const FloatingCartButton = () => {
             transition-colors duration-200
             focus:outline-none focus:ring-4 focus:ring-indigo-300"
           style={{
-            top:  "30vh",
+            top:  "80vh",
             left: "max(16px, calc(env(safe-area-inset-left, 0px) + 16px))",
             WebkitTapHighlightColor: "transparent",
           }}

@@ -39,13 +39,16 @@ const parseOrderError = (err) => {
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 const StatCard = ({ icon: Icon, label, value, color, iconColor }) => (
-  <div className={`flex items-center gap-3 rounded-2xl border px-4 py-3 bg-white shadow-sm ${color}`}>
-    <div className={`p-2 rounded-xl ${iconColor}`}>
+  <div className={`flex items-center gap-2.5 rounded-2xl border px-3 py-3 bg-white shadow-sm ${color}`}>
+    <div className={`p-2 rounded-xl shrink-0 ${iconColor}`}>
       <Icon size={18} className="text-white" />
     </div>
-    <div>
-      <p className="text-xs text-gray-500 font-medium leading-none mb-0.5">{label}</p>
-      <p className="text-lg font-bold text-gray-800 leading-none">{value}</p>
+    <div className="min-w-0 flex-1">
+      <p className="text-xs text-gray-500 font-medium leading-none mb-0.5 truncate">{label}</p>
+      <p className="font-bold text-gray-800 leading-tight break-all"
+        style={{ fontSize: "clamp(0.78rem, 3.5vw, 1.1rem)" }}>
+        {value}
+      </p>
     </div>
   </div>
 );
