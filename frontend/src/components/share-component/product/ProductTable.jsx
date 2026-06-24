@@ -632,9 +632,9 @@ const ProductTable = ({
                           : <Package size={20} className="text-gray-300" />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="font-semibold text-gray-800 text-sm leading-tight">
+                        {/* Name + supplier */}
+                        <div className="min-w-0">
+                            <p className="font-semibold text-gray-800 text-sm leading-tight pr-1">
                               {product.name}
                               {product.isNewArrival && (
                                 <span className="ml-1.5 text-[9px] font-bold bg-indigo-100 text-indigo-600 border border-indigo-200 px-1.5 py-0.5 rounded-full align-middle">
@@ -655,13 +655,14 @@ const ProductTable = ({
                             {product.supplierId && (
                               <p className="text-[10px] text-gray-400 mt-0.5">{product.supplierId.name}</p>
                             )}
-                          </div>
-                          {/* Action buttons — edit, delete, new-arrival toggle */}
-                          <div className="flex gap-1 flex-shrink-0">
+                        </div>
+
+                        {/* Action buttons — separate row so they never crowd the name */}
+                        <div className="flex flex-wrap gap-1 mt-1.5">
                             <button
                               onClick={() => onToggleNewArrival?.(product._id, product.isNewArrival)}
                               title={product.isNewArrival ? "Remove from New Arrivals" : "Mark as New Arrival"}
-                              className={`w-8 h-8 flex items-center justify-center rounded-lg transition text-sm
+                              className={`w-7 h-7 flex items-center justify-center rounded-lg transition text-xs
                                 ${product.isNewArrival
                                   ? "bg-indigo-100 text-indigo-600"
                                   : "text-gray-300 hover:bg-indigo-50 hover:text-indigo-400"}`}
@@ -669,7 +670,7 @@ const ProductTable = ({
                             <button
                               onClick={() => onToggleBonanza?.(product._id, product.isBonanza)}
                               title={product.isBonanza ? "Remove from Bonanza" : "Add to Bonanza"}
-                              className={`w-8 h-8 flex items-center justify-center rounded-lg transition text-sm
+                              className={`w-7 h-7 flex items-center justify-center rounded-lg transition text-xs
                                 ${product.isBonanza
                                   ? "bg-orange-100 text-orange-600"
                                   : "text-gray-300 hover:bg-orange-50 hover:text-orange-400"}`}
@@ -677,20 +678,21 @@ const ProductTable = ({
                             <button
                               onClick={() => onToggleStaffOnly?.(product._id, product.isStaffOnly)}
                               title={product.isStaffOnly ? "Remove staff-only" : "Mark staff-only"}
-                              className={`w-8 h-8 flex items-center justify-center rounded-lg transition text-sm
+                              className={`w-7 h-7 flex items-center justify-center rounded-lg transition text-xs
                                 ${product.isStaffOnly
                                   ? "bg-red-100 text-red-500"
                                   : "text-gray-300 hover:bg-red-50 hover:text-red-400"}`}
                             >🔒</button>
                             <button onClick={() => onEdit(product)}
-                              className="w-8 h-8 flex items-center justify-center rounded-lg text-blue-500 hover:bg-blue-100 transition">
-                              <Pencil size={14} />
+                              className="w-7 h-7 flex items-center justify-center rounded-lg text-blue-500 hover:bg-blue-100 transition"
+                              title="Edit">
+                              <Pencil size={13} />
                             </button>
                             <button onClick={() => onDelete(product._id)}
-                              className="w-8 h-8 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-100 transition">
-                              <Trash2 size={14} />
+                              className="w-7 h-7 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-100 transition"
+                              title="Delete">
+                              <Trash2 size={13} />
                             </button>
-                          </div>
                         </div>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                           <span className="font-bold text-gray-800 text-sm">
