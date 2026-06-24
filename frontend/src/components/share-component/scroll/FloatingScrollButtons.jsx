@@ -122,7 +122,7 @@ const FloatingScrollButtons = () => {
       className="fixed z-39 flex flex-col gap-1.5 pointer-events-none"
       style={{
         bottom: "max(88px, calc(env(safe-area-inset-bottom, 0px) + 88px))",
-        left:   "max(16px, calc(env(safe-area-inset-left,   0px) + 16px))",
+        right:  "max(16px, calc(env(safe-area-inset-right,  0px) + 16px))",
       }}
     >
       <AnimatePresence>
