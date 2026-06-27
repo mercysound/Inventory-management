@@ -416,167 +416,88 @@ const CustomerProducts = () => {
     } catch {}
   }, []);
 
-  // ── Resolve orderId for a productId — fetches from server if missing ─────────
-  // Declared BEFORE handleQuickAdd/Increase/Decrease to avoid temporal dead zone.
-  // This prevents the ghost-item bug: optimistic add sets orderId:"" temporarily;
-  // if user decreases during that window the API call was silently skipped.
-  // Uses a pending-promise map so concurrent calls for the same product share one fetch.
-  const pendingResolveRef = useRef({});
+  // ── Core cart updater — replaces add/reduce/increase/decrease ────────────
+  // Uses PUT /orders/qty/:productId which is idempotent:
+  //   qty > 0 → server upserts with that exact quantity
+  //   qty = 0 → server deletes the document
+  // No race conditions possible — the server always writes the exact qty we send.
+  const setCartQty = useCallback(async (product, newQty) => {
+    const productId = product._id || product;
+    const prevItem  = cartMapRef.current[productId];
+    const prevQty   = prevItem?.quantity || 0;
 
-  const resolveOrderId = useCallback(async (productId) => {
-    const item = cartMapRef.current[productId];
-    if (item?.orderId) return item.orderId; // already have it — fast path
+    if (newQty === prevQty) return; // nothing to do
 
-    // If there's already a pending fetch for this product, wait for it
-    if (pendingResolveRef.current[productId]) {
-      return pendingResolveRef.current[productId];
+    const snapshot = { ...cartMapRef.current };
+
+    // Optimistic update immediately
+    if (newQty <= 0) {
+      const n = { ...cartMapRef.current }; delete n[productId];
+      cartMapRef.current = n; setCartMap(n); dispatchOrdersUpdated(n);
+    } else {
+      const n = { ...cartMapRef.current, [productId]: { orderId: prevItem?.orderId || "", quantity: newQty } };
+      cartMapRef.current = n; setCartMap(n); dispatchOrdersUpdated(n);
     }
 
-    // Start a new fetch and cache the promise
-    const promise = axiosInstance.get(`/orders/product/${productId}`)
-      .then((res) => {
-        const oid = res.data?._id || res.data?.orderId;
-        if (oid) {
-          const updated = { ...cartMapRef.current };
-          if (updated[productId]) {
-            updated[productId] = { ...updated[productId], orderId: oid };
-            cartMapRef.current = updated;
-            setCartMap(updated);
-          }
-          return oid;
-        }
-        return null;
-      })
-      .catch(() => null)
-      .finally(() => {
-        // Clean up pending ref when done
-        delete pendingResolveRef.current[productId];
+    // Get price for the product
+    const storedMode = (() => { try { return localStorage.getItem("melech_staff_price_mode"); } catch { return null; } })();
+    const isWS   = user?.role === "wholesale" || storedMode === "wholesale";
+    const prod   = typeof product === "object" ? product : products.find((p) => p._id === productId);
+    const price  = prod ? (isWS ? (prod.wholesalePrice ?? prod.price) : prod.price) : 0;
+
+    try {
+      const res = await axiosInstance.put(`/orders/qty/${productId}`, {
+        quantity:  newQty,
+        price,
+        priceMode: isWS ? "wholesale" : "retail",
       });
 
-    pendingResolveRef.current[productId] = promise;
-    return promise;
-  }, []);
+      if (res.data?.deleted || newQty <= 0) {
+        // Server confirmed deletion
+        const n = { ...cartMapRef.current }; delete n[productId];
+        cartMapRef.current = n; setCartMap(n); dispatchOrdersUpdated(n);
+      } else if (res.data?._id) {
+        // Server confirmed upsert — store real orderId
+        const n = { ...cartMapRef.current, [productId]: { orderId: res.data._id, quantity: res.data.quantity ?? newQty } };
+        cartMapRef.current = n; setCartMap(n); dispatchOrdersUpdated(n);
+      }
+    } catch {
+      // Rollback on error
+      cartMapRef.current = snapshot; setCartMap(snapshot); dispatchOrdersUpdated(snapshot);
+      toast.error("Cart update failed. Please try again.");
+    }
+  }, [dispatchOrdersUpdated, products, user]);
 
   // ── Quick add ──────────────────────────────────────────────────────────────
   const handleQuickAdd = useCallback((product) => {
     const prev = cartMapRef.current[product._id];
     const qty  = prev?.quantity || 0;
     if (qty >= product.stock) { toast.warning("Cannot add more than available stock"); return; }
-    const storedMode = (() => { try { return localStorage.getItem("melech_staff_price_mode"); } catch { return null; } })();
-    const isWS = user?.role === "wholesale" || storedMode === "wholesale";
-    const price = isWS ? (product.wholesalePrice ?? product.price) : product.price;
-    const snapshot = { ...cartMapRef.current };
-    const next = { ...snapshot, [product._id]: { orderId: prev?.orderId || "", quantity: qty + 1 } };
-    cartMapRef.current = next; setCartMap(next); dispatchOrdersUpdated(next);
-
-    // Create a promise that resolves to the real orderId so concurrent decrease calls can wait
-    const addPromise = axiosInstance.post("/orders/add", {
-      productId: product._id, quantity: 1, price,
-      priceMode: isWS ? "wholesale" : "retail", isWholesale: isWS,
-    })
-      .then((res) => {
-        if (res.data?._id) {
-          const c = { ...cartMapRef.current, [product._id]: { orderId: res.data._id, quantity: res.data.quantity || 1 } };
-          cartMapRef.current = c; setCartMap(c); dispatchOrdersUpdated(c);
-          return res.data._id;
-        }
-        return null;
-      })
-      .catch(() => { cartMapRef.current = snapshot; setCartMap(snapshot); dispatchOrdersUpdated(snapshot); return null; })
-      .finally(() => { delete pendingResolveRef.current[product._id]; });
-
-    // Register as pending so resolveOrderId can await it if decrease fires immediately
-    if (!pendingResolveRef.current[product._id]) {
-      pendingResolveRef.current[product._id] = addPromise;
-    }
-  }, [dispatchOrdersUpdated, user]);
+    setCartQty(product, qty + 1);
+  }, [setCartQty]);
 
   // ── Quick increase ─────────────────────────────────────────────────────────
-  const handleQuickIncrease = useCallback(async (productId) => {
-    const item = cartMapRef.current[productId];
+  const handleQuickIncrease = useCallback((productId) => {
+    const item    = cartMapRef.current[productId];
     if (!item) return;
     const product = products.find((p) => p._id === productId);
     if (!product || item.quantity >= product.stock) { toast.warning("Cannot increase beyond available stock"); return; }
-    const snapshot = { ...cartMapRef.current };
-    const next = { ...snapshot, [productId]: { ...item, quantity: item.quantity + 1 } };
-    cartMapRef.current = next; setCartMap(next); dispatchOrdersUpdated(next);
-    const storedMode = (() => { try { return localStorage.getItem("melech_staff_price_mode"); } catch { return null; } })();
-    const isWS = user?.role === "wholesale" || storedMode === "wholesale";
-
-    // Resolve orderId — may be "" if add is still in flight
-    const orderId = await resolveOrderId(productId);
-    if (!orderId) {
-      // No server record — create one
-      const price = isWS ? (product.wholesalePrice ?? product.price) : product.price;
-      axiosInstance.post("/orders/add", { productId, quantity: 1, price, priceMode: isWS ? "wholesale" : "retail", isWholesale: isWS })
-        .then((res) => {
-          if (res.data?._id) {
-            const c = { ...cartMapRef.current, [productId]: { orderId: res.data._id, quantity: res.data.quantity } };
-            cartMapRef.current = c; setCartMap(c); dispatchOrdersUpdated(c);
-          }
-        })
-        .catch(() => { cartMapRef.current = snapshot; setCartMap(snapshot); dispatchOrdersUpdated(snapshot); });
-      return;
-    }
-    axiosInstance.post(`/orders/increase/${orderId}`)
-      .then((res) => {
-        if (res.data?._id && res.data.quantity !== undefined) {
-          const c = { ...cartMapRef.current, [productId]: { orderId: res.data._id, quantity: res.data.quantity } };
-          cartMapRef.current = c; setCartMap(c); dispatchOrdersUpdated(c);
-        }
-      })
-      .catch(() => { cartMapRef.current = snapshot; setCartMap(snapshot); dispatchOrdersUpdated(snapshot); });
-  }, [dispatchOrdersUpdated, products, user, resolveOrderId]);
+    setCartQty(product, item.quantity + 1);
+  }, [setCartQty, products]);
 
   // ── Quick decrease ─────────────────────────────────────────────────────────
-  const handleQuickDecrease = useCallback(async (productId) => {
+  const handleQuickDecrease = useCallback((productId) => {
     const item = cartMapRef.current[productId];
     if (!item) return;
-    const snapshot = { ...cartMapRef.current };
-
-    // Optimistically remove/reduce in UI immediately
-    const next = item.quantity <= 1
-      ? (() => { const n = { ...cartMapRef.current }; delete n[productId]; return n; })()
-      : { ...cartMapRef.current, [productId]: { ...item, quantity: item.quantity - 1 } };
-    cartMapRef.current = next; setCartMap(next); dispatchOrdersUpdated(next);
-
-    // Always resolve the real orderId — if orderId was "" (optimistic add still
-    // in-flight), fetch it now so we can actually delete from the server
-    const orderId = await resolveOrderId(productId);
-    if (!orderId) {
-      // No server record found — optimistic removal is the correct final state
-      return;
-    }
-
-    try {
-      const res = await axiosInstance.post(`/orders/reduce/${orderId}`);
-      if (res.data?.deleted) {
-        const n = { ...cartMapRef.current }; delete n[productId];
-        cartMapRef.current = n; setCartMap(n); dispatchOrdersUpdated(n);
-      } else if (res.data?._id && res.data.quantity !== undefined) {
-        const c = { ...cartMapRef.current, [productId]: { orderId: res.data._id, quantity: res.data.quantity } };
-        cartMapRef.current = c; setCartMap(c); dispatchOrdersUpdated(c);
-      }
-    } catch (err) {
-      if (err?.response?.status === 404) {
-        // Already deleted on server — keep the optimistic removal
-        const n = { ...cartMapRef.current }; delete n[productId];
-        cartMapRef.current = n; setCartMap(n); dispatchOrdersUpdated(n);
-      } else {
-        // Rollback on unexpected error
-        cartMapRef.current = snapshot; setCartMap(snapshot); dispatchOrdersUpdated(snapshot);
-      }
-    }
-  }, [dispatchOrdersUpdated, resolveOrderId]);
+    const product = products.find((p) => p._id === productId);
+    setCartQty(product || { _id: productId }, Math.max(0, item.quantity - 1));
+  }, [setCartQty, products]);
 
   // ── Patch cart (OrderModal) ────────────────────────────────────────────────
   const patchCart = useCallback((productId, newQty) => {
-    const next = { ...cartMapRef.current };
-    if (newQty <= 0) { delete next[productId]; }
-    else { const prev = next[productId]; next[productId] = { orderId: prev?.orderId || "", quantity: newQty }; }
-    cartMapRef.current = next; setCartMap(next);
-    try { const total = Object.values(next).reduce((s, i) => s + (i.quantity || 0), 0); setTimeout(() => window.dispatchEvent(new CustomEvent("ordersUpdated", { detail: { cartMap: next, total } })), 0); } catch {}
-  }, []);
+    const prod = products.find((p) => p._id === productId);
+    setCartQty(prod || { _id: productId }, newQty);
+  }, [setCartQty, products]);
 
   // ── Filters ────────────────────────────────────────────────────────────────
   const applyFilters = useCallback((query, catId, newArrivalsOnly = false) => {

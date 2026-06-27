@@ -14,6 +14,7 @@ import {
   getOrderByProduct,
   updateOrder,
   setPriceMode,
+  setOrderQuantity,
 } from "../controllers/orderController.js";
 import orderNotifier from "../utils/orderNotifier.js";
 import { createOrderSchema, completeOrderSchema, updateOrderSchema } from '../validators/schemas.js';
@@ -34,6 +35,11 @@ router.delete("/clear", authMiddleware, clearUserOrders);
 router.post("/reduce/:orderId", authMiddleware, reduceOrder);
 router.post("/increase/:orderId", authMiddleware, increaseOrderQuantity);
 router.delete("/remove/:orderId", authMiddleware, deleteOrderItem);
+
+// ✅ Idempotent quantity setter — replaces add/reduce/increase for the product page
+// PUT /orders/qty/:productId  body: { quantity, price, priceMode }
+// qty=0 deletes, qty>0 upserts. Prevents ghost items on reload.
+router.put("/qty/:productId", authMiddleware, setOrderQuantity);
 
 // ✅ Toggle price mode (wholesale <-> retail) for all cart items
 router.post("/set-price-mode/:mode", authMiddleware, setPriceMode);

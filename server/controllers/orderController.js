@@ -1150,8 +1150,66 @@ const increaseOrderQuantity = async (req, res) => {
 };
 
 /**
- * deleteOrderItem - delete single item
+ * setOrderQuantity — set cart quantity for a product directly.
+ * Idempotent and race-condition-proof:
+ *   qty > 0 → upsert with that exact quantity
+ *   qty = 0 → delete the cart entry for this product
+ * The frontend calls this for EVERY add/remove, replacing the
+ * incremental reduce/increase approach that had race conditions.
  */
+const setOrderQuantity = async (req, res) => {
+  try {
+    const userId    = req.user._id;
+    const userRole  = req.user.role;
+    const { productId } = req.params;
+    const { quantity, price, priceMode, isWholesale } = req.body;
+
+    const qty = parseInt(quantity, 10);
+    if (isNaN(qty) || qty < 0) return sendError(res, 400, "Invalid quantity");
+
+    // qty = 0 means remove
+    if (qty === 0) {
+      await OrderModel.deleteOne({ userOrdering: userId, product: productId });
+      return sendResponse(res, 200, { deleted: true, quantity: 0 }, "Item removed from cart");
+    }
+
+    const product = await ProductModel.findById(productId).select("price wholesalePrice stock");
+    if (!product) return sendError(res, 404, "Product not found");
+    if (qty > product.stock) return sendError(res, 400, `Only ${product.stock} units available`);
+
+    const forceWholesale = userRole === "wholesale";
+    const finalMode  = forceWholesale ? "wholesale" : (priceMode === "wholesale" || isWholesale ? "wholesale" : "retail");
+    const unitPrice  = finalMode === "wholesale"
+      ? (product.wholesalePrice ?? product.price)
+      : product.price;
+
+    const order = await OrderModel.findOneAndUpdate(
+      { userOrdering: userId, product: productId },
+      {
+        $set: {
+          quantity:      qty,
+          price:         unitPrice,
+          totalPrice:    qty * unitPrice,
+          priceMode:     finalMode,
+          cartExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
+          paymentStatus: "Unpaid",
+          paid:          false,
+        },
+        $setOnInsert: {
+          userOrdering: userId,
+          product:      productId,
+          orderDate:    new Date(),
+        },
+      },
+      { new: true, upsert: true, runValidators: false }
+    );
+
+    return sendResponse(res, 200, order, "Cart updated");
+  } catch (error) {
+    console.error("setOrderQuantity error:", error);
+    return sendError(res, 500, "Failed to update cart");
+  }
+};
 const deleteOrderItem = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -1236,5 +1294,6 @@ export {
   getOrderByProduct,
   updateOrder,
   generateInvoice,
-  setPriceMode
+  setPriceMode,
+  setOrderQuantity,
 };
