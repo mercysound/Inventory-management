@@ -110,6 +110,11 @@ const getOrderByProduct = async (req, res) => {
     const userId    = req.user._id;
     const { productId } = req.params;
     const order = await OrderModel.findOne({ userOrdering: userId, product: productId });
+    // If a zombie qty=0 doc exists, clean it up and return null
+    if (order && order.quantity <= 0) {
+      await OrderModel.findByIdAndDelete(order._id);
+      return sendResponse(res, 200, null, "Order not found");
+    }
     return sendResponse(res, 200, order, "Order fetched successfully");
   } catch (error) {
     console.error("getOrderByProduct error:", error);
@@ -177,16 +182,20 @@ const getOrders = async (req, res) => {
       })
       .sort(sort).skip(skip).limit(limit);
 
-    const sanitizedOrders = orders.map((o) => ({
-      _id:              o._id,
-      product:          o.product,
-      quantity:         o.quantity,
-      totalPrice:       o.totalPrice ?? 0,
-      orderDate:        o.orderDate,
-      price:            o.price,
-      priceMode:        o.priceMode || 'retail',
-      userOrdering:     o.userOrdering,
-    }));
+    // Filter out any zero/negative quantity docs — defensive against
+    // race conditions where a reduce is in-flight during a reload
+    const sanitizedOrders = orders
+      .filter((o) => o.quantity > 0)
+      .map((o) => ({
+        _id:          o._id,
+        product:      o.product,
+        quantity:     o.quantity,
+        totalPrice:   o.totalPrice ?? 0,
+        orderDate:    o.orderDate,
+        price:        o.price,
+        priceMode:    o.priceMode || 'retail',
+        userOrdering: o.userOrdering,
+      }));
 
     const meta = getPaginationMeta(total, limit, page);
     return sendResponse(res, 200, sanitizedOrders, "Orders retrieved successfully", meta);
@@ -1081,19 +1090,36 @@ const generateInvoice = async (req, res) => {
 const reduceOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const order = await OrderModel.findById(orderId);
-    if (!order) return sendError(res, 404, "Order not found");
 
-    if (order.quantity <= 1) {
-      await OrderModel.findByIdAndDelete(orderId);
-      return sendResponse(res, 200, { deleted: true }, "Order removed successfully");
+    // Atomically decrement — if qty was 1 (becomes 0 or below) we'll delete
+    const updated = await OrderModel.findOneAndUpdate(
+      { _id: orderId, quantity: { $gt: 1 } },
+      {
+        $inc: { quantity: -1 },
+        $set: { cartExpiresAt: new Date(Date.now() + 60 * 60 * 1000) },
+      },
+      { new: true }
+    );
+
+    if (updated) {
+      // Successfully decremented — quantity is still > 0
+      // Safety: if somehow qty hit 0, delete now
+      if (updated.quantity <= 0) {
+        await OrderModel.findByIdAndDelete(orderId);
+        return sendResponse(res, 200, { deleted: true }, "Order removed successfully");
+      }
+      updated.totalPrice = updated.price * updated.quantity;
+      await updated.save();
+      return sendResponse(res, 200, updated, "Order reduced successfully");
     }
 
-    order.quantity     -= 1;
-    order.totalPrice    = order.price * order.quantity;
-    order.cartExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
-    await order.save();
-    return sendResponse(res, 200, order, "Order reduced successfully");
+    // qty was <= 1 — delete the document entirely
+    const deleted = await OrderModel.findByIdAndDelete(orderId);
+    if (!deleted) {
+      // Already deleted by a concurrent request — that's fine, treat as success
+      return sendResponse(res, 200, { deleted: true }, "Order already removed");
+    }
+    return sendResponse(res, 200, { deleted: true }, "Order removed successfully");
   } catch (error) {
     console.error("reduceOrder error:", error);
     return sendError(res, 500, "Error reducing order");
