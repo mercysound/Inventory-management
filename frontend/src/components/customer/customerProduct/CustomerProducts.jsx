@@ -600,7 +600,7 @@ const CustomerProducts = () => {
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-slate-100/60">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-5 space-y-5">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-5 pb-24 space-y-5">
 
         {/* ── Header ──────────────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
