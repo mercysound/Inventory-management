@@ -114,12 +114,72 @@ const Dashboard = () => {
           data-scroll-root
           className="flex-1 p-4 md:p-6 overflow-y-auto theme-page"
           style={{
-            WebkitOverflowScrolling: "touch",  // iOS momentum scrolling
+            WebkitOverflowScrolling: "touch",
             scrollBehavior: "smooth",
-            overscrollBehaviorY: "contain",    // prevent page bounce at scroll edges
+            overscrollBehaviorY: "contain",
           }}
         >
-          <Outlet />
+          <div className="flex flex-col min-h-full">
+            <div className="flex-1">
+              <Outlet />
+            </div>
+
+            {/* ── App Footer ── */}
+            <footer className="mt-12 pt-6 pb-8 border-t border-gray-200 dark:border-gray-700">
+              <div className="max-w-7xl mx-auto px-2">
+                {/* Top row — branding + tagline */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600
+                      flex items-center justify-center shadow-sm shrink-0">
+                      <span className="text-white font-black text-sm">M</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-800 dark:text-gray-100 leading-tight">
+                        MELECH SH
+                      </p>
+                      <p className="text-[10px] text-gray-400 dark:text-gray-500">
+                        Smart inventory &amp; sales management
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Quick links */}
+                  <div className="flex flex-wrap gap-x-5 gap-y-1">
+                    {[
+                      { label: "Dashboard",  role: "admin",     path: "/admin-dashboard" },
+                      { label: "Products",   role: "all",       path: null },
+                      { label: "History",    role: "all",       path: null },
+                      { label: "Settings",   role: "all",       path: null },
+                    ].map(({ label }) => (
+                      <span key={label}
+                        className="text-xs text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-default transition">
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-gray-100 dark:border-gray-800 mb-4" />
+
+                {/* Bottom row — copyright + version */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500">
+                    © {new Date().getFullYear()} <span className="font-semibold text-gray-500 dark:text-gray-400">Melech Solution Hub</span>.
+                    All rights reserved.
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex items-center gap-1.5 text-[10px] text-gray-400 dark:text-gray-600">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                      All systems operational
+                    </span>
+                    <span className="text-[10px] text-gray-300 dark:text-gray-700">v1.0</span>
+                  </div>
+                </div>
+              </div>
+            </footer>
+          </div>
         </main>
       </div>
 
