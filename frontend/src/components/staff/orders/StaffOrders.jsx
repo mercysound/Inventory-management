@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
+import { useWholesaleAccess } from "../../../hooks/useWholesaleAccess";
 import {
   ShoppingCart, Receipt, Trash2, RotateCcw,
   CheckCircle2, PackageOpen, Store, ShoppingBag,
@@ -56,6 +57,7 @@ const StatCard = ({ icon: Icon, label, value, color, iconColor }) => (
 const StaffOrders = () => {
   const { user }  = useAuth();
   const navigate  = useNavigate();
+  const { canUseWholesale } = useWholesaleAccess();
   const [orders,        setOrders]        = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [paymentMethod, setPaymentMethod] = useState("");
@@ -217,6 +219,8 @@ const StaffOrders = () => {
       customerName:  customerName || "Walk-in Customer",
       paymentMethod: paymentMethod || "Not Specified",
       orderSource:   "staff",
+      staffName:     user?.name || "Staff",
+      staffId:       user?._id  || "",
     });
     setReceiptMode("preview");
     setShowReceiptModal(true);
@@ -296,9 +300,9 @@ const StaffOrders = () => {
                 Products
               </motion.button>
 
-              {/* Wholesale badge */}
+              {/* Wholesale badge — only visible when staff has access and it's active */}
               <AnimatePresence>
-                {isWholesale && (
+                {canUseWholesale && isWholesale && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.85 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -366,19 +370,21 @@ const StaffOrders = () => {
 
               {/* Action buttons — responsive stacked layout for mobile */}
               <div className="space-y-2 pt-1">
-                {/* Top row: Wholesale toggle */}
-                <button
-                  type="button"
-                  onClick={handleToggleWholesale}
-                  className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border font-semibold text-sm transition-all ${
-                    isWholesale
-                      ? "bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-200"
-                      : "bg-white border-gray-200 text-gray-600 hover:border-amber-400 hover:text-amber-600"
-                  }`}
-                >
-                  {isWholesale ? <Store size={15} /> : <ShoppingBag size={15} />}
-                  {isWholesale ? "Wholesale ON" : "Switch to Wholesale"}
-                </button>
+                {/* Wholesale toggle — only shown when admin has granted this staff access */}
+                {canUseWholesale && (
+                  <button
+                    type="button"
+                    onClick={handleToggleWholesale}
+                    className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border font-semibold text-sm transition-all ${
+                      isWholesale
+                        ? "bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-200"
+                        : "bg-white border-gray-200 text-gray-600 hover:border-amber-400 hover:text-amber-600"
+                    }`}
+                  >
+                    {isWholesale ? <Store size={15} /> : <ShoppingBag size={15} />}
+                    {isWholesale ? "Wholesale ON" : "Switch to Wholesale"}
+                  </button>
+                )}
 
                 {/* Middle row: Clear + Preview side by side */}
                 <div className="flex gap-2">

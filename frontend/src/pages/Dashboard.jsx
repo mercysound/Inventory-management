@@ -56,12 +56,37 @@ const ExpiryBell = () => {
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const [isOpen, setIsOpen] = useState(window.innerWidth >= 768);
+  // Use state initialiser function to avoid SSR/hydration issues — never
+  // read window.innerWidth during render before the component mounts.
+  const [isOpen, setIsOpen] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 768 : false
+  );
 
   useEffect(() => {
+    // Sync sidebar state on resize
     const handleResize = () => setIsOpen(window.innerWidth >= 768);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // ── Fix scroll hang after app resume (Page Visibility API) ───────────────
+  // When the user switches away and back, iOS Safari sometimes suspends
+  // requestAnimationFrame and scroll events. Force a tiny re-paint on
+  // visibility restore to unblock the browser's rendering pipeline.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        const el = document.getElementById("main-scroll");
+        if (el) {
+          // Nudge the element to force a repaint — 0-cost layout trick
+          const st = el.scrollTop;
+          el.scrollTop = st + 1;
+          el.scrollTop = st;
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
   const toggleSidebar = () => setIsOpen((p) => !p);

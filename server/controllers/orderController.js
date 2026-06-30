@@ -462,11 +462,15 @@ const generateInvoice = async (req, res) => {
       orderSource = "online",
       orderId,
       historyReceipt,
+      staffName: staffNameParam = "",
+      staffId:   staffIdParam   = "",
     } = req.query;
 
-    const safeCustomerName = escapeHtml(customerName);
+    const safeCustomerName  = escapeHtml(customerName);
     const safePaymentMethod = escapeHtml(paymentMethod);
-    const safeOrderSource = escapeHtml(orderSource);
+    const safeOrderSource   = escapeHtml(orderSource);
+    const safeStaffName     = escapeHtml(staffNameParam)  || (req.user?.role === "staff" ? (req.user.name || "") : "");
+    const safeStaffId       = escapeHtml(staffIdParam)    || (req.user?.role === "staff" ? String(req.user._id || "").slice(-8).toUpperCase() : "");
 
     const paymentStatus = mode === "final" ? "Paid" : "Unpaid";
     let orders = [];
@@ -609,9 +613,10 @@ const generateInvoice = async (req, res) => {
     const isCancelled    = req._isCancelled || false;
     const cancelledAt    = req._cancelledAt || null;
     const refundMade     = req._refundMade  || false;
-    const changedByName  = req._changedByName || null;
-    const changedById    = req._changedById   || null;
-    const isDelegated    = req._isDelegated   || false;
+    // For final mode: use order-stored staff info; for preview mode: use query params / req.user
+    const changedByName  = req._changedByName  || (mode === "preview" && req.user?.role === "staff" ? safeStaffName : null);
+    const changedById    = req._changedById    || (mode === "preview" && req.user?.role === "staff" ? safeStaffId   : null);
+    const isDelegated    = req._isDelegated    || false;
     const orderCreatedAt = req._orderCreatedAt || null;
     // Fulfillment display values
     const fulfillmentType       = req._fulfillmentType       || "pickup";
@@ -680,8 +685,8 @@ const generateInvoice = async (req, res) => {
           ["Payment:", displayPayment],
           ["Status:", isCancelled ? "CANCELLED" : paymentStatus],
           ...(roleBadge ? [["PT:", roleBadge === "WS" ? "WSP" : "RTP"]] : []),
-          ...(buyerRole === "staff" && changedByName ? [["Staff:", changedByName + (changedById ? "  #" + changedById : "")]] : []),
-          ...(buyerRole === "staff" && !changedByName && req.user?.role === "staff" ? [["Staff:", (req.user.name || "Staff") + "  #" + String(req.user._id).slice(-8).toUpperCase()]] : []),
+          // Show seller name on all staff invoices — preview uses query param, final uses stored data
+          ...(changedByName ? [["Sold by:", changedByName + (changedById ? "  #" + changedById : "")]] : []),
         ].forEach(([label, value]) => {
           const ly = doc.y;
           doc.font("Helvetica-Bold").text(label, margin, ly, { continued: false, width: 70 });
@@ -1002,16 +1007,13 @@ const generateInvoice = async (req, res) => {
       '<div class="meta-row"><span class="meta-lbl">Customer</span><span class="meta-val">' + escapeHtml(displayName) + '</span></div>',
       '<div class="meta-row"><span class="meta-lbl">Payment method</span><span class="meta-val">' + escapeHtml(displayPayment) + '</span></div>',
       '<div class="meta-row"><span class="meta-lbl">Status</span><span class="meta-val"><span class="status-badge">' + statusLabel + '</span></span></div>',
-      // PT row — WSP or RTP, subtle abbreviation
+      // PT row — WSP or RTP
       ...(roleBadge ? [
         '<div class="meta-row"><span class="meta-lbl">PT</span><span class="meta-val"><span style="background:' + (roleBadge === "WS" ? "#fef3c7" : "#eff6ff") + ';color:' + (roleBadge === "WS" ? "#92400e" : "#1d4ed8") + ';border:1px solid ' + (roleBadge === "WS" ? "#fde68a" : "#bfdbfe") + ';padding:1px 8px;border-radius:99px;font-size:.7rem;font-weight:700;">' + (roleBadge === "WS" ? "WSP" : "RTP") + '</span></span></div>',
       ] : []),
-      // Staff info row — for walk-in (staff-created) orders
-      ...(buyerRole === "staff" && changedByName ? [
-        '<div class="meta-row"><span class="meta-lbl">Staff</span><span class="meta-val">' + escapeHtml(changedByName) + (changedById ? ' <span style="font-size:.68rem;color:#9ca3af">#' + changedById + '</span>' : '') + '</span></div>',
-      ] : []),
-      ...(buyerRole === "staff" && !changedByName && req.user?.role === "staff" ? [
-        '<div class="meta-row"><span class="meta-lbl">Staff</span><span class="meta-val">' + escapeHtml(req.user.name || "Staff") + ' <span style="font-size:.68rem;color:#9ca3af">#' + String(req.user._id).slice(-8).toUpperCase() + '</span></span></div>',
+      // Sold by row — shown on all staff invoices (preview + final)
+      ...(changedByName ? [
+        '<div class="meta-row"><span class="meta-lbl">Sold by</span><span class="meta-val">' + escapeHtml(changedByName) + (changedById ? ' <span style="font-size:.68rem;color:#9ca3af">#' + changedById + '</span>' : '') + '</span></div>',
       ] : []),
       '</div>',
 

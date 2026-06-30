@@ -355,7 +355,85 @@ export const getMyDelegationStatus = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /settings/contact-info   (PUBLIC — no auth required)
+// GET /settings/my-wholesale
+// Staff calls this to find out whether they can use wholesale pricing.
+// Returns { canUseWholesale: boolean }
+// ─────────────────────────────────────────────────────────────────────────────
+export const getMyWholesaleAccess = async (req, res) => {
+  try {
+    if (req.user.role !== "staff") {
+      return sendResponse(res, 200, { canUseWholesale: false }, "Not a staff account");
+    }
+    const settings = await SettingsModel.findOne({}).sort({ createdAt: 1 });
+    if (!settings) return sendResponse(res, 200, { canUseWholesale: false }, "No settings found");
+
+    const staffId = String(req.user._id);
+    const canUseWholesale =
+      settings.wholesaleAllStaff === true ||
+      (settings.wholesaleStaffIds || []).some((id) => String(id) === staffId);
+
+    return sendResponse(res, 200, { canUseWholesale }, "Wholesale access status retrieved");
+  } catch (err) {
+    console.error("getMyWholesaleAccess error:", err.message);
+    return sendError(res, 500, "Failed to check wholesale access");
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /settings/wholesale-access   (admin reads current wholesale access config)
+// ─────────────────────────────────────────────────────────────────────────────
+export const getWholesaleAccess = async (req, res) => {
+  try {
+    const settings = await SettingsModel.findOne({ userId: req.user._id })
+      .populate("wholesaleStaffIds", "name email role isActive");
+    return sendResponse(res, 200, {
+      wholesaleAllStaff: settings?.wholesaleAllStaff ?? false,
+      wholesaleStaffIds: settings?.wholesaleStaffIds  ?? [],
+    }, "Wholesale access settings retrieved");
+  } catch (err) {
+    console.error("getWholesaleAccess error:", err.message);
+    return sendError(res, 500, "Failed to fetch wholesale access settings");
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PUT /settings/wholesale-access   (admin sets wholesale access)
+// Body: { wholesaleAllStaff: boolean, wholesaleStaffIds: string[] }
+// ─────────────────────────────────────────────────────────────────────────────
+export const updateWholesaleAccess = async (req, res) => {
+  try {
+    const { wholesaleAllStaff, wholesaleStaffIds } = req.body;
+    const patch = {};
+
+    if (typeof wholesaleAllStaff === "boolean") {
+      patch.wholesaleAllStaff = wholesaleAllStaff;
+      if (wholesaleAllStaff) patch.wholesaleStaffIds = [];
+    }
+    if (Array.isArray(wholesaleStaffIds) && !wholesaleAllStaff) {
+      patch.wholesaleStaffIds = wholesaleStaffIds;
+      patch.wholesaleAllStaff = false;
+    }
+
+    const settings = await SettingsModel.findOneAndUpdate(
+      { userId: req.user._id },
+      { $set: patch },
+      { new: true, upsert: true }
+    ).populate("wholesaleStaffIds", "name email role isActive");
+
+    // Notify all connected staff clients to re-check their wholesale access
+    try {
+      global.io?.emit?.("wholesaleAccessChanged");
+    } catch {}
+
+    return sendResponse(res, 200, {
+      wholesaleAllStaff: settings.wholesaleAllStaff,
+      wholesaleStaffIds: settings.wholesaleStaffIds,
+    }, "Wholesale access updated");
+  } catch (err) {
+    console.error("updateWholesaleAccess error:", err.message);
+    return sendError(res, 500, "Failed to update wholesale access");
+  }
+};
 // Returns only the store contact fields so the landing page can show them
 // without any authenticated session.
 // ─────────────────────────────────────────────────────────────────────────────

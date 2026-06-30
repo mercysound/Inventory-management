@@ -44,17 +44,14 @@ const settingsSchema = new mongoose.Schema(
     },
 
     // ── Staff Order Management Delegation ─────────────────────────────────
-    // delegateToAllStaff: true → every staff member can manage placed orders
-    // delegatedStaffIds:  list of specific staff user IDs when not delegating to all
-    // Only one mode is active at a time — if delegateToAllStaff is true,
-    // delegatedStaffIds is ignored on the server.
     delegateToAllStaff: { type: Boolean, default: false },
-    delegatedStaffIds: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref:  "User",
-      },
-    ],
+    delegatedStaffIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+
+    // ── Staff Wholesale Pricing Access ────────────────────────────────────
+    // When true every staff member can use wholesale pricing on walk-in sales.
+    // When false only explicitly listed staff IDs have access.
+    wholesaleAllStaff:  { type: Boolean, default: false },
+    wholesaleStaffIds:  [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
 
     // ── Inventory alert thresholds ────────────────────────────────────────
     lowStockThreshold:             { type: Number, default: 10, min: 1 },

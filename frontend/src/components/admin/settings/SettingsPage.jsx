@@ -46,6 +46,13 @@ const SettingsPage = () => {
   const [showPicker,        setShowPicker]        = useState(false);
   const [pickerSearch,      setPickerSearch]      = useState("");
 
+  // ── Wholesale access state ────────────────────────────────────────────────
+  const [wholesale,        setWholesale]        = useState({ wholesaleAllStaff: false, wholesaleStaffIds: [] });
+  const [wholesaleLoading, setWholesaleLoading] = useState(true);
+  const [wholesaleSaving,  setWholesaleSaving]  = useState(false);
+  const [showWsPicker,     setShowWsPicker]     = useState(false);
+  const [wsPickerSearch,   setWsPickerSearch]   = useState("");
+
   // ── Profile state ─────────────────────────────────────────────────────────
   const [profile,        setProfile]        = useState({ name: "", email: "", phone: "", address: "" });
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -112,7 +119,48 @@ const SettingsPage = () => {
     finally { setStaffLoading(false); }
   }, [allStaff.length]);
 
-  useEffect(() => { fetchSettings(); fetchDelegation(); }, []);
+  const fetchWholesaleAccess = useCallback(async () => {
+    try {
+      setWholesaleLoading(true);
+      const res = await axiosInstance.get("/settings/wholesale-access");
+      if (res.data.success) {
+        setWholesale({
+          wholesaleAllStaff: res.data.wholesaleAllStaff ?? false,
+          wholesaleStaffIds: res.data.wholesaleStaffIds ?? [],
+        });
+      }
+    } catch {} finally { setWholesaleLoading(false); }
+  }, []);
+
+  const saveWholesaleAccess = async (patch) => {
+    setWholesaleSaving(true);
+    try {
+      const res = await axiosInstance.put("/settings/wholesale-access", patch);
+      if (res.data.success) {
+        setWholesale({ wholesaleAllStaff: res.data.wholesaleAllStaff, wholesaleStaffIds: res.data.wholesaleStaffIds ?? [] });
+        try { window.dispatchEvent(new CustomEvent("wholesaleAccessChanged")); } catch {}
+        toast.success("Wholesale access updated");
+      }
+    } catch { toast.error("Failed to update wholesale access"); }
+    finally { setWholesaleSaving(false); }
+  };
+
+  const toggleWholesaleAll = () => saveWholesaleAccess({ wholesaleAllStaff: !wholesale.wholesaleAllStaff });
+
+  const addWsDelegate = (staffId) => {
+    const current = wholesale.wholesaleStaffIds.map((s) => s._id || String(s));
+    if (!current.includes(staffId)) saveWholesaleAccess({ wholesaleAllStaff: false, wholesaleStaffIds: [...current, staffId] });
+    setShowWsPicker(false);
+  };
+
+  const removeWsDelegate = (staffId) => {
+    const updated = wholesale.wholesaleStaffIds
+      .filter((s) => (s._id || String(s)) !== staffId)
+      .map((s) => s._id || String(s));
+    saveWholesaleAccess({ wholesaleAllStaff: false, wholesaleStaffIds: updated });
+  };
+
+  useEffect(() => { fetchSettings(); fetchDelegation(); fetchWholesaleAccess(); }, []);
 
   // ── Profile fetch + save ──────────────────────────────────────────────────
   useEffect(() => {
@@ -869,6 +917,130 @@ const SettingsPage = () => {
               <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl px-4 py-3">
                 <CheckCircle2 size={15} className="text-green-600 shrink-0" />
                 <p className="text-sm text-green-800 dark:text-green-300">All active staff can currently manage placed orders.</p>
+              </div>
+            )}
+          </div>
+        )}
+      </motion.div>
+
+      {/* Staff Wholesale Pricing Access */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.125 }}
+        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-6">
+        <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1 flex items-center gap-2">
+          <Store size={16} className="text-amber-500" /> Staff Wholesale Pricing Access
+        </h2>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">
+          Control which staff members can switch to wholesale pricing on walk-in sales. Staff without access will not see the wholesale toggle on their cart page.
+        </p>
+
+        {wholesaleLoading ? (
+          <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
+            <Loader2 size={15} className="animate-spin" /> Loading...
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {/* All / Specific toggle */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              {[
+                { value: true,  label: "All Staff",          desc: "Every active staff member can use wholesale pricing." },
+                { value: false, label: "Specific Staff Only", desc: "You choose which staff members can use wholesale pricing." },
+              ].map((opt) => (
+                <button key={String(opt.value)} type="button" disabled={wholesaleSaving}
+                  onClick={() => { if (opt.value !== wholesale.wholesaleAllStaff) toggleWholesaleAll(); }}
+                  className={`flex-1 text-left p-4 rounded-xl border-2 transition-all disabled:opacity-60 ${
+                    wholesale.wholesaleAllStaff === opt.value
+                      ? "border-amber-500 bg-amber-50 dark:bg-amber-900/30"
+                      : "border-gray-200 dark:border-gray-600 hover:border-gray-300 bg-white dark:bg-gray-900"
+                  }`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-sm font-semibold ${wholesale.wholesaleAllStaff === opt.value ? "text-amber-700 dark:text-amber-300" : "text-gray-700 dark:text-gray-300"}`}>{opt.label}</span>
+                    {wholesale.wholesaleAllStaff === opt.value && <CheckCircle2 size={14} className="text-amber-500 ml-auto" />}
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{opt.desc}</p>
+                </button>
+              ))}
+            </div>
+
+            {/* Specific staff list */}
+            {!wholesale.wholesaleAllStaff && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                    Allowed Staff ({wholesale.wholesaleStaffIds.length})
+                  </p>
+                  <button onClick={() => { setShowWsPicker((p) => !p); fetchAllStaff(); }} disabled={wholesaleSaving}
+                    className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 hover:text-amber-800 font-semibold disabled:opacity-50 transition">
+                    <UserCheck size={13} /> Add Staff
+                  </button>
+                </div>
+
+                {wholesale.wholesaleStaffIds.length === 0 ? (
+                  <p className="text-xs text-gray-400 italic py-2">No staff allowed yet. Click "Add Staff" to grant wholesale access.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {wholesale.wholesaleStaffIds.map((s) => {
+                      const id = s._id || String(s); const name = s.name || "Staff Member"; const email = s.email || "";
+                      return (
+                        <li key={id} className="flex items-center justify-between bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-lg px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <Users size={14} className="text-amber-500" />
+                            <div>
+                              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{name}</p>
+                              {email && <p className="text-xs text-gray-400">{email}</p>}
+                            </div>
+                          </div>
+                          <button onClick={() => removeWsDelegate(id)} disabled={wholesaleSaving}
+                            className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition disabled:opacity-50">
+                            <X size={14} />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+
+                <AnimatePresence>
+                  {showWsPicker && (
+                    <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                      className="border border-gray-200 dark:border-gray-600 rounded-xl shadow-md bg-white dark:bg-gray-900 overflow-hidden">
+                      <div className="p-3 border-b border-gray-100 dark:border-gray-700">
+                        <input autoFocus type="text" placeholder="Search staff..."
+                          value={wsPickerSearch} onChange={(e) => setWsPickerSearch(e.target.value)}
+                          className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm
+                            focus:outline-none focus:ring-2 focus:ring-amber-300 dark:bg-gray-800 dark:text-gray-100" />
+                      </div>
+                      <div className="max-h-48 overflow-y-auto">
+                        {staffLoading ? (
+                          <div className="flex items-center gap-2 p-3 text-gray-400 text-xs"><Loader2 size={13} className="animate-spin" /> Loading staff...</div>
+                        ) : (() => {
+                          const allowedIds = wholesale.wholesaleStaffIds.map((u) => u._id || String(u));
+                          const filtered = allStaff.filter((s) =>
+                            !allowedIds.includes(String(s._id)) &&
+                            (!wsPickerSearch || s.name?.toLowerCase().includes(wsPickerSearch.toLowerCase()) || s.email?.toLowerCase().includes(wsPickerSearch.toLowerCase()))
+                          );
+                          if (!filtered.length) return <p className="text-xs text-gray-400 p-3 text-center">No staff available.</p>;
+                          return filtered.map((s) => (
+                            <button key={s._id} type="button" onClick={() => addWsDelegate(String(s._id))}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-amber-50 dark:hover:bg-amber-900/20 transition">
+                              <Users size={14} className="text-gray-400 shrink-0" />
+                              <div>
+                                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{s.name}</p>
+                                <p className="text-xs text-gray-400">{s.email}</p>
+                              </div>
+                            </button>
+                          ));
+                        })()}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+
+            {wholesale.wholesaleAllStaff && (
+              <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3">
+                <CheckCircle2 size={15} className="text-amber-600 shrink-0" />
+                <p className="text-sm text-amber-800 dark:text-amber-300">All active staff can currently use wholesale pricing.</p>
               </div>
             )}
           </div>
