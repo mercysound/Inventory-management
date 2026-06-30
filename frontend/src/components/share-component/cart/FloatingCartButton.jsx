@@ -124,17 +124,19 @@ const FloatingCartButton = () => {
           aria-label="Go to Product Page"
           className="fixed z-40 flex items-center justify-center
             w-14 h-14 rounded-full
-            bg-green-600 hover:bg-green-700 active:scale-95
-            shadow-lg shadow-green-300/50
-            transition-colors duration-200
-            focus:outline-none focus:ring-4 focus:ring-green-300"
+            bg-white/20 backdrop-blur-sm
+            border border-white/30
+            hover:bg-white/30 active:scale-95
+            shadow-md
+            transition-all duration-200
+            focus:outline-none focus:ring-2 focus:ring-white/40"
           style={{
             top:  "80vh",
             left: "max(16px, calc(env(safe-area-inset-left, 0px) + 16px))",
             WebkitTapHighlightColor: "transparent",
           }}
         >
-          <ShoppingBag size={22} className="text-white" />
+          <ShoppingBag size={22} className="text-white drop-shadow" />
         </motion.button>
       </AnimatePresence>
     );
@@ -155,10 +157,12 @@ const FloatingCartButton = () => {
           aria-label={`View cart — ${cartCount} item${cartCount !== 1 ? "s" : ""}`}
           className="fixed z-40 flex items-center justify-center
             w-14 h-14 rounded-full
-            bg-indigo-600 hover:bg-indigo-700 active:scale-95
-            shadow-lg shadow-indigo-300/50
-            transition-colors duration-200
-            focus:outline-none focus:ring-4 focus:ring-indigo-300"
+            bg-white/20 backdrop-blur-sm
+            border border-white/30
+            hover:bg-white/30 active:scale-95
+            shadow-md
+            transition-all duration-200
+            focus:outline-none focus:ring-2 focus:ring-white/40"
           style={{
             top:  "80vh",
             left: "max(16px, calc(env(safe-area-inset-left, 0px) + 16px))",
@@ -170,7 +174,7 @@ const FloatingCartButton = () => {
             animate={bounce ? { y: [-4, 0, -3, 0] } : { y: 0 }}
             transition={{ duration: 0.5, ease: "easeInOut" }}
           >
-            <ShoppingCart size={22} className="text-white" />
+            <ShoppingCart size={22} className="text-white drop-shadow" />
           </motion.div>
 
           {/* Count badge */}
