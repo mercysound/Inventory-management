@@ -202,12 +202,12 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f1117] flex flex-col overflow-x-hidden">
+    <div className="relative min-h-screen bg-[#0f1117] flex flex-col overflow-hidden">
 
-      {/* ── Background orbs ──────────────────────────────────────────────── */}
-      <Orb className="w-[600px] h-[600px] bg-indigo-600 -top-40 -left-32" />
-      <Orb className="w-[400px] h-[400px] bg-violet-600 top-1/3 -right-20" />
-      <Orb className="w-[300px] h-[300px] bg-blue-500 bottom-10 left-1/4" />
+      {/* ── Background orbs — clipped by parent overflow:hidden ─────────── */}
+      <Orb className="w-[500px] h-[500px] bg-indigo-600 -top-40 -left-32" />
+      <Orb className="w-[350px] h-[350px] bg-violet-600 top-1/3 -right-10" />
+      <Orb className="w-[280px] h-[280px] bg-blue-500 bottom-10 left-1/4" />
 
       {/* ── Nav ──────────────────────────────────────────────────────────── */}
       <nav className="relative z-10 flex items-center justify-between px-6 md:px-12 py-5">
