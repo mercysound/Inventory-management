@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Sidebar from "../components/share-component/sidebar/Sidebar";
 import FloatingCartButton from "../components/share-component/cart/FloatingCartButton";
 import FloatingScrollButtons from "../components/share-component/scroll/FloatingScrollButtons";
+import PullToRefresh from "../components/share-component/PullToRefresh";
 import { useAuth } from "../context/AuthContext";
 import axiosInstance from "../utils/axiosInstance";
 
@@ -127,6 +128,13 @@ const Dashboard = () => {
 
   const toggleSidebar = () => setIsOpen((p) => !p);
 
+  // Pull-to-refresh: navigate to same path to trigger data re-fetch
+  const handlePullRefresh = useCallback(async () => {
+    // Small delay so the spinner is visible
+    await new Promise((r) => setTimeout(r, 600));
+    navigate(location.pathname, { replace: true });
+  }, [navigate, location.pathname]);
+
   return (
     <div className="flex h-screen overflow-hidden theme-page">
       {/* Desktop sidebar */}
@@ -144,27 +152,37 @@ const Dashboard = () => {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        {/* Mobile top bar */}
-        <div className="md:hidden flex items-center justify-between p-4 shadow-md theme-sidebar"
-          style={{ color: "#fff" }}>
+        {/* Mobile top bar — always visible, explicit dark background as fallback */}
+        <div
+          className="md:hidden flex items-center justify-between px-4 py-3 shadow-md shrink-0"
+          style={{
+            background: "var(--bg-sidebar, linear-gradient(to right, #111827, #1f2937))",
+            color: "#fff",
+            minHeight: "56px",
+            zIndex: 10,
+            position: "relative",
+          }}
+        >
           <button
             onClick={toggleSidebar}
-            className="p-2 rounded hover:bg-white/10 transition"
+            className="p-2 rounded hover:bg-white/10 active:bg-white/20 transition shrink-0"
             style={{ color: "#fff" }}
             aria-label="Open menu"
           >
             <FaBars size={20} />
           </button>
           {/* Store name + current page */}
-          <div className="flex flex-col items-center min-w-0">
-            <span className="font-bold text-white text-sm leading-tight truncate max-w-[160px]">
+          <div className="flex flex-col items-center min-w-0 flex-1 px-2">
+            <span className="font-bold text-white text-sm leading-tight truncate max-w-[180px]">
               {storeName}
             </span>
             <span className="text-white/60 text-[10px] font-medium tracking-wide uppercase">
               {pageName}
             </span>
           </div>
-          {user?.role === "admin" ? <ExpiryBell /> : <div className="w-9" />}
+          <div className="shrink-0">
+            {user?.role === "admin" ? <ExpiryBell /> : <div className="w-9" />}
+          </div>
         </div>
 
         {/* Desktop top bar — admin only */}
@@ -184,8 +202,9 @@ const Dashboard = () => {
           className="flex-1 p-4 md:p-6 overflow-y-auto theme-page"
           style={{
             WebkitOverflowScrolling: "touch",
-            scrollBehavior: "smooth",
             overscrollBehaviorY: "contain",
+            willChange: "scroll-position",
+            transform: "translateZ(0)",
           }}
         >
           <div className="flex flex-col min-h-full">
@@ -211,23 +230,40 @@ const Dashboard = () => {
                   </p>
                 </div>
 
-                {/* Quick links — centered, clickable */}
+                {/* Quick links — centered, clickable, role-specific */}
                 <nav className="flex flex-wrap justify-center gap-x-5 gap-y-2 mb-5">
                   {(() => {
                     const role = user?.role;
                     const base =
-                      role === "admin"     ? "/admin-dashboard"
-                      : role === "staff"   ? "/customer-dashboard"
+                      role === "admin"       ? "/admin-dashboard"
+                      : role === "staff"     ? "/customer-dashboard"
                       : role === "wholesale" ? "/wholesale-dashboard"
                       : "/user-dashboard";
 
-                    const links = [
-                      { label: "Dashboard", path: base },
-                      { label: "Products",  path: `${base}` },
+                    // Admin gets all sidebar routes
+                    const adminLinks = [
+                      { label: "Dashboard",      path: "/admin-dashboard" },
+                      { label: "Categories",     path: "/admin-dashboard/categories" },
+                      { label: "Products",       path: "/admin-dashboard/products" },
+                      { label: "Suppliers",      path: "/admin-dashboard/suppliers" },
+                      { label: "Placed Orders",  path: "/admin-dashboard/placed-orders" },
+                      { label: "History",        path: "/admin-dashboard/completed-history" },
+                      { label: "Users",          path: "/admin-dashboard/users" },
+                      { label: "Expiring Orders",path: "/admin-dashboard/expiring-orders" },
+                      { label: "Settings",       path: "/admin-dashboard/settings" },
+                      { label: "Logout",         path: `${base}/logout` },
+                    ];
+
+                    // Staff, customer, wholesale — no Dashboard link
+                    const userLinks = [
+                      { label: "Products",  path: base },
+                      { label: "Cart",      path: `${base}/orders` },
                       { label: "History",   path: `${base}/completed-history` },
                       { label: "Settings",  path: `${base}/settings` },
                       { label: "Logout",    path: `${base}/logout` },
                     ];
+
+                    const links = role === "admin" ? adminLinks : userLinks;
 
                     return links.map(({ label, path }) => (
                       <button
@@ -274,6 +310,8 @@ const Dashboard = () => {
       <FloatingCartButton />
       {/* Scroll up/down floating buttons — all users, all pages */}
       <FloatingScrollButtons />
+      {/* Pull-to-refresh — works from anywhere on the page, not just the top */}
+      <PullToRefresh onRefresh={handlePullRefresh} />
     </div>
   );
 };

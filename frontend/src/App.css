@@ -1,24 +1,51 @@
 @import "tailwindcss";
 
-/* ─── Global smooth-scroll & touch momentum ────────────────────────────────
-   Gives iOS Safari native momentum scrolling on any overflow container.
-   overscroll-behavior: contain prevents the page from bouncing when the
-   user reaches the top or bottom of a nested scrollable area.
+/* ─── Global scroll performance ──────────────────────────────────────────────
+   Firefox does not support -webkit-overflow-scrolling (Chrome/Safari only).
+   Instead use scroll-behavior + will-change + transform to promote scroll
+   containers to their own compositor layer — eliminates the jank/hang.
    ─────────────────────────────────────────────────────────────────────────── */
 html {
   scroll-behavior: smooth;
+  /* Tell Firefox the page will scroll — hints to compositor to optimise */
+  will-change: scroll-position;
 }
 
-* {
-  -webkit-overflow-scrolling: touch;
-}
-
+/* Promote all overflow scroll containers to GPU compositor layer */
 .overflow-y-auto,
 .overflow-y-scroll,
 .overflow-auto,
 .overflow-scroll {
+  /* Safari/Chrome momentum */
   -webkit-overflow-scrolling: touch;
+  /* Prevent rubber-band bounce fighting with parent containers */
   overscroll-behavior-y: contain;
+  /* GPU layer — critical for Firefox smooth scroll */
+  will-change: scroll-position;
+  /* Prevent Firefox from triggering full-page repaints during scroll */
+  transform: translateZ(0);
+  /* Use native scroll on Firefox — much faster than JS-driven scroll */
+  scroll-behavior: auto;
+}
+
+/* Reduce paint cost on elements that animate or have blur effects */
+.backdrop-blur-sm,
+.backdrop-blur,
+.backdrop-blur-md,
+.backdrop-blur-lg {
+  /* Force GPU compositing for blur elements */
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* Orb blur elements on landing page — prevent repaint during scroll */
+.blur-3xl,
+.blur-2xl,
+.blur-xl {
+  will-change: transform;
+  transform: translateZ(0);
+  /* Firefox: pointer-events off already but make sure no hit-testing cost */
+  pointer-events: none;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

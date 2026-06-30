@@ -181,6 +181,9 @@ const StaffTable = ({ orders, onIncreaseQty, onReduceQty, onRemoveOrder, isWhole
                 {o.product?.categoryId?.name && (
                   <p className="text-xs text-indigo-500 font-medium">{o.product.categoryId.name}</p>
                 )}
+                {o.product?.description && (
+                  <p className="text-xs text-gray-400 mt-0.5 line-clamp-2 leading-relaxed">{o.product.description}</p>
+                )}
                 {isWholesale && (
                   <span className="inline-block mt-1 text-[10px] bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-semibold">
                     WSP

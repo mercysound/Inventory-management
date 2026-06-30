@@ -201,8 +201,8 @@ const StaffOrders = () => {
 
   return (
     <>
-      {/* ── Full-height layout: sticky top panel + scrollable items below ── */}
-      <div className="flex flex-col h-full -m-4 md:-m-6">
+      {/* ── Full-height layout: sticky top panel + cart items below ── */}
+      <div className="flex flex-col -mx-4 md:-mx-6 -mt-4 md:-mt-6">
 
         {/* ════════════════════════════════════════════════════════════════
             STICKY TOP PANEL — stays visible while cart items scroll below
@@ -330,10 +330,9 @@ const StaffOrders = () => {
         </div>
 
         {/* ════════════════════════════════════════════════════════════════
-            SCROLLABLE CART BODY — items scroll under the sticky panel
+            SCROLLABLE CART BODY — scrolls inside Dashboard's main container
         ════════════════════════════════════════════════════════════════ */}
-        <div className="flex-1 overflow-y-auto pb-24 px-4 md:px-6 pt-4"
-          style={{ WebkitOverflowScrolling: "touch" }}>
+        <div className="px-4 md:px-6 pt-4 pb-24">
 
           {loading ? (
             <div className="space-y-3">

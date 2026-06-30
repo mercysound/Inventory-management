@@ -14,6 +14,14 @@ const axiosInstance = axios.create({
 // Routes that should NEVER trigger the token refresh logic
 const AUTH_ROUTES = ["/auth/login", "/auth/refresh", "/users/register", "/auth/google-login"];
 
+// Routes where 403 errors should be silenced (not shown as toast)
+// These endpoints are role-gated and return 403 for non-matching roles — that's expected.
+const SILENT_403_ROUTES = [
+  "/settings/my-delegation",
+  "/settings/my-wholesale",
+  "/settings/theme",
+];
+
 // Routes that get a longer timeout (heavy queries / cold starts)
 const SLOW_ROUTES = ["/dashboard", "/supplier", "/auth/reset-password", "/products", "/orders"];
 // Email operations need even longer timeout (includes SMTP connection + retries)
@@ -156,7 +164,11 @@ axiosInstance.interceptors.response.use(
       if (isNetworkError(error)) {
         showNetworkToast(message);
       } else if (status !== 400 && status !== 401) {
-        toast.error(message);
+        // Silently ignore expected 403s from role-gated endpoints
+        const isSilent403 = status === 403 && SILENT_403_ROUTES.some((r) => requestUrl.includes(r));
+        if (!isSilent403) {
+          toast.error(message);
+        }
       }
     }
 

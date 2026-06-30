@@ -21,7 +21,14 @@ const dashboardByRole = (role) => {
 
 // ── Floating background orbs ──────────────────────────────────────────────────
 const Orb = ({ className }) => (
-  <div className={`absolute rounded-full blur-3xl opacity-20 pointer-events-none ${className}`} />
+  <div
+    className={`absolute rounded-full opacity-20 pointer-events-none ${className}`}
+    style={{
+      filter: "blur(80px)",   /* explicit px blur instead of Tailwind class — Firefox renders faster */
+      willChange: "transform",
+      transform: "translateZ(0)",
+    }}
+  />
 );
 
 // ── Feature chip ──────────────────────────────────────────────────────────────
