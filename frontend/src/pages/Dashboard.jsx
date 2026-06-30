@@ -1,6 +1,6 @@
 // src/pages/Dashboard.jsx
 import React, { useState, useEffect, useCallback } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { FaBars } from "react-icons/fa";
 import { Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,6 +9,29 @@ import FloatingCartButton from "../components/share-component/cart/FloatingCartB
 import FloatingScrollButtons from "../components/share-component/scroll/FloatingScrollButtons";
 import { useAuth } from "../context/AuthContext";
 import axiosInstance from "../utils/axiosInstance";
+
+// ── Route → display name map ──────────────────────────────────────────────────
+const PAGE_NAME_MAP = [
+  { match: /\/products$/,          label: "Products"        },
+  { match: /\/categories/,         label: "Categories"      },
+  { match: /\/suppliers/,          label: "Suppliers"       },
+  { match: /\/placed-orders/,      label: "Placed Orders"   },
+  { match: /\/completed-history/,  label: "History"         },
+  { match: /\/expiring-orders/,    label: "Expiring Orders" },
+  { match: /\/users/,              label: "Users"           },
+  { match: /\/settings/,           label: "Settings"        },
+  { match: /\/orders/,             label: "Cart"            },
+  { match: /\/logout/,             label: "Logout"          },
+  { match: /\/dashboard$/,         label: "Dashboard"       },
+  { match: /\/$/,                  label: "Dashboard"       },
+];
+
+const getPageName = (pathname) => {
+  for (const { match, label } of PAGE_NAME_MAP) {
+    if (match.test(pathname)) return label;
+  }
+  return "Dashboard";
+};
 
 // ── Expiry bell — admin only ───────────────────────────────────────────────────
 const ExpiryBell = () => {
@@ -55,9 +78,22 @@ const ExpiryBell = () => {
 };
 
 const Dashboard = () => {
-  const { user } = useAuth();
-  // Use state initialiser function to avoid SSR/hydration issues — never
-  // read window.innerWidth during render before the component mounts.
+  const { user, logout } = useAuth();
+  const navigate   = useNavigate();
+  const location   = useLocation();
+  const pageName   = getPageName(location.pathname);
+
+  // Store name from settings (editable by admin)
+  const [storeName, setStoreName] = useState("MELECH SH");
+  useEffect(() => {
+    axiosInstance.get("/settings/theme")
+      .then(() => axiosInstance.get("/settings").catch(() => null))
+      .then((res) => {
+        if (res?.data?.settings?.storeName) setStoreName(res.data.settings.storeName);
+      })
+      .catch(() => {});
+  }, []);
+
   const [isOpen, setIsOpen] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth >= 768 : false
   );
@@ -108,7 +144,7 @@ const Dashboard = () => {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        {/* Mobile top bar — always uses the sidebar brand gradient so hamburger is always visible */}
+        {/* Mobile top bar */}
         <div className="md:hidden flex items-center justify-between p-4 shadow-md theme-sidebar"
           style={{ color: "#fff" }}>
           <button
@@ -119,8 +155,16 @@ const Dashboard = () => {
           >
             <FaBars size={20} />
           </button>
-          <span className="font-bold text-white">MELECH SH Dashboard</span>
-          {user?.role === "admin" && <ExpiryBell />}
+          {/* Store name + current page */}
+          <div className="flex flex-col items-center min-w-0">
+            <span className="font-bold text-white text-sm leading-tight truncate max-w-[160px]">
+              {storeName}
+            </span>
+            <span className="text-white/60 text-[10px] font-medium tracking-wide uppercase">
+              {pageName}
+            </span>
+          </div>
+          {user?.role === "admin" ? <ExpiryBell /> : <div className="w-9" />}
         </div>
 
         {/* Desktop top bar — admin only */}
@@ -151,57 +195,75 @@ const Dashboard = () => {
 
             {/* ── App Footer ── */}
             <footer className="mt-12 pt-6 pb-8 border-t border-gray-200 dark:border-gray-700">
-              <div className="max-w-7xl mx-auto px-2">
-                {/* Top row — branding + tagline */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600
-                      flex items-center justify-center shadow-sm shrink-0">
-                      <span className="text-white font-black text-sm">M</span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-gray-800 dark:text-gray-100 leading-tight">
-                        MELECH SH
-                      </p>
-                      <p className="text-[10px] text-gray-400 dark:text-gray-500">
-                        Smart inventory &amp; sales management
-                      </p>
-                    </div>
-                  </div>
+              <div className="max-w-2xl mx-auto px-4 text-center">
 
-                  {/* Quick links */}
-                  <div className="flex flex-wrap gap-x-5 gap-y-1">
-                    {[
-                      { label: "Dashboard",  role: "admin",     path: "/admin-dashboard" },
-                      { label: "Products",   role: "all",       path: null },
-                      { label: "History",    role: "all",       path: null },
-                      { label: "Settings",   role: "all",       path: null },
-                    ].map(({ label }) => (
-                      <span key={label}
-                        className="text-xs text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-default transition">
-                        {label}
-                      </span>
-                    ))}
+                {/* Branding — centered */}
+                <div className="flex flex-col items-center gap-1 mb-5">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600
+                    flex items-center justify-center shadow-sm">
+                    <span className="text-white font-black text-sm">M</span>
                   </div>
+                  <p className="text-sm font-bold text-gray-800 dark:text-gray-100 mt-1">
+                    {storeName}
+                  </p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500">
+                    Smart inventory &amp; sales management
+                  </p>
                 </div>
+
+                {/* Quick links — centered, clickable */}
+                <nav className="flex flex-wrap justify-center gap-x-5 gap-y-2 mb-5">
+                  {(() => {
+                    const role = user?.role;
+                    const base =
+                      role === "admin"     ? "/admin-dashboard"
+                      : role === "staff"   ? "/customer-dashboard"
+                      : role === "wholesale" ? "/wholesale-dashboard"
+                      : "/user-dashboard";
+
+                    const links = [
+                      { label: "Dashboard", path: base },
+                      { label: "Products",  path: `${base}` },
+                      { label: "History",   path: `${base}/completed-history` },
+                      { label: "Settings",  path: `${base}/settings` },
+                      { label: "Logout",    path: `${base}/logout` },
+                    ];
+
+                    return links.map(({ label, path }) => (
+                      <button
+                        key={label}
+                        onClick={() => navigate(path)}
+                        className={`text-xs font-medium transition
+                          ${label === "Logout"
+                            ? "text-red-400 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
+                            : "text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+                          }`}
+                      >
+                        {label}
+                      </button>
+                    ));
+                  })()}
+                </nav>
 
                 {/* Divider */}
                 <div className="border-t border-gray-100 dark:border-gray-800 mb-4" />
 
-                {/* Bottom row — copyright + version */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                {/* Bottom row — copyright + status — centered */}
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                   <p className="text-[11px] text-gray-400 dark:text-gray-500">
-                    © {new Date().getFullYear()} <span className="font-semibold text-gray-500 dark:text-gray-400">Melech Solution Hub</span>.
-                    All rights reserved.
+                    © {new Date().getFullYear()}{" "}
+                    <span className="font-semibold text-gray-500 dark:text-gray-400">
+                      Melech Solution Hub
+                    </span>. All rights reserved.
                   </p>
-                  <div className="flex items-center gap-3">
-                    <span className="inline-flex items-center gap-1.5 text-[10px] text-gray-400 dark:text-gray-600">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
-                      All systems operational
-                    </span>
-                    <span className="text-[10px] text-gray-300 dark:text-gray-700">v1.0</span>
-                  </div>
+                  <span className="hidden sm:inline text-gray-300 dark:text-gray-700">·</span>
+                  <span className="inline-flex items-center gap-1.5 text-[10px] text-gray-400 dark:text-gray-600">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                    All systems operational
+                  </span>
+                  <span className="text-[10px] text-gray-300 dark:text-gray-700">v1.0</span>
                 </div>
+
               </div>
             </footer>
           </div>
