@@ -549,6 +549,9 @@ const setLowStockConfig = async (req, res) => {
     return sendError(res, 500, 'Failed to update low stock config');
   }
 };
+
+export {
+  getProducts,
   addProduct,
   updateProduct,
   deleteProduct,
