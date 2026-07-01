@@ -282,7 +282,10 @@ const ProductTable = ({
     const n = parseInt(jumpInput, 10);
     if (!isNaN(n)) goToPage(n);
   };
-  const lowStock    = products.filter((p) => p.stock > 0 && p.stock <= lowStockThreshold).length;
+  const lowStock    = products.filter((p) => {
+    const t = p.individualLowStockThreshold ?? lowStockThreshold;
+    return p.stock > 0 && p.stock <= t;
+  }).length;
   const outOfStock  = products.filter((p) => p.stock === 0).length;
   const totalValue  = products.reduce((sum, p) => sum + (p.price * p.stock), 0);
 
@@ -507,8 +510,16 @@ const ProductTable = ({
 
                         {/* Stock + reorder */}
                         <td className="px-4 py-3.5 min-w-[160px]">
-                          <StockBadge stock={product.stock} threshold={lowStockThreshold} />
-                          {product.stock > 0 && product.stock <= lowStockThreshold && product.supplierId && (
+                          <StockBadge stock={product.stock} threshold={product.individualLowStockThreshold ?? lowStockThreshold} />
+                          {product.individualLowStockThreshold !== null && product.individualLowStockThreshold !== undefined && (
+                            <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border
+                              ${product.individualLowStockAlertEnabled !== false
+                                ? "bg-red-50 text-red-600 border-red-100"
+                                : "bg-gray-50 text-gray-400 border-gray-100 line-through"}`}>
+                              🔔 ≤{product.individualLowStockThreshold}
+                            </span>
+                          )}
+                          {product.stock > 0 && product.stock <= (product.individualLowStockThreshold ?? lowStockThreshold) && product.supplierId && (
                             <ReorderHint supplier={product.supplierId} />
                           )}
                         </td>
@@ -708,8 +719,19 @@ const ProductTable = ({
                           </span>
                         </div>
                         <div className="mt-1.5">
-                          <StockBadge stock={product.stock} threshold={lowStockThreshold} />
+                          <StockBadge stock={product.stock} threshold={product.individualLowStockThreshold ?? lowStockThreshold} />
                         </div>
+                        {/* Per-product low-stock threshold badge */}
+                        {product.individualLowStockThreshold !== null && product.individualLowStockThreshold !== undefined && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border
+                              ${product.individualLowStockAlertEnabled !== false
+                                ? "bg-red-50 text-red-600 border-red-100"
+                                : "bg-gray-50 text-gray-400 border-gray-100 line-through"}`}>
+                              🔔 Alert ≤{product.individualLowStockThreshold}
+                            </span>
+                          </div>
+                        )}
                         {/* Batch + Expiry on mobile */}
                         {(product.batchNumber || product.expiryDate) && (
                           <div className="flex flex-wrap gap-1.5 mt-1.5">

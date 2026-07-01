@@ -53,8 +53,19 @@ const productSchema = new mongoose.Schema({
   batchNumber: { type: String, default: null, trim: true },
 
   // Tracks when the last expiry-warning email was sent for this product.
-  // Used by the cron to avoid sending duplicate warnings on the same day.
   lastExpiryWarningSentAt: { type: Date, default: null },
+
+  // ── Per-product low stock alert ───────────────────────────────────────────
+  // When set, overrides the global lowStockThreshold from Settings for this
+  // product. null = use the global setting.
+  individualLowStockThreshold: { type: Number, default: null, min: 0 },
+  // When false, no low-stock alert is sent for this product regardless of
+  // the global ON/OFF switch. When true (default), both global and individual
+  // thresholds apply normally.
+  individualLowStockAlertEnabled: { type: Boolean, default: true },
+  // Tracks when the last low-stock email was sent — prevents duplicate emails
+  // within the same check cycle.
+  lastLowStockAlertSentAt: { type: Date, default: null },
   // ─────────────────────────────────────────────────────────────────────────
 
 }, { timestamps: true });

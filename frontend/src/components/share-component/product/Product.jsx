@@ -27,6 +27,8 @@ const EMPTY_FORM = {
   isNewArrival:   false,
   isBonanza:      false,
   isStaffOnly:    false,
+  individualLowStockThreshold:    "",
+  individualLowStockAlertEnabled: true,
 };
 
 const Product = () => {
@@ -275,6 +277,8 @@ const Product = () => {
       isNewArrival: product.isNewArrival || false,
       isBonanza:    product.isBonanza    || false,
       isStaffOnly:  product.isStaffOnly  || false,
+      individualLowStockThreshold:    product.individualLowStockThreshold ?? "",
+      individualLowStockAlertEnabled: product.individualLowStockAlertEnabled !== false,
     });
     setOpenModal(true);
   };
@@ -445,6 +449,28 @@ const Product = () => {
         toast.success(res.data.message || "Updated");
       } else { fetchProducts(); toast.error("Failed to update staff-only status"); }
     } catch { fetchProducts(); toast.error("Failed to update staff-only status"); }
+  }, [fetchProducts]);
+
+  const handleSetLowStockConfig = useCallback(async (productId, threshold, enabled) => {
+    // threshold: number|null — null means clear individual setting
+    // enabled: boolean
+    const update = (list) => list.map((p) =>
+      p._id === productId
+        ? { ...p, individualLowStockThreshold: threshold, individualLowStockAlertEnabled: enabled }
+        : p
+    );
+    productsRef.current = update(productsRef.current);
+    setProducts((prev) => update(prev));
+    setFilteredProducts((prev) => update(prev));
+    try {
+      const res = await axiosInstance.patch(`/products/${productId}/low-stock-config`, {
+        threshold: threshold === "" ? null : threshold,
+        enabled,
+      });
+      if (res.data.success) {
+        toast.success("Low stock alert updated");
+      } else { fetchProducts(); toast.error("Failed to update low stock config"); }
+    } catch { fetchProducts(); toast.error("Failed to update low stock config"); }
   }, [fetchProducts]);
 
   const handleViewDeleted = () => { fetchDeletedProducts(); setShowDeletedPopup(true); };
@@ -666,6 +692,7 @@ const Product = () => {
             onToggleNewArrival={handleToggleNewArrival}
             onToggleBonanza={handleToggleBonanza}
             onToggleStaffOnly={handleToggleStaffOnly}
+            onSetLowStockConfig={handleSetLowStockConfig}
             batchSearch={batchSearch}
             expiryDateFilter={expiryDaysFilter}
             selectedIds={selectedIds}

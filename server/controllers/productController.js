@@ -511,8 +511,44 @@ const batchToggleFlag = async (req, res) => {
   }
 };
 
-export {
-  getProducts,
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH /products/:id/low-stock-config
+// Admin sets the individual low-stock threshold and ON/OFF for a product.
+// Body: { threshold: number|null, enabled: boolean }
+// ─────────────────────────────────────────────────────────────────────────────
+const setLowStockConfig = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { threshold, enabled } = req.body;
+
+    const product = await ProductModel.findById(id);
+    if (!product) return sendError(res, 404, 'Product not found');
+
+    if (threshold !== undefined) {
+      product.individualLowStockThreshold =
+        threshold === null || threshold === "" ? null : Math.max(0, Number(threshold));
+    }
+    if (enabled !== undefined) {
+      product.individualLowStockAlertEnabled = Boolean(enabled);
+    }
+    await product.save();
+
+    // Notify connected clients so ProductTable updates in real-time
+    productNotifier.emit('productFlagChanged', {
+      productId:                      id,
+      individualLowStockThreshold:    product.individualLowStockThreshold,
+      individualLowStockAlertEnabled: product.individualLowStockAlertEnabled,
+    });
+
+    return sendResponse(res, 200, {
+      individualLowStockThreshold:    product.individualLowStockThreshold,
+      individualLowStockAlertEnabled: product.individualLowStockAlertEnabled,
+    }, 'Low stock config updated');
+  } catch (error) {
+    console.error('setLowStockConfig error:', error);
+    return sendError(res, 500, 'Failed to update low stock config');
+  }
+};
   addProduct,
   updateProduct,
   deleteProduct,
@@ -525,4 +561,5 @@ export {
   batchDelete,
   batchPermanentDelete,
   batchToggleFlag,
+  setLowStockConfig,
 };

@@ -15,6 +15,7 @@ import {
   batchDelete,
   batchToggleFlag,
   batchPermanentDelete,
+  setLowStockConfig,
 } from "../controllers/productController.js";
 import { uploadProductImages } from "../config/multer.js";
 import { productSchema, productUpdateSchema } from "../validators/schemas.js";
@@ -30,9 +31,10 @@ router.put("/restore/:id",    authMiddleware, restoreProduct);
 router.delete("/permanent/:id", authMiddleware, deleteProductPermanent);
 
 // ── Single flag toggles ───────────────────────────────────────────────────────
-router.patch("/:id/new-arrival", authMiddleware, authorizeRoles("admin"), toggleNewArrival);
-router.patch("/:id/bonanza",     authMiddleware, authorizeRoles("admin"), toggleBonanza);
-router.patch("/:id/staff-only",  authMiddleware, authorizeRoles("admin"), toggleStaffOnly);
+router.patch("/:id/new-arrival",      authMiddleware, authorizeRoles("admin"), toggleNewArrival);
+router.patch("/:id/bonanza",          authMiddleware, authorizeRoles("admin"), toggleBonanza);
+router.patch("/:id/staff-only",       authMiddleware, authorizeRoles("admin"), toggleStaffOnly);
+router.patch("/:id/low-stock-config", authMiddleware, authorizeRoles("admin"), setLowStockConfig);
 
 // ── Bulk operations (admin only) ──────────────────────────────────────────────
 router.post("/batch/delete",           authMiddleware, authorizeRoles("admin"), batchDelete);

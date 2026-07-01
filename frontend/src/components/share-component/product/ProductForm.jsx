@@ -554,6 +554,63 @@ const ProductForm = ({
               </div>
             </div>
 
+            {/* ── Individual Low Stock Alert ────────────────────────────── */}
+            <div className={`p-4 rounded-xl border-2 transition-all
+              ${formData.individualLowStockAlertEnabled
+                ? "border-red-300 bg-red-50"
+                : "border-gray-200 bg-white"}`}>
+              {/* Header row: label + ON/OFF toggle */}
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className={`text-sm font-bold ${formData.individualLowStockAlertEnabled ? "text-red-700" : "text-gray-700"}`}>
+                    Individual Low Stock Alert
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
+                    Set a custom low-stock threshold for this product. Overrides the global setting when filled.
+                  </p>
+                </div>
+                {/* ON/OFF switch */}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={formData.individualLowStockAlertEnabled}
+                  onClick={() => {
+                    const updated = { ...formData, individualLowStockAlertEnabled: !formData.individualLowStockAlertEnabled };
+                    setFormData(updated);
+                    debouncedSaveDraft(updated);
+                  }}
+                  className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors focus:outline-none
+                    ${formData.individualLowStockAlertEnabled ? "bg-red-500" : "bg-gray-300"}`}
+                >
+                  <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform
+                    ${formData.individualLowStockAlertEnabled ? "translate-x-5" : "translate-x-1"}`} />
+                </button>
+              </div>
+
+              {/* Threshold input — only interactive when enabled */}
+              <div className={`transition-opacity duration-200 ${formData.individualLowStockAlertEnabled ? "opacity-100" : "opacity-40 pointer-events-none"}`}>
+                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                  Alert when stock reaches (units)
+                  <span className="ml-1 text-gray-400 normal-case font-normal text-[10px]">leave blank to use global setting</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="99999"
+                  value={formData.individualLowStockThreshold}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const updated = { ...formData, individualLowStockThreshold: val };
+                    setFormData(updated);
+                    debouncedSaveDraft(updated);
+                  }}
+                  onWheel={(e) => e.currentTarget.blur()}
+                  placeholder="e.g. 5  (global default used if empty)"
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-transparent"
+                />
+              </div>
+            </div>
+
             {/* Expiry info note */}
             {(formData.expiryDate) && (() => {
               const days = Math.ceil((new Date(formData.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
