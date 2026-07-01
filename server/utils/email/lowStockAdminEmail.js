@@ -2,7 +2,7 @@
 // Sends a digest email to the admin listing all products at/below their
 // effective low-stock threshold.
 
-import { sendEmail } from "./emailService.js";
+import { sendWithRetry } from "./sendWithRetry.js";
 
 export const sendLowStockAdminEmail = async ({ adminEmail, products, storeName }) => {
   if (!products.length) return;
@@ -71,7 +71,7 @@ export const sendLowStockAdminEmail = async ({ adminEmail, products, storeName }
     </html>
   `;
 
-  await sendEmail({
+  await sendWithRetry({
     to:      adminEmail,
     subject: `⚠️ Low Stock Alert — ${products.length} product${products.length !== 1 ? "s" : ""} need attention | ${storeName}`,
     html,
