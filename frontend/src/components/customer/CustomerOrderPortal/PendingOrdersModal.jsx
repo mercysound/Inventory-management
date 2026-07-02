@@ -49,6 +49,7 @@ const OrderCard = ({ order, index, isCancelled }) => (
         <span className="text-xs text-gray-400">
           {new Date(order.createdAt).toLocaleDateString("en-NG", {
             day: "numeric", month: "short", year: "numeric",
+            hour: "2-digit", minute: "2-digit",
           })}
         </span>
       </div>
@@ -65,6 +66,7 @@ const OrderCard = ({ order, index, isCancelled }) => (
             Cancelled on:{" "}
             {new Date(order.cancelledAt).toLocaleDateString("en-NG", {
               day: "numeric", month: "long", year: "numeric",
+              hour: "2-digit", minute: "2-digit",
             })}
           </span>
         )}
