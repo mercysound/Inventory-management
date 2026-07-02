@@ -87,13 +87,23 @@ const Dashboard = () => {
   // Store name from settings (editable by admin)
   const [storeName, setStoreName] = useState("MELECH SH");
   useEffect(() => {
-    axiosInstance.get("/settings/theme")
-      .then(() => axiosInstance.get("/settings").catch(() => null))
-      .then((res) => {
-        if (res?.data?.settings?.storeName) setStoreName(res.data.settings.storeName);
-      })
-      .catch(() => {});
-  }, []);
+    // /settings/theme is public — safe for all roles
+    // /settings is admin-only — only fetch for admin to avoid 403 for other users
+    if (user?.role === "admin") {
+      axiosInstance.get("/settings")
+        .then((res) => {
+          if (res?.data?.settings?.storeName) setStoreName(res.data.settings.storeName);
+        })
+        .catch(() => {});
+    } else {
+      // Non-admin: fetch store name from contact-info (public endpoint)
+      axiosInstance.get("/settings/contact-info")
+        .then((res) => {
+          if (res?.data?.storeName) setStoreName(res.data.storeName);
+        })
+        .catch(() => {});
+    }
+  }, [user?.role]);
 
   const [isOpen, setIsOpen] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth >= 768 : false
