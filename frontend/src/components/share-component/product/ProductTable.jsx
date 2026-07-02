@@ -394,12 +394,7 @@ const ProductTable = ({
             tableWrapRef.current = el;
             if (scrollRef) scrollRef.current = el;
           }}
-          className="hidden md:block overflow-y-auto"
-          style={{
-            maxHeight: "calc(100vh - 340px)",
-            WebkitOverflowScrolling: "touch",
-            overscrollBehaviorY: "contain",
-          }}
+          className="hidden md:block"
         >
           <table className="w-full border-collapse text-sm">
             <thead className="sticky top-0 z-10">
@@ -427,7 +422,7 @@ const ProductTable = ({
                 ))}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-100">
               {visibleProducts.length > 0 ? (
                 <>
                   {visibleProducts.map((product, index) =>
@@ -435,7 +430,7 @@ const ProductTable = ({
                       <UpdatingRowSkeleton key={product._id} />
                     ) : (
                       <tr key={product._id}
-                        className={`group hover:bg-blue-50/30 transition-colors border-b border-gray-50 last:border-none align-top
+                        className={`group hover:bg-blue-50/30 transition-colors align-top
                           ${selectedIds.includes(product._id) ? "bg-indigo-50/40" : ""}`}
                       >
                         {/* Checkbox — admin only */}
@@ -603,15 +598,10 @@ const ProductTable = ({
         {/* ── MOBILE CARDS ── */}
         <div
           ref={(el) => { mobileWrapRef.current = el; if (scrollRef) scrollRef.current = el; }}
-          className="md:hidden overflow-y-auto"
-          style={{
-            maxHeight: "calc(100vh - 340px)",
-            WebkitOverflowScrolling: "touch",
-            overscrollBehaviorY: "contain",
-          }}
+          className="md:hidden"
         >
           {visibleProducts.length > 0 ? (
-            <div className="divide-y-2 divide-gray-100">
+            <div className="divide-y divide-gray-200">
               {visibleProducts.map((product) =>
                 updatingProductId === product._id ? (
                   <div key={product._id} className="p-4 bg-blue-50/40 animate-pulse">

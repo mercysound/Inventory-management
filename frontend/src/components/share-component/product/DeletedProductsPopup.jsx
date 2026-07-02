@@ -7,6 +7,8 @@ const DeletedProductsPopup = ({
   onBulkPermanentDelete, loading,
 }) => {
   const [selectedIds, setSelectedIds] = useState([]);
+  // ── All hooks MUST be called before any early return ──────────────────────
+  const selectAllRef = useRef(null);
 
   // Reset selection whenever popup opens or product list changes
   useEffect(() => { setSelectedIds([]); }, [open, products]);
@@ -18,11 +20,9 @@ const DeletedProductsPopup = ({
     return () => window.removeEventListener("keydown", handleEsc);
   }, [open, onClose]);
 
-  if (!open) return null;
-
-  const allSelected   = products.length > 0 && selectedIds.length === products.length;
-  const someSelected  = selectedIds.length > 0 && !allSelected;
-  const selectAllRef  = useRef(null);
+  // ── Derived values (after all hooks) ─────────────────────────────────────
+  const allSelected  = products.length > 0 && selectedIds.length === products.length;
+  const someSelected = selectedIds.length > 0 && !allSelected;
 
   const toggleOne = (id, checked) =>
     setSelectedIds((prev) => checked ? [...prev, id] : prev.filter((x) => x !== id));
@@ -36,6 +36,9 @@ const DeletedProductsPopup = ({
     onBulkPermanentDelete?.(selectedIds);
     setSelectedIds([]);
   };
+
+  // Early return AFTER all hooks
+  if (!open) return null;
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
