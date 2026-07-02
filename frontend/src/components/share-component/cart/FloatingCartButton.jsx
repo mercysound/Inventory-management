@@ -6,23 +6,26 @@ import { ShoppingCart, ShoppingBag } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 import { useCart } from "../../../context/CartContext";
 
-// Pages where the floating button should never appear
 const CART_ROUTES = [
   "/user-dashboard/orders",
   "/wholesale-dashboard/orders",
   "/customer-dashboard/orders",
 ];
 
-// Product page for each cart route — used for the "back to products" button
 const PRODUCTS_ROUTE = {
   "/user-dashboard/orders":      "/user-dashboard",
   "/wholesale-dashboard/orders": "/wholesale-dashboard",
   "/customer-dashboard/orders":  "/customer-dashboard",
 };
 
-// How long (ms) after the last hide-request before the button reappears.
-// Short enough to feel instant, long enough not to flicker during rapid events.
 const HIDE_DEBOUNCE_MS = 400;
+
+// Common bottom-right position — same anchor for both buttons
+const POSITION_STYLE = {
+  bottom: "max(24px, calc(env(safe-area-inset-bottom, 0px) + 24px))",
+  right:  "max(16px, calc(env(safe-area-inset-right,  0px) + 16px))",
+  WebkitTapHighlightColor: "transparent",
+};
 
 const FloatingCartButton = () => {
   const { user }     = useAuth();
@@ -30,14 +33,13 @@ const FloatingCartButton = () => {
   const location     = useLocation();
   const { cartCount, cartPath, hasCart } = useCart();
 
-  const [bounce,    setBounce]    = useState(false);
-  const [suppressed, setSuppressed] = useState(false); // true while near +/- buttons
-  const [modalOpen,  setModalOpen]  = useState(false); // true while order modal is open
+  const [bounce,     setBounce]     = useState(false);
+  const [suppressed, setSuppressed] = useState(false);
+  const [modalOpen,  setModalOpen]  = useState(false);
 
-  const prevCountRef  = useRef(cartCount);
-  const hideTimerRef  = useRef(null);
+  const prevCountRef = useRef(cartCount);
+  const hideTimerRef = useRef(null);
 
-  // ── Bounce when count goes up ────────────────────────────────────────────
   useEffect(() => {
     if (cartCount > prevCountRef.current) {
       setBounce(true);
@@ -48,17 +50,12 @@ const FloatingCartButton = () => {
     prevCountRef.current = cartCount;
   }, [cartCount]);
 
-  // ── Modal visibility: hide while order modal is open ────────────────────
   useEffect(() => {
     const handler = (e) => setModalOpen(!!e?.detail?.open);
     window.addEventListener("modalVisibility", handler);
     return () => window.removeEventListener("modalVisibility", handler);
   }, []);
 
-  // ── Hide near +/- buttons — timeout-based, never gets stuck ─────────────
-  // Instead of counting hide/show events (which leak), we start a timer on
-  // every hide request. As long as hide events keep coming the timer resets.
-  // When they stop (user moved away), the button reappears after the debounce.
   const scheduleShow = useCallback(() => {
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     hideTimerRef.current = setTimeout(() => {
@@ -70,14 +67,9 @@ const FloatingCartButton = () => {
   useEffect(() => {
     const handler = (e) => {
       const hide = !!e?.detail?.hide;
-      if (hide) {
-        setSuppressed(true);
-        scheduleShow(); // auto-restore after debounce even if leave event is missed
-      } else {
-        scheduleShow(); // explicit show — restore after short delay
-      }
+      if (hide) { setSuppressed(true); scheduleShow(); }
+      else { scheduleShow(); }
     };
-
     window.addEventListener("hideFloatingCart", handler);
     return () => {
       window.removeEventListener("hideFloatingCart", handler);
@@ -85,9 +77,6 @@ const FloatingCartButton = () => {
     };
   }, [scheduleShow]);
 
-  // ── Scroll: always restore visibility when user scrolls ─────────────────
-  // Prevents the button from staying hidden after user scrolls away from a
-  // +/- button area on mobile (touchEnd can fire unreliably during scroll).
   useEffect(() => {
     const onScroll = () => {
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
@@ -97,51 +86,45 @@ const FloatingCartButton = () => {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // ── Route change: always restore visibility ──────────────────────────────
   useEffect(() => {
     setSuppressed(false);
     setModalOpen(false);
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
   }, [location.pathname]);
 
-  // ── Guard: don't render for admin or roles without a cart ───────────────
   if (!user || user.role === "admin" || !hasCart) return null;
 
   const isCartPage    = CART_ROUTES.some((r) => location.pathname === r);
   const productsRoute = PRODUCTS_ROUTE[location.pathname];
 
-  // ── On cart pages: show a "Go to Products" shortcut instead ─────────────
+  // ── On cart pages: show "Products" pill ─────────────────────────────────
   if (isCartPage && productsRoute) {
     return (
       <AnimatePresence>
         <motion.button
           key="floating-products"
-          initial={{ opacity: 0, scale: 0.8, x: -20 }}
-          animate={{ opacity: 1, scale: 1,   x: 0   }}
-          exit={{    opacity: 0, scale: 0.8, x: -20  }}
+          initial={{ opacity: 0, scale: 0.8, y: 16 }}
+          animate={{ opacity: 1, scale: 1,   y: 0  }}
+          exit={{    opacity: 0, scale: 0.8, y: 16  }}
           transition={{ type: "spring", stiffness: 420, damping: 26 }}
           onClick={() => navigate(productsRoute)}
-          aria-label="Go to Product Page"
-          className="fixed z-40 flex items-center justify-center
-            w-14 h-14 rounded-full
-            bg-white/20 backdrop-blur-sm
-            border border-white/30
-            hover:bg-white/30 active:scale-95
-            shadow-md
-            transition-all duration-200
-            focus:outline-none focus:ring-2 focus:ring-white/40"
-          style={{
-            top:  "80vh",
-            left: "max(16px, calc(env(safe-area-inset-left, 0px) + 16px))",
-            WebkitTapHighlightColor: "transparent",
-          }}
+          aria-label="Go to Products"
+          className="fixed z-40 flex items-center gap-2
+            pl-3 pr-4 h-12 rounded-full
+            bg-indigo-600 hover:bg-indigo-700 active:scale-95
+            shadow-lg shadow-indigo-300/40
+            transition-colors duration-200
+            focus:outline-none focus:ring-4 focus:ring-indigo-300"
+          style={POSITION_STYLE}
         >
-          <ShoppingBag size={22} className="text-white drop-shadow" />
+          <ShoppingBag size={18} className="text-white shrink-0" />
+          <span className="text-white text-xs font-bold tracking-wide">Products</span>
         </motion.button>
       </AnimatePresence>
     );
   }
 
+  // ── On product pages: show cart button ───────────────────────────────────
   const visible = cartCount > 0 && !modalOpen && !suppressed;
 
   return (
@@ -155,46 +138,40 @@ const FloatingCartButton = () => {
           transition={{ type: "spring", stiffness: 420, damping: 26 }}
           onClick={() => navigate(cartPath)}
           aria-label={`View cart — ${cartCount} item${cartCount !== 1 ? "s" : ""}`}
-          className="fixed z-40 flex items-center justify-center
-            w-14 h-14 rounded-full
-            bg-white/20 backdrop-blur-sm
-            border border-white/30
-            hover:bg-white/30 active:scale-95
-            shadow-md
-            transition-all duration-200
-            focus:outline-none focus:ring-2 focus:ring-white/40"
-          style={{
-            top:  "80vh",
-            left: "max(16px, calc(env(safe-area-inset-left, 0px) + 16px))",
-            WebkitTapHighlightColor: "transparent",
-          }}
+          className="fixed z-40 flex items-center gap-2
+            pl-3 pr-4 h-12 rounded-full
+            bg-indigo-600 hover:bg-indigo-700 active:scale-95
+            shadow-lg shadow-indigo-300/40
+            transition-colors duration-200
+            focus:outline-none focus:ring-4 focus:ring-indigo-300"
+          style={POSITION_STYLE}
         >
-          {/* Cart icon — bounces when item added */}
           <motion.div
-            animate={bounce ? { y: [-4, 0, -3, 0] } : { y: 0 }}
+            animate={bounce ? { y: [-3, 0, -2, 0] } : { y: 0 }}
             transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="relative"
           >
-            <ShoppingCart size={22} className="text-white drop-shadow" />
+            <ShoppingCart size={18} className="text-white" />
+            {/* Count badge */}
+            <AnimatePresence mode="popLayout">
+              <motion.span
+                key={cartCount}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{    scale: 0 }}
+                transition={{ type: "spring", stiffness: 500, damping: 22 }}
+                className="absolute -top-2 -right-2
+                  min-w-[17px] h-[17px] px-1
+                  bg-red-500 text-white
+                  text-[9px] font-bold rounded-full
+                  flex items-center justify-center
+                  border border-white pointer-events-none"
+              >
+                {cartCount > 99 ? "99+" : cartCount}
+              </motion.span>
+            </AnimatePresence>
           </motion.div>
-
-          {/* Count badge */}
-          <AnimatePresence mode="popLayout">
-            <motion.span
-              key={cartCount}
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              exit={{    scale: 0 }}
-              transition={{ type: "spring", stiffness: 500, damping: 22 }}
-              className="absolute -top-1 -right-1
-                min-w-[22px] h-[22px] px-1.5
-                bg-red-500 text-white
-                text-[11px] font-bold rounded-full
-                flex items-center justify-center
-                shadow-md border-2 border-white pointer-events-none"
-            >
-              {cartCount > 99 ? "99+" : cartCount}
-            </motion.span>
-          </AnimatePresence>
+          <span className="text-white text-xs font-bold tracking-wide">Cart</span>
         </motion.button>
       )}
     </AnimatePresence>

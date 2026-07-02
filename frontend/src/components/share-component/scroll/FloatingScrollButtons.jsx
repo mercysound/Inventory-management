@@ -1,35 +1,48 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronUp, ChevronDown } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { useCart } from "../../context/CartContext";
 
-/**
- * FloatingScrollButtons
- * ─────────────────────
- * ↑ scroll-to-top   — appears only when scrolled down enough that jumping up is useful
- * ↓ scroll-to-bottom — appears only when there is meaningful content still below
- *
- * Both buttons:
- *   • HIDE while the user is actively scrolling (no clutter during scroll)
- *   • RE-APPEAR 600 ms after scrolling stops (the old ScrollToTop used the same delay)
- *   • Sit bottom-right above the floating cart / products button
- */
+const APPEAR_THRESHOLD  = 200;
+const BOTTOM_THRESHOLD  = 200;
+const HIDE_WHILE_SCROLL = 600;
+const CONTAINER_ID      = "main-scroll";
 
-const APPEAR_THRESHOLD  = 200;   // px from top before ↑ button shows
-const BOTTOM_THRESHOLD  = 200;   // px from bottom before ↓ button shows
-const HIDE_WHILE_SCROLL = 600;   // ms after last scroll event before buttons reappear
-const CONTAINER_ID      = "main-scroll"; // same id used by old ScrollToTop
+// Cart/Products pages — cart button is visible on these
+const CART_ROUTES = [
+  "/user-dashboard/orders",
+  "/wholesale-dashboard/orders",
+  "/customer-dashboard/orders",
+];
 
 const FloatingScrollButtons = () => {
-  const [showUp,     setShowUp]     = useState(false);
-  const [showDown,   setShowDown]   = useState(false);
-  const [scrolling,  setScrolling]  = useState(false); // true while user is scrolling
+  const { user }      = useAuth();
+  const { cartCount, hasCart } = useCart();
+  const location      = useLocation();
+
+  const [showUp,    setShowUp]    = useState(false);
+  const [showDown,  setShowDown]  = useState(false);
+  const [scrolling, setScrolling] = useState(false);
   const hideTimerRef = useRef(null);
   const rafRef       = useRef(null);
 
-  // ── Core position evaluator ──────────────────────────────────────────────
+  // Is the cart/products floating button currently visible on screen?
+  const isCartPage     = CART_ROUTES.some((r) => location.pathname === r);
+  const cartBtnVisible =
+    hasCart &&
+    user?.role !== "admin" &&
+    (isCartPage || cartCount > 0); // products page shows cart when items added
+
+  // Scroll buttons sit above the cart button when it's visible
+  // cart pill height 48px + gap 12px + base 24px = 84 → use 96px to be safe
+  const bottomOffset = cartBtnVisible
+    ? "max(100px, calc(env(safe-area-inset-bottom, 0px) + 100px))"
+    : "max(88px, calc(env(safe-area-inset-bottom, 0px) + 88px))";
+
   const evaluate = useCallback((target) => {
     let scrollTop, scrollHeight, clientHeight;
-
     if (!target || target === window) {
       scrollTop    = window.scrollY;
       scrollHeight = document.documentElement.scrollHeight;
@@ -39,21 +52,15 @@ const FloatingScrollButtons = () => {
       scrollHeight = target.scrollHeight;
       clientHeight = target.clientHeight;
     }
-
     const hasScroll  = scrollHeight > clientHeight + 20;
     const nearTop    = scrollTop < APPEAR_THRESHOLD;
     const nearBottom = scrollTop + clientHeight >= scrollHeight - BOTTOM_THRESHOLD;
-
     setShowUp  (hasScroll && !nearTop);
     setShowDown(hasScroll && !nearBottom);
   }, []);
 
-  // ── Scroll handler — hides during scroll, re-evaluates when stopped ──────
-  const onScroll = useCallback((e) => {
-    // Hide immediately while scrolling
+  const onScroll = useCallback(() => {
     setScrolling(true);
-
-    // Debounce: re-show and re-evaluate after user stops
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     hideTimerRef.current = setTimeout(() => {
       setScrolling(false);
@@ -63,28 +70,22 @@ const FloatingScrollButtons = () => {
     }, HIDE_WHILE_SCROLL);
   }, [evaluate]);
 
-  // ── Attach scroll listener to the dashboard main scroller ───────────────
   useEffect(() => {
     let container = document.getElementById(CONTAINER_ID);
-
     const attach = (el) => {
       el.addEventListener("scroll", onScroll, { passive: true });
-      // Initial evaluation
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = requestAnimationFrame(() => evaluate(el));
     };
-
     if (container) {
       attach(container);
     } else {
-      // Wait for DOM to mount (e.g. after route change)
       const t = setTimeout(() => {
         container = document.getElementById(CONTAINER_ID);
         if (container) attach(container);
       }, 200);
       return () => clearTimeout(t);
     }
-
     return () => {
       if (container) container.removeEventListener("scroll", onScroll);
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
@@ -92,37 +93,33 @@ const FloatingScrollButtons = () => {
     };
   }, [onScroll, evaluate]);
 
-  // ── Scroll actions ───────────────────────────────────────────────────────
   const scrollTo = useCallback((direction) => {
     const target = document.getElementById(CONTAINER_ID);
     const top    = direction === "top" ? 0 : 999999;
-    if (target) {
-      target.scrollTo({ top, behavior: "smooth" });
-    } else {
-      window.scrollTo({ top, behavior: "smooth" });
-    }
+    if (target) target.scrollTo({ top, behavior: "smooth" });
+    else window.scrollTo({ top, behavior: "smooth" });
   }, []);
 
-  // Buttons are visible only when NOT actively scrolling and position warrants it
   const upVisible   = showUp   && !scrolling;
   const downVisible = showDown && !scrolling;
 
   const btnClass = `
     w-9 h-9 rounded-full flex items-center justify-center
-    bg-white/80 backdrop-blur-sm
+    bg-white/90 backdrop-blur-sm
     border border-gray-200
     text-gray-500 hover:text-gray-800 hover:bg-white hover:border-gray-300
     shadow-md shadow-gray-200/60
-    transition-colors active:scale-90
+    transition-all active:scale-90
     focus:outline-none focus:ring-2 focus:ring-indigo-300
   `.trim();
 
   return (
-    <div
+    <motion.div
       className="fixed z-39 flex flex-col gap-1.5 pointer-events-none"
+      animate={{ bottom: cartBtnVisible ? 100 : 88 }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
       style={{
-        bottom: "max(88px, calc(env(safe-area-inset-bottom, 0px) + 88px))",
-        right:  "max(16px, calc(env(safe-area-inset-right,  0px) + 16px))",
+        right: "max(16px, calc(env(safe-area-inset-right, 0px) + 16px))",
       }}
     >
       <AnimatePresence>
@@ -160,7 +157,7 @@ const FloatingScrollButtons = () => {
           </motion.button>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 };
 
