@@ -394,9 +394,9 @@ const ProductTable = ({
             tableWrapRef.current = el;
             if (scrollRef) scrollRef.current = el;
           }}
-          className="hidden md:block"
+          className="hidden md:block overflow-x-auto"
         >
-          <table className="w-full border-collapse text-sm">
+          <table className="w-full min-w-[900px] border-collapse text-sm">
             <thead className="sticky top-0 z-10">
               <tr>
                 {desktopHeaders.map((h, i) => (
@@ -449,34 +449,37 @@ const ProductTable = ({
                         <td className="px-4 py-3.5 text-gray-400 text-xs w-8">{index + 1}</td>
 
                         {/* Product */}
-                        <td className="px-4 py-3.5">
+                        <td className="px-4 py-3 max-w-[200px]">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl border border-gray-100 overflow-hidden bg-gray-50 flex items-center justify-center flex-shrink-0 shadow-sm">
                               {product.image
                                 ? <img src={product.image} alt={product.name} className="w-full h-full object-cover" loading="lazy" />
                                 : <Package size={14} className="text-gray-300" />}
                             </div>
-                            <div>
-                              <p className="font-semibold text-gray-800 text-sm leading-tight">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-gray-800 text-sm leading-tight truncate">
                                 {product.name}
+                              </p>
+                              {/* Badges inline — flex-wrap prevents row height explosion */}
+                              <div className="flex flex-wrap gap-1 mt-0.5">
                                 {product.isNewArrival && (
-                                  <span className="ml-2 text-[9px] font-bold bg-indigo-100 text-indigo-600 border border-indigo-200 px-1.5 py-0.5 rounded-full align-middle">
+                                  <span className="text-[9px] font-bold bg-indigo-100 text-indigo-600 border border-indigo-200 px-1.5 py-0.5 rounded-full">
                                     ✨ NEW
                                   </span>
                                 )}
                                 {product.isBonanza && (
-                                  <span className="ml-1.5 text-[9px] font-bold bg-orange-100 text-orange-600 border border-orange-200 px-1.5 py-0.5 rounded-full align-middle">
-                                    🎉 BONANZA
+                                  <span className="text-[9px] font-bold bg-orange-100 text-orange-600 border border-orange-200 px-1.5 py-0.5 rounded-full">
+                                    🎉 DEAL
                                   </span>
                                 )}
                                 {product.isStaffOnly && (
-                                  <span className="ml-1.5 text-[9px] font-bold bg-red-100 text-red-500 border border-red-200 px-1.5 py-0.5 rounded-full align-middle">
-                                    🔒 STAFF ONLY
+                                  <span className="text-[9px] font-bold bg-red-100 text-red-500 border border-red-200 px-1.5 py-0.5 rounded-full">
+                                    🔒 STAFF
                                   </span>
                                 )}
-                              </p>
+                              </div>
                               {product.supplierId && (
-                                <p className="text-[10px] text-gray-400 mt-0.5">{product.supplierId.name}</p>
+                                <p className="text-[10px] text-gray-400 mt-0.5 truncate">{product.supplierId.name}</p>
                               )}
                             </div>
                           </div>
