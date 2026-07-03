@@ -205,128 +205,125 @@ const StaffOrders = () => {
       <div className="flex flex-col -mx-4 md:-mx-6 -mt-4 md:-mt-6">
 
         {/* ════════════════════════════════════════════════════════════════
-            STICKY TOP PANEL — stays visible while cart items scroll below
+            STICKY TOP PANEL
         ════════════════════════════════════════════════════════════════ */}
-        <div className="sticky top-0 z-20 bg-white border-b border-gray-100 shadow-sm">
+        <div className="sticky top-0 z-20 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 shadow-sm">
 
-          {/* Header row */}
-          <div className="flex items-center justify-between px-4 pt-4 pb-3 gap-3">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
-                <ShoppingCart size={16} className="text-white" />
-              </div>
-              <div className="min-w-0">
-                <p className="font-bold text-gray-900 text-sm leading-tight truncate">Walk-in Cart</p>
-                <p className="text-[10px] text-gray-400 truncate">{user?.name || "Staff"}</p>
-              </div>
-            </div>
-
-            {/* Right: stats chips + Products shortcut */}
+          {/* ── Row 1: Branding + stats + Products btn ── */}
+          <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+            {/* Icon + title */}
             <div className="flex items-center gap-2 shrink-0">
-              {displayOrders.length > 0 && (
-                <>
-                  <span className="text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-lg">
-                    {displayOrders.length} item{displayOrders.length !== 1 ? "s" : ""}
-                  </span>
-                  <span className="text-xs font-bold text-green-700 bg-green-50 border border-green-100 px-2 py-1 rounded-lg">
-                    ₦{grandTotal.toLocaleString()}
-                  </span>
-                </>
-              )}
-              <button onClick={() => navigate("/customer-dashboard")}
-                className="flex items-center gap-1 text-xs px-2.5 py-2 rounded-lg border border-green-200 text-green-700 bg-green-50 hover:bg-green-100 transition font-semibold">
-                <ShoppingBag size={12} /> Products
-              </button>
+              <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
+                <ShoppingCart size={14} className="text-white" />
+              </div>
+              <div className="leading-tight">
+                <p className="font-bold text-gray-900 dark:text-white text-xs">Walk-in Cart</p>
+                <p className="text-[9px] text-gray-400 leading-none">{user?.name || "Staff"}</p>
+              </div>
             </div>
+
+            {/* Stats — flex-1 so they fill available space */}
+            {displayOrders.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-center">
+                <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md whitespace-nowrap">
+                  {displayOrders.length} item{displayOrders.length !== 1 ? "s" : ""}
+                </span>
+                <span className="text-[11px] font-bold text-green-700 bg-green-50 border border-green-100 px-2 py-0.5 rounded-md truncate max-w-[110px]">
+                  ₦{grandTotal.toLocaleString()}
+                </span>
+              </div>
+            )}
+            {!displayOrders.length && <div className="flex-1" />}
+
+            {/* Products shortcut */}
+            <button onClick={() => navigate("/customer-dashboard")}
+              className="flex items-center gap-1 text-[11px] px-2.5 py-1.5 rounded-lg border border-green-200 text-green-700 bg-green-50 hover:bg-green-100 transition font-semibold shrink-0">
+              <ShoppingBag size={11} /> Products
+            </button>
           </div>
 
-          {/* Collapsible form body */}
-          <div className="px-4 pb-3 space-y-3">
-            {/* Customer + Payment — always visible */}
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="text"
-                placeholder="Customer name…"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50 transition"
-              />
-              <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className={`w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50 transition
-                  ${!paymentMethod && orders.length ? "border-amber-300 ring-1 ring-amber-200" : "border-gray-200"}`}
-              >
-                <option value="">— Payment —</option>
-                {PAYMENT_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
+          {/* ── Row 2: Customer name + Payment ── */}
+          <div className="grid grid-cols-2 gap-2 px-4 pb-2">
+            <input
+              type="text"
+              placeholder="Customer name…"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 transition"
+            />
+            <select
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              className={`w-full px-3 py-2 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50 dark:bg-gray-800 dark:text-gray-200 transition
+                ${!paymentMethod && orders.length ? "border-amber-300 ring-1 ring-amber-200" : "border-gray-200 dark:border-gray-700"}`}
+            >
+              <option value="">— Payment method —</option>
+              {PAYMENT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
 
-            {/* Action row */}
+          {/* ── Row 3: Action buttons — 2 rows so Complete never gets cut ── */}
+          <div className="px-4 pb-3 space-y-2">
+            {/* Top sub-row: secondary actions */}
             <div className="flex items-center gap-2">
-              {/* Wholesale toggle */}
               {canUseWholesale && (
                 <button onClick={handleToggleWholesale}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold transition shrink-0
-                    ${isWholesale
-                      ? "bg-amber-500 border-amber-500 text-white"
-                      : "bg-white border-gray-200 text-gray-600 hover:border-amber-400"}`}>
-                  <Store size={13} />
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold transition
+                    ${isWholesale ? "bg-amber-500 border-amber-500 text-white" : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-amber-400"}`}>
+                  <Store size={12} />
                   {isWholesale ? "WS ON" : "Wholesale"}
                 </button>
               )}
-
-              {/* Clear */}
               {displayOrders.length > 0 && (
                 <button onClick={handleClearAll}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-50 transition shrink-0">
-                  <Trash2 size={13} /> Clear
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-red-200 text-red-600 text-[11px] font-semibold hover:bg-red-50 transition">
+                  <Trash2 size={12} /> Clear
                 </button>
               )}
-
-              {/* Preview */}
               <button onClick={previewInvoice} disabled={!orders.length}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-indigo-200 text-indigo-700 bg-indigo-50 text-xs font-semibold disabled:opacity-40 hover:bg-indigo-100 transition shrink-0">
-                <Receipt size={13} /> Preview
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 bg-indigo-50 text-[11px] font-semibold disabled:opacity-40 hover:bg-indigo-100 transition">
+                <Receipt size={12} /> Preview
               </button>
-
-              {/* Complete — primary CTA, fills remaining space */}
-              <motion.button
-                onClick={completeOrder}
-                disabled={processing || !orders.length || !paymentMethod}
-                whileTap={{ scale: 0.97 }}
-                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-40 transition shadow-sm shadow-indigo-200 min-w-0"
-              >
-                {processing
-                  ? <><RotateCcw size={13} className="animate-spin" /> Processing…</>
-                  : <><CheckCircle2 size={13} /> Complete</>
-                }
-              </motion.button>
             </div>
 
-            {/* Warnings — compact */}
-            <AnimatePresence>
-              {orders.length > 0 && !paymentMethod && (
-                <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-                  className="text-[11px] text-amber-600 font-medium">
-                  ⚠️ Select a payment method to complete the order.
-                </motion.p>
-              )}
-            </AnimatePresence>
-            <AnimatePresence>
-              {canUseWholesale && isWholesale && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden">
-                  <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-800">
-                    <Store size={12} className="text-amber-500 shrink-0" />
-                    <span><strong>Wholesale pricing active</strong> — prices reflect wholesale rates.</span>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Bottom sub-row: Complete — always full width */}
+            <motion.button
+              onClick={completeOrder}
+              disabled={processing || !orders.length || !paymentMethod}
+              whileTap={{ scale: 0.97 }}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
+                bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold
+                disabled:opacity-40 transition shadow-sm shadow-indigo-200"
+            >
+              {processing
+                ? <><RotateCcw size={14} className="animate-spin" /> Processing…</>
+                : <><CheckCircle2 size={14} /> Complete Order</>
+              }
+            </motion.button>
           </div>
+
+          {/* Warnings */}
+          <AnimatePresence>
+            {orders.length > 0 && !paymentMethod && (
+              <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+                className="px-4 pb-2 text-[11px] text-amber-600 font-medium">
+                ⚠️ Select a payment method to complete the order.
+              </motion.p>
+            )}
+          </AnimatePresence>
+          <AnimatePresence>
+            {canUseWholesale && isWholesale && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden px-4 pb-2">
+                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[11px] text-amber-800">
+                  <Store size={11} className="text-amber-500 shrink-0" />
+                  <span><strong>Wholesale pricing active</strong> — prices reflect wholesale rates.</span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* ════════════════════════════════════════════════════════════════
