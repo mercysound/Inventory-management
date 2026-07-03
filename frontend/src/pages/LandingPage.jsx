@@ -118,22 +118,69 @@ const LandingPage = () => {
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    // Clear error as user types
     if (errors[e.target.name]) {
       setErrors((prev) => ({ ...prev, [e.target.name]: "" }));
     }
   };
 
-  const validate = () => {
-    const errs = {};
-    if (!formData.email)                              errs.email    = "Email is required";
-    else if (!/^\S+@\S+\.\S+$/.test(formData.email)) errs.email    = "Invalid email format";
-    if (!formData.password)                           errs.password = "Password is required";
-    else if (formData.password.length < 6)            errs.password = "At least 6 characters";
-    if (!isLogin) {
-      if (!formData.name.trim())    errs.name    = "Full name is required";
-      if (!formData.phone.trim())   errs.phone   = "Phone number is required";
-      if (!formData.address.trim()) errs.address = "Address is required";
+  // Validate a single field on blur — professional UX
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    const err = validateField(name, value);
+    if (err) setErrors((prev) => ({ ...prev, [name]: err }));
+  };
+
+  // Per-field validation rules — shared between blur and submit
+  const validateField = (name, value) => {
+    const v = value.trim();
+    switch (name) {
+      case "name": {
+        if (!v) return "Full name is required";
+        if (v.length < 3) return "Name must be at least 3 characters";
+        if (!/^[a-zA-ZÀ-ÿ\s'-]+$/.test(v)) return "Name can only contain letters, spaces, hyphens or apostrophes";
+        if (v.split(/\s+/).filter(Boolean).length < 2) return "Please enter your first and last name";
+        return "";
+      }
+      case "email": {
+        if (!v) return "Email address is required";
+        if (!/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(v))
+          return "Enter a valid email address (e.g. you@example.com)";
+        return "";
+      }
+      case "phone": {
+        if (!v) return "Phone number is required";
+        const digits = v.replace(/[\s\-().+]/g, "");
+        if (!/^\d+$/.test(digits)) return "Phone number can only contain digits, spaces, +, ( ) or -";
+        if (digits.length < 10) return "Phone number must be at least 10 digits";
+        if (digits.length > 15) return "Phone number must be 15 digits or fewer";
+        return "";
+      }
+      case "address": {
+        if (!v) return "Delivery address is required";
+        if (v.length < 10) return "Please enter your full address (at least 10 characters)";
+        return "";
+      }
+      case "password": {
+        if (!v) return "Password is required";
+        if (v.length < 8) return "Password must be at least 8 characters";
+        if (!/[a-zA-Z]/.test(v)) return "Password must contain at least one letter";
+        if (!/[0-9]/.test(v)) return "Password must contain at least one number";
+        return "";
+      }
+      default: return "";
     }
+  };
+
+  const validate = () => {
+    const fields = isLogin
+      ? ["email", "password"]
+      : ["name", "email", "phone", "address", "password"];
+    const errs = {};
+    fields.forEach((f) => {
+      const err = validateField(f, formData[f] || "");
+      if (err) errs[f] = err;
+    });
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -353,26 +400,38 @@ const LandingPage = () => {
                   >
                     <Field label="Full Name" error={errors.name}>
                       <input
-                        type="text" name="name" placeholder="e.g. John Doe"
-                        value={formData.name} onChange={handleChange}
-                        className={inputCls}
+                        type="text" name="name"
+                        placeholder="First and Last name (e.g. John Doe)"
+                        value={formData.name} onChange={handleChange} onBlur={handleBlur}
+                        className={`${inputCls} ${errors.name ? "border-red-400 focus:ring-red-400" : ""}`}
                         autoComplete="name"
+                        maxLength={80}
+                        inputMode="text"
+                        enterKeyHint="next"
                       />
                     </Field>
                     <Field label="Phone Number" error={errors.phone}>
                       <input
-                        type="tel" name="phone" placeholder="e.g. 08012345678"
-                        value={formData.phone} onChange={handleChange}
-                        className={inputCls}
+                        type="tel" name="phone"
+                        placeholder="e.g. 08012345678 or +2348012345678"
+                        value={formData.phone} onChange={handleChange} onBlur={handleBlur}
+                        className={`${inputCls} ${errors.phone ? "border-red-400 focus:ring-red-400" : ""}`}
                         autoComplete="tel"
+                        inputMode="tel"
+                        maxLength={20}
+                        enterKeyHint="next"
                       />
                     </Field>
-                    <Field label="Address" error={errors.address}>
+                    <Field label="Delivery Address" error={errors.address}>
                       <input
-                        type="text" name="address" placeholder="Your delivery address"
-                        value={formData.address} onChange={handleChange}
-                        className={inputCls}
+                        type="text" name="address"
+                        placeholder="House No, Street, City, State"
+                        value={formData.address} onChange={handleChange} onBlur={handleBlur}
+                        className={`${inputCls} ${errors.address ? "border-red-400 focus:ring-red-400" : ""}`}
                         autoComplete="street-address"
+                        maxLength={200}
+                        inputMode="text"
+                        enterKeyHint="next"
                       />
                     </Field>
                   </motion.div>
@@ -382,9 +441,12 @@ const LandingPage = () => {
               <Field label="Email Address" error={errors.email}>
                 <input
                   type="email" name="email" placeholder="you@example.com"
-                  value={formData.email} onChange={handleChange}
-                  className={inputCls}
+                  value={formData.email} onChange={handleChange} onBlur={handleBlur}
+                  className={`${inputCls} ${errors.email ? "border-red-400 focus:ring-red-400" : ""}`}
                   autoComplete="email"
+                  inputMode="email"
+                  maxLength={100}
+                  enterKeyHint="next"
                 />
               </Field>
 
@@ -392,10 +454,13 @@ const LandingPage = () => {
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
-                    name="password" placeholder="Min. 6 characters"
-                    value={formData.password} onChange={handleChange}
-                    className={`${inputCls} pr-11`}
+                    name="password"
+                    placeholder={isLogin ? "Your password" : "Min. 8 chars, include a number"}
+                    value={formData.password} onChange={handleChange} onBlur={handleBlur}
+                    className={`${inputCls} pr-11 ${errors.password ? "border-red-400 focus:ring-red-400" : ""}`}
                     autoComplete={isLogin ? "current-password" : "new-password"}
+                    maxLength={128}
+                    enterKeyHint="done"
                   />
                   <button
                     type="button"

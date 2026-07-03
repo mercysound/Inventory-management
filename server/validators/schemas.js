@@ -5,11 +5,11 @@ const VALID_ROLES = ["admin", "staff", "customer", "wholesale"];
 
 // ─── User schemas ─────────────────────────────────────────────────────────────
 export const userSchema = Joi.object({
-  name:     Joi.string().required().trim().min(2).max(50),
+  name:     Joi.string().required().trim().min(3).max(80),
   email:    Joi.string().email().required().lowercase().trim(),
-  password: Joi.string().min(6).required(),
-  phone:    Joi.string().required().trim().min(5).max(20),
-  address:  Joi.string().required().trim().min(3).max(500),
+  password: Joi.string().min(8).required(),
+  phone:    Joi.string().required().trim().min(10).max(20),
+  address:  Joi.string().required().trim().min(10).max(500),
   role:     Joi.string().valid(...VALID_ROLES).default("customer"),
 });
 
