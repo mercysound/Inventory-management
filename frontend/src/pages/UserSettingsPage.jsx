@@ -31,6 +31,31 @@ const inputCls = (disabled) =>
      : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200"
    }`;
 
+// ── Password field — defined OUTSIDE component to prevent remount on every keystroke ──
+// If defined inside, React treats it as a new type on every render → focus lost immediately
+const PwdField = ({ label, field, show, setShow, pwdData, setPwdData }) => (
+  <Field label={label} icon={Lock}>
+    <div className="relative">
+      <input
+        type={show ? "text" : "password"}
+        placeholder={`Enter ${label.toLowerCase()}`}
+        value={pwdData[field]}
+        onChange={(e) => setPwdData((p) => ({ ...p, [field]: e.target.value }))}
+        className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2
+          focus:ring-indigo-300 transition-all pr-10
+          bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-600
+          text-gray-800 dark:text-gray-200`}
+        autoComplete={field === "oldPassword" ? "current-password" : "new-password"}
+      />
+      <button type="button" onClick={() => setShow((s) => !s)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+        tabIndex={-1}>
+        {show ? <EyeOff size={15} /> : <Eye size={15} />}
+      </button>
+    </div>
+  </Field>
+);
+
 const UserSettingsPage = () => {
   const { globalTheme, personalMode, setPersonalMode } = useTheme();
   const activeTheme = GLOBAL_THEMES.find((t) => t.id === globalTheme) || GLOBAL_THEMES[0];
@@ -91,20 +116,7 @@ const UserSettingsPage = () => {
     fetchProfile();
   };
 
-  const PwdField = ({ label, field, show, setShow }) => (
-    <Field label={label} icon={Lock}>
-      <div className="relative">
-        <input type={show ? "text" : "password"} placeholder={`Enter ${label.toLowerCase()}`}
-          value={pwdData[field]}
-          onChange={(e) => setPwdData((p) => ({ ...p, [field]: e.target.value }))}
-          className={inputCls(false) + " pr-10"} />
-        <button type="button" onClick={() => setShow((s) => !s)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
-          {show ? <EyeOff size={15} /> : <Eye size={15} />}
-        </button>
-      </div>
-    </Field>
-  );
+  // PwdField is defined outside this component (above) to prevent remount on keystroke
 
   return (
     <div className="max-w-xl mx-auto p-4 md:p-6 space-y-6">
@@ -179,9 +191,9 @@ const UserSettingsPage = () => {
                   </button>
                   {changePwd && (
                     <div className="mt-4 grid grid-cols-1 gap-3">
-                      <PwdField label="Current Password" field="oldPassword" show={showOld} setShow={setShowOld} />
-                      <PwdField label="New Password"     field="newPassword" show={showNew} setShow={setShowNew} />
-                      <PwdField label="Confirm Password" field="confirmPassword" show={showConf} setShow={setShowConf} />
+                      <PwdField label="Current Password" field="oldPassword" show={showOld} setShow={setShowOld} pwdData={pwdData} setPwdData={setPwdData} />
+                      <PwdField label="New Password"     field="newPassword" show={showNew} setShow={setShowNew} pwdData={pwdData} setPwdData={setPwdData} />
+                      <PwdField label="Confirm Password" field="confirmPassword" show={showConf} setShow={setShowConf} pwdData={pwdData} setPwdData={setPwdData} />
                     </div>
                   )}
                 </div>

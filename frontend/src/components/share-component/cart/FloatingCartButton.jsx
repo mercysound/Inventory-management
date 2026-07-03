@@ -97,8 +97,8 @@ const FloatingCartButton = () => {
   const isCartPage    = CART_ROUTES.some((r) => location.pathname === r);
   const productsRoute = PRODUCTS_ROUTE[location.pathname];
 
-  // ── On cart pages: show "Products" pill ─────────────────────────────────
-  if (isCartPage && productsRoute) {
+        {/* ── On cart pages: show "Products" pill ─────────────────────────────────────── */}
+        if (isCartPage && productsRoute) {
     return (
       <AnimatePresence>
         <motion.button
@@ -109,16 +109,18 @@ const FloatingCartButton = () => {
           transition={{ type: "spring", stiffness: 420, damping: 26 }}
           onClick={() => navigate(productsRoute)}
           aria-label="Go to Products"
-          className="fixed z-40 flex items-center gap-2
-            pl-3 pr-4 h-12 rounded-full
-            bg-indigo-600 hover:bg-indigo-700 active:scale-95
-            shadow-lg shadow-indigo-300/40
-            transition-colors duration-200
-            focus:outline-none focus:ring-4 focus:ring-indigo-300"
+          className="fixed z-40 flex flex-col items-center justify-center gap-0.5
+            w-14 h-14 rounded-full
+            bg-indigo-600/40 backdrop-blur-md
+            border border-indigo-400/40
+            hover:bg-indigo-600/60 active:scale-95
+            shadow-lg shadow-indigo-900/30
+            transition-all duration-200
+            focus:outline-none focus:ring-2 focus:ring-indigo-400/50"
           style={POSITION_STYLE}
         >
-          <ShoppingBag size={18} className="text-white shrink-0" />
-          <span className="text-white text-xs font-bold tracking-wide">Products</span>
+          <ShoppingBag size={18} className="text-white" />
+          <span className="text-white text-[9px] font-bold tracking-wide leading-none">Products</span>
         </motion.button>
       </AnimatePresence>
     );
@@ -138,40 +140,44 @@ const FloatingCartButton = () => {
           transition={{ type: "spring", stiffness: 420, damping: 26 }}
           onClick={() => navigate(cartPath)}
           aria-label={`View cart — ${cartCount} item${cartCount !== 1 ? "s" : ""}`}
-          className="fixed z-40 flex items-center gap-2
-            pl-3 pr-4 h-12 rounded-full
-            bg-indigo-600 hover:bg-indigo-700 active:scale-95
-            shadow-lg shadow-indigo-300/40
-            transition-colors duration-200
-            focus:outline-none focus:ring-4 focus:ring-indigo-300"
+          className="fixed z-40 flex flex-col items-center justify-center gap-0.5
+            w-14 h-14 rounded-full
+            bg-indigo-600/40 backdrop-blur-md
+            border border-indigo-400/40
+            hover:bg-indigo-600/60 active:scale-95
+            shadow-lg shadow-indigo-900/30
+            transition-all duration-200
+            focus:outline-none focus:ring-2 focus:ring-indigo-400/50"
           style={POSITION_STYLE}
         >
           <motion.div
             animate={bounce ? { y: [-3, 0, -2, 0] } : { y: 0 }}
             transition={{ duration: 0.5, ease: "easeInOut" }}
-            className="relative"
+            className="relative flex flex-col items-center gap-0.5"
           >
-            <ShoppingCart size={18} className="text-white" />
-            {/* Count badge */}
-            <AnimatePresence mode="popLayout">
-              <motion.span
-                key={cartCount}
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                exit={{    scale: 0 }}
-                transition={{ type: "spring", stiffness: 500, damping: 22 }}
-                className="absolute -top-2 -right-2
-                  min-w-[17px] h-[17px] px-1
-                  bg-red-500 text-white
-                  text-[9px] font-bold rounded-full
-                  flex items-center justify-center
-                  border border-white pointer-events-none"
-              >
-                {cartCount > 99 ? "99+" : cartCount}
-              </motion.span>
-            </AnimatePresence>
+            <div className="relative">
+              <ShoppingCart size={18} className="text-white" />
+              {/* Count badge */}
+              <AnimatePresence mode="popLayout">
+                <motion.span
+                  key={cartCount}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  exit={{    scale: 0 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 22 }}
+                  className="absolute -top-2 -right-2
+                    min-w-[16px] h-[16px] px-0.5
+                    bg-red-500 text-white
+                    text-[9px] font-bold rounded-full
+                    flex items-center justify-center
+                    border border-white/60 pointer-events-none"
+                >
+                  {cartCount > 99 ? "99+" : cartCount}
+                </motion.span>
+              </AnimatePresence>
+            </div>
+            <span className="text-white text-[9px] font-bold tracking-wide leading-none">Cart</span>
           </motion.div>
-          <span className="text-white text-xs font-bold tracking-wide">Cart</span>
         </motion.button>
       )}
     </AnimatePresence>
