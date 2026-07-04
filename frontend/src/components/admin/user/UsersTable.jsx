@@ -151,7 +151,7 @@ export default function UsersTable({
         .ut-filter{border-radius:20px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px;transition:all .15s;white-space:nowrap;}
         .ut-count-badge{font-size:10px;font-weight:700;border-radius:10px;padding:1px 5px;font-family:'DM Mono',monospace;}
         .ut-result-count{font-size:11px;color:#94a3b8;padding:6px 14px 0;margin:0;}
-        .ut-table-wrap{overflow-x:auto;display:none;}
+        .ut-table-wrap{overflow-x:auto;overflow-y:auto;display:none;max-height:calc(100vh - 300px);}
         .ut-table{width:100%;border-collapse:collapse;min-width:680px;}
         .ut-thead{background:#f8fafc;}
         .ut-th{padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:#94a3b8;letter-spacing:0.06em;text-transform:uppercase;border-bottom:1px solid #f1f5f9;white-space:nowrap;}
@@ -167,7 +167,7 @@ export default function UsersTable({
         .ut-suspend-btn{background:#fef3c7;color:#b45309;border:1px solid #fde68a;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s;}
         .ut-activate-btn{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s;}
         .ut-empty{text-align:center;padding:48px;color:#94a3b8;font-size:13px;}
-        .ut-cards{display:flex;flex-direction:column;gap:10px;padding:12px;}
+        .ut-cards{display:flex;flex-direction:column;gap:10px;padding:12px;max-height:calc(100vh - 280px);overflow-y:auto;overscroll-behavior:contain;}
         .ut-card{border:1px solid #f1f5f9;border-radius:12px;padding:14px;background:#fff;transition:box-shadow .15s;}
         .ut-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.06);}
         .ut-card-deactivated{background:#fafafa;border-color:#e5e7eb;opacity:.8;}

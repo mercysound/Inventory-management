@@ -81,7 +81,8 @@ const SupplierTable = ({ suppliers, handleEdit, handleDelete }) => {
       </div>
 
       {/* DESKTOP TABLE */}
-      <div className="hidden md:block overflow-x-auto">
+      <div className="hidden md:block">
+        <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: "calc(100vh - 300px)" }}>
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-gray-100">
@@ -229,11 +230,13 @@ const SupplierTable = ({ suppliers, handleEdit, handleDelete }) => {
             ))}
           </tbody>
         </table>
+        </div>{/* end scroll wrapper */}
         <Pagination />
       </div>
 
       {/* MOBILE CARDS */}
-      <div className="md:hidden divide-y divide-gray-50">
+      <div className="md:hidden">
+        <div className="divide-y divide-gray-50 overflow-y-auto overscroll-contain" style={{ maxHeight: "calc(100vh - 280px)" }}>
         {paginated.map((supplier) => (
           <div key={supplier._id} className="p-4">
 
@@ -346,6 +349,7 @@ const SupplierTable = ({ suppliers, handleEdit, handleDelete }) => {
             )}
           </div>
         ))}
+        </div>{/* end scroll wrapper */}
         <Pagination />
       </div>
     </div>

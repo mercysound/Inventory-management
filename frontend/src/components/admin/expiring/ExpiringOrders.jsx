@@ -164,6 +164,7 @@ const ExpiringOrders = () => {
           </div>
 
           {/* Orders list */}
+          <div className="overflow-y-auto overscroll-contain" style={{ maxHeight: "calc(100vh - 380px)" }}>
           <div className="space-y-3">
             <AnimatePresence>
               {orders.slice((currentPage - 1) * EXPIRY_PAGE_SIZE, currentPage * EXPIRY_PAGE_SIZE).map((order, i) => (
@@ -280,6 +281,7 @@ const ExpiringOrders = () => {
               ))}
             </AnimatePresence>
           </div>
+          </div>{/* end scroll wrapper */}
 
           {/* Pagination */}
           {Math.ceil(orders.length / EXPIRY_PAGE_SIZE) > 1 && (

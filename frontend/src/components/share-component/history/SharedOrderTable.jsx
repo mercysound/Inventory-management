@@ -345,7 +345,7 @@ const SharedOrderTable = memo(({
       )}
 
       {/* ── DESKTOP TABLE ── */}
-      <div className="overflow-x-auto rounded-lg shadow-md border hidden md:block">
+      <div className="overflow-x-auto overflow-y-auto rounded-lg shadow-md border hidden md:block" style={{ maxHeight: "calc(100vh - 380px)" }}>
         <table className="min-w-full text-left border-collapse text-sm">
           <thead className="bg-gray-200 text-gray-700 uppercase text-xs">
             <tr>
@@ -583,7 +583,7 @@ const SharedOrderTable = memo(({
       </div>
 
       {/* ── MOBILE CARDS ── */}
-      <div className="md:hidden mt-4 space-y-4">
+      <div className="md:hidden mt-4 space-y-4 overflow-y-auto overscroll-contain" style={{ maxHeight: "calc(100vh - 360px)" }}>
         {/* Mobile select all bar */}
         {paginated.length > 0 && (
           <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-2">
