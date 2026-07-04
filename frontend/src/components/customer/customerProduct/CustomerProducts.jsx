@@ -777,8 +777,10 @@ const CustomerProducts = () => {
               </div>
             ) : (
               <>
-                <div ref={pageTopRef} className="grid grid-cols-2 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 md:gap-3">
-                  {newPaginated.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} />)}
+                <div className="overflow-y-auto overscroll-contain" style={{ maxHeight: "calc(100vh - 320px)" }}>
+                  <div ref={pageTopRef} className="grid grid-cols-2 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 md:gap-3">
+                    {newPaginated.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} />)}
+                  </div>
                 </div>
                 <TabPagination current={newPage} total={newTotalPages} count={newFiltered.length} pageSize={PRODUCTS_PAGE_SIZE} jump={newJump} setJump={setNewJump} goTo={goToNewPage} color="indigo" />
               </>
@@ -806,8 +808,10 @@ const CustomerProducts = () => {
               </div>
             ) : (
               <>
-                <div ref={pageTopRef} className="grid grid-cols-2 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 md:gap-3">
-                  {bonanzaPaginated.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} />)}
+                <div className="overflow-y-auto overscroll-contain" style={{ maxHeight: "calc(100vh - 320px)" }}>
+                  <div ref={pageTopRef} className="grid grid-cols-2 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 md:gap-3">
+                    {bonanzaPaginated.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} />)}
+                  </div>
                 </div>
                 <TabPagination current={bonanzaPage} total={bonanzaTotalPages} count={bonanzaFiltered.length} pageSize={PRODUCTS_PAGE_SIZE} jump={bonanzaJump} setJump={setBonanzaJump} goTo={goToBonanzaPage} color="orange" />
               </>
@@ -824,8 +828,10 @@ const CustomerProducts = () => {
         ) : (
           <>
             {/* ── All products grid ── */}
-            <div ref={pageTopRef} className="grid grid-cols-2 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 md:gap-3">
-              {cpPaginated.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} />)}
+            <div className="overflow-y-auto overscroll-contain" style={{ maxHeight: "calc(100vh - 320px)" }}>
+              <div ref={pageTopRef} className="grid grid-cols-2 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 md:gap-3">
+                {cpPaginated.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} />)}
+              </div>
             </div>
             <TabPagination current={currentPage} total={totalPages} count={filteredProducts.length} pageSize={PRODUCTS_PAGE_SIZE} jump={jumpInput} setJump={setJumpInput} goTo={goToPage} color="green" />
           </>

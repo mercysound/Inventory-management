@@ -138,6 +138,12 @@ const Dashboard = () => {
 
   const toggleSidebar = () => setIsOpen((p) => !p);
 
+  // Scroll #main-scroll to top on every route change
+  useEffect(() => {
+    const el = document.getElementById("main-scroll");
+    if (el) el.scrollTop = 0;
+  }, [location.pathname]);
+
   // Pull-to-refresh: navigate to same path to trigger data re-fetch
   const handlePullRefresh = useCallback(async () => {
     // Small delay so the spinner is visible
@@ -162,15 +168,18 @@ const Dashboard = () => {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        {/* Mobile top bar — always visible, explicit dark background as fallback */}
+        {/* Mobile top bar — always above content, never collapses */}
         <div
-          className="md:hidden flex items-center justify-between px-4 py-3 shadow-md shrink-0"
+          className="md:hidden flex items-center justify-between px-4 py-3 shadow-md"
           style={{
             background: "var(--bg-sidebar, linear-gradient(to right, #111827, #1f2937))",
             color: "#fff",
             minHeight: "56px",
-            zIndex: 10,
+            height: "56px",
+            flexShrink: 0,
+            flexGrow: 0,
             position: "relative",
+            zIndex: 60,
           }}
         >
           <button
@@ -215,6 +224,7 @@ const Dashboard = () => {
             overscrollBehaviorY: "contain",
             willChange: "scroll-position",
             transform: "translateZ(0)",
+            minHeight: 0,
           }}
         >
           <div className="flex flex-col min-h-full">

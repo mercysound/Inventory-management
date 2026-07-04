@@ -35,7 +35,13 @@ export default function EditUserModal({ user, onClose, onSuccess }) {
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+    const scroller = document.getElementById("main-scroll");
+    if (scroller) scroller.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+      const s = document.getElementById("main-scroll");
+      if (s) s.style.overflow = "";
+    };
   }, []);
 
   const set = (k, v) => { setForm(p => ({ ...p, [k]: v })); if (errors[k]) setErrors(p => ({ ...p, [k]: undefined })); };
@@ -81,8 +87,8 @@ export default function EditUserModal({ user, onClose, onSuccess }) {
   return (
     <>
       <style>{`
-        .eum-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:1200;backdrop-filter:blur(3px);overflow-y:auto;display:flex;align-items:flex-start;justify-content:center;padding:16px 12px 32px;}
-        .eum-modal{background:#fff;border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,.2);width:100%;max-width:540px;margin:auto;flex-shrink:0;position:relative;}
+        .eum-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:1200;backdrop-filter:blur(3px);overflow-y:auto;display:flex;align-items:center;justify-content:center;padding:16px 12px;}
+        .eum-modal{background:#fff;border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,.2);width:100%;max-width:540px;flex-shrink:0;position:relative;margin:auto;}
         .eum-header{display:flex;justify-content:space-between;align-items:center;padding:20px 18px 16px;border-bottom:1px solid #f1f5f9;gap:10px;}
         .eum-avatar-row{display:flex;gap:10px;align-items:center;min-width:0;}
         .eum-avatar{width:40px;height:40px;border-radius:50%;background:#eff6ff;color:#1d4ed8;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;flex-shrink:0;}
@@ -108,7 +114,7 @@ export default function EditUserModal({ user, onClose, onSuccess }) {
         .eum-cancel{background:#f8fafc;color:#64748b;border:1px solid #e2e8f0;border-radius:9px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;flex:1;}
         .eum-save{background:#0f172a;color:#fff;border:none;border-radius:9px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s;flex:2;}
         @media(min-width:480px){
-          .eum-backdrop{padding:24px 16px 40px;align-items:center;}
+          .eum-backdrop{padding:24px 16px;}
           .eum-header{padding:22px 24px 18px;}
           .eum-body{padding:20px 24px 0;}
           .eum-footer{padding:16px 24px 22px;}

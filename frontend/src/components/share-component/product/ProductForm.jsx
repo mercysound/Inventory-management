@@ -297,8 +297,8 @@ const ProductForm = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 overflow-hidden" style={{ touchAction: "none", padding: "env(safe-area-inset-top, 16px) 16px env(safe-area-inset-bottom, 16px)" }}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col" style={{ maxHeight: "92vh", height: "auto" }}>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 overflow-y-auto" style={{ touchAction: "none" }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col my-auto mx-4" style={{ maxHeight: "92vh", minHeight: "200px" }}>
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="flex-shrink-0 bg-white flex items-center justify-between px-6 py-4 border-b border-gray-100 rounded-t-2xl">
