@@ -394,7 +394,7 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center overflow-hidden"
         style={{ backgroundColor: "rgba(0,0,0,0.55)", touchAction: "none" }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -404,7 +404,8 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
       >
         <motion.div
           className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl
-            flex flex-col max-h-[92vh] sm:max-h-[88vh] overflow-hidden"
+            flex flex-col overflow-hidden"
+          style={{ maxHeight: "92vh" }}
           initial={{ y: "100%", opacity: 0 }}
           animate={{ y: 0,      opacity: 1 }}
           exit={{   y: "100%", opacity: 0 }}

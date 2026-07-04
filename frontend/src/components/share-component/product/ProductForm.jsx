@@ -297,11 +297,11 @@ const ProductForm = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ touchAction: "none" }}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 overflow-hidden" style={{ touchAction: "none", padding: "env(safe-area-inset-top, 16px) 16px env(safe-area-inset-bottom, 16px)" }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col" style={{ maxHeight: "92vh", height: "auto" }}>
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
-        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="flex-shrink-0 bg-white flex items-center justify-between px-6 py-4 border-b border-gray-100 rounded-t-2xl">
           <div>
             <h2 className="text-base font-bold text-gray-900">
               {editProduct ? "Edit product" : "Add product"}
@@ -316,7 +316,7 @@ const ProductForm = ({
           </button>
         </div>
 
-        <div className="px-6 pb-6 pt-4 space-y-5">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-6 pb-6 pt-4 space-y-5">
 
           {/* ── Draft restored banner ───────────────────────────────────── */}
           <AnimatePresence>

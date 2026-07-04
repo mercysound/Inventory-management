@@ -54,7 +54,7 @@ const DeletedProductsPopup = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50" style={{ touchAction: "none" }}>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 overflow-hidden" style={{ touchAction: "none", padding: "16px" }}>
       <div className="bg-white w-full max-w-5xl rounded-xl shadow-xl relative overflow-hidden flex flex-col max-h-[88vh]">
 
         {/* Header */}
