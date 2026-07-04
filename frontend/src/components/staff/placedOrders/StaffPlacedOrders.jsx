@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useRef, useCallback } from "react"
 import { useLocation } from "react-router-dom";
 import axiosInstance from "../../../utils/axiosInstance";
 import { toast } from "react-toastify";
+import { Search, ShieldCheck, X, Loader2 } from "lucide-react";
 // Reuse the same table component as the admin — identical features
 import PlacedOrdersTable from "../../admin/purchase/PlacedOrdersTable";
 import PlacedOrdersSkeleton from "../../admin/purchase/PlacedOrdersSkeleton";
@@ -31,6 +32,156 @@ const DateInput = ({ label, value, onChange }) => (
   </div>
 );
 
+// ── Delegation info banner ────────────────────────────────────────────────────
+// Explains to staff what their delegated access means and what history trails
+// are created when they act on an order.
+const DelegationBanner = () => (
+  <div className="mb-5 flex items-start gap-3 bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-4">
+    <ShieldCheck size={20} className="text-indigo-500 shrink-0 mt-0.5" />
+    <div className="text-xs text-indigo-800 leading-relaxed space-y-1">
+      <p className="font-semibold text-sm text-indigo-700">You have delegated order management access</p>
+      <p>
+        You can view and update the status of all customer orders placed on this store.
+        Use the <span className="font-semibold">Quick Order Lookup</span> below to find a specific
+        order by its ID, or browse the full order list underneath.
+      </p>
+      <p>
+        Any status change you make will be recorded in{" "}
+        <span className="font-semibold">your history</span>,{" "}
+        <span className="font-semibold">the customer's history</span>, and{" "}
+        <span className="font-semibold">the admin's history</span> — marked with a
+        🛡️ <span className="font-semibold">Delegated</span> badge so everyone can see who acted.
+      </p>
+    </div>
+  </div>
+);
+
+// ── Quick Order ID Lookup panel ───────────────────────────────────────────────
+// Lets staff paste a full order ID and get that single order immediately
+// without loading or scrolling through the full list.
+const QuickOrderLookup = ({ onStatusUpdate, updatingId }) => {
+  const [rawId,    setRawId]    = useState("");
+  const [result,   setResult]   = useState(null);   // single order object | null
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState("");
+  const [expanded, setExpanded] = useState(false);   // panel open/closed
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    const id = rawId.trim();
+    if (!id) { setError("Please enter an Order ID."); return; }
+    setError(""); setResult(null); setLoading(true);
+    try {
+      const res = await axiosInstance.get(`/placed-orders/${encodeURIComponent(id)}`);
+      if (res.data.success && res.data.order) {
+        setResult(res.data.order);
+      } else {
+        setError("Order not found. Check the ID and try again.");
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.message || "Order not found or invalid ID.";
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClear = () => { setRawId(""); setResult(null); setError(""); };
+
+  // When the status is updated for the looked-up order, update local result too
+  const handleLocalStatusUpdate = useCallback(async (orderId, newStatus) => {
+    await onStatusUpdate(orderId, newStatus);
+    // If cancelled or delivered, the order is gone — clear the lookup result
+    if (newStatus === "cancelled" || newStatus === "delivered") {
+      setResult(null);
+      setRawId("");
+    } else {
+      setResult((prev) => prev ? { ...prev, deliveryStatus: newStatus } : prev);
+    }
+  }, [onStatusUpdate]);
+
+  return (
+    <div className="mb-6 bg-white border border-indigo-200 rounded-2xl shadow-sm overflow-hidden">
+      {/* Header — always visible, click to expand/collapse */}
+      <button
+        type="button"
+        onClick={() => setExpanded((p) => !p)}
+        className="w-full flex items-center justify-between px-5 py-4 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 transition"
+      >
+        <span className="flex items-center gap-2 text-sm font-semibold text-indigo-700">
+          <Search size={16} className="text-indigo-500" />
+          Quick Order ID Lookup
+        </span>
+        <span className="text-xs text-indigo-400 font-medium">
+          {expanded ? "▲ hide" : "▼ expand"}
+        </span>
+      </button>
+
+      {expanded && (
+        <div className="px-5 py-4">
+          <p className="text-xs text-gray-500 mb-3">
+            Paste the full Order ID to instantly find and manage a specific order.
+          </p>
+          <form onSubmit={handleSearch} className="flex gap-2 items-center flex-wrap">
+            <input
+              type="text"
+              value={rawId}
+              onChange={(e) => { setRawId(e.target.value); setError(""); }}
+              placeholder="e.g. 685a3c1f2e4b0a9d7c3f1e82"
+              className="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2 text-sm
+                focus:outline-none focus:ring-2 focus:ring-indigo-400 font-mono"
+            />
+            <button
+              type="submit"
+              disabled={loading || !rawId.trim()}
+              className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700
+                disabled:opacity-40 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
+            >
+              {loading ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+              {loading ? "Searching..." : "Find Order"}
+            </button>
+            {(result || error || rawId) && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition"
+              >
+                <X size={13} /> Clear
+              </button>
+            )}
+          </form>
+
+          {error && (
+            <p className="mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
+
+          {result && (
+            <div className="mt-4">
+              <p className="text-xs text-green-700 font-semibold mb-2">
+                ✅ Order found — manage status below:
+              </p>
+              <PlacedOrdersTable
+                orders={[result]}
+                allOrders={[result]}
+                updateDeliveryStatus={handleLocalStatusUpdate}
+                updatingId={updatingId}
+                sortField="createdAt"
+                sortDir="desc"
+                onSort={() => {}}
+                currentPage={1}
+                pageSize={1}
+                highlightId={result._id}
+              />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const StaffPlacedOrders = () => {
   const location = useLocation();
   // Support highlight from external navigation (e.g. expiring orders page)
@@ -53,7 +204,7 @@ const StaffPlacedOrders = () => {
   const lastFetchedAt = useRef(null);
   const CACHE_TTL     = 30000;
 
-  // ── Fetch orders ─────────────────────────────────────────────────────────
+  // ── Fetch all placed orders ───────────────────────────────────────────────
   const fetchOrders = async (force = false) => {
     const now = Date.now();
     if (!force && lastFetchedAt.current && now - lastFetchedAt.current < CACHE_TTL) return;
@@ -73,6 +224,7 @@ const StaffPlacedOrders = () => {
   };
 
   // ── Update delivery status ───────────────────────────────────────────────
+  // Used by both the full list table AND the Quick Lookup table
   const updateDeliveryStatus = useCallback(async (orderId, newStatus) => {
     if (newStatus === "cancelled") {
       const confirmed = window.confirm(
@@ -80,12 +232,17 @@ const StaffPlacedOrders = () => {
         "This will:\n• Restore the product stock\n" +
         "• Move the order to history with 'cancelled' status\n" +
         "• Send a cancellation email to the buyer\n\n" +
-        "The buyer will still see this in their Pending modal until the refund is marked."
+        "This action will appear in your history, the customer's history, and the admin's history " +
+        "with a 🛡️ Delegated badge."
       );
       if (!confirmed) return;
     }
     if (newStatus === "delivered") {
-      if (!window.confirm("Confirm this order has been delivered? It will move to history.")) return;
+      if (!window.confirm(
+        "Confirm this order has been delivered?\n\n" +
+        "It will be moved to history. This action will appear in your history, " +
+        "the customer's history, and the admin's history with a 🛡️ Delegated badge."
+      )) return;
     }
 
     const previousOrders = orders;
@@ -192,6 +349,15 @@ const StaffPlacedOrders = () => {
           Export CSV
         </button>
       </div>
+
+      {/* Delegation context banner */}
+      <DelegationBanner />
+
+      {/* Quick Order ID Lookup */}
+      <QuickOrderLookup
+        onStatusUpdate={updateDeliveryStatus}
+        updatingId={updatingId}
+      />
 
       {loading ? (
         <PlacedOrdersSkeleton />
