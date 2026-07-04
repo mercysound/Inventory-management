@@ -394,7 +394,8 @@ const ProductTable = ({
             tableWrapRef.current = el;
             if (scrollRef) scrollRef.current = el;
           }}
-          className="hidden md:block overflow-x-auto"
+          className="hidden md:block overflow-x-auto overflow-y-auto"
+          style={{ maxHeight: "calc(100vh - 340px)", minHeight: "200px" }}
         >
           <table className="w-full min-w-[900px] border-collapse text-sm">
             <thead className="sticky top-0 z-10">
@@ -601,7 +602,8 @@ const ProductTable = ({
         {/* ── MOBILE CARDS ── */}
         <div
           ref={(el) => { mobileWrapRef.current = el; if (scrollRef) scrollRef.current = el; }}
-          className="md:hidden"
+          className="md:hidden overflow-y-auto overscroll-contain"
+          style={{ maxHeight: "calc(100vh - 320px)", minHeight: "200px" }}
         >
           {visibleProducts.length > 0 ? (
             <div className="divide-y divide-gray-200">
