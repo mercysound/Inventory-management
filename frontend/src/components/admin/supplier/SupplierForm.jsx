@@ -26,15 +26,16 @@ const SupplierForm = ({
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50 overflow-hidden" style={{ touchAction: "none", padding: "16px" }}>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50 overflow-y-auto" style={{ touchAction: "none", padding: "16px" }}>
       <motion.div
         initial={{ scale: 0.95, opacity: 0, y: 10 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg relative overflow-hidden"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg relative flex flex-col my-auto"
+        style={{ maxHeight: "92vh" }}
       >
         {/* Modal header */}
-        <div className="flex items-start justify-between px-6 py-5 border-b border-gray-100">
+        <div className="flex items-start justify-between px-6 py-5 border-b border-gray-100 flex-shrink-0">
           <div>
             <h2 className="text-base font-semibold text-gray-900">
               {editSupplier ? "Edit supplier" : "Add new supplier"}
@@ -57,7 +58,7 @@ const SupplierForm = ({
         {/* Form body */}
         <form
           onSubmit={handleSubmit}
-          className="px-6 py-5 flex flex-col gap-4 max-h-[70vh] overflow-y-auto"
+          className="flex-1 overflow-y-auto overscroll-contain px-6 py-5 flex flex-col gap-4"
         >
           {/* Name — required */}
           <div>

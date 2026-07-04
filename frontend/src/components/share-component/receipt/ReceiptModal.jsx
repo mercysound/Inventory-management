@@ -259,8 +259,8 @@ const ReceiptModal = ({
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center overflow-hidden"
-        style={{ touchAction: "none", padding: "env(safe-area-inset-top, 12px) 12px env(safe-area-inset-bottom, 12px)" }}
+        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center overflow-y-auto"
+        style={{ touchAction: "none", padding: "12px" }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -273,7 +273,7 @@ const ReceiptModal = ({
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.95, y: 30 }}
           onClick={(e) => e.stopPropagation()}
-          className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col overflow-hidden outline-none"
+          className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col overflow-hidden outline-none my-auto"
           style={{ height: "min(90vh, 100%)", maxHeight: "90vh" }}
         >
           {/* ── HEADER ── */}
