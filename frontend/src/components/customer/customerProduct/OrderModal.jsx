@@ -145,12 +145,17 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
   const isUpdate = !!orderData.orderId;
   const qty      = Number(orderData.quantity) || 0;
 
-  // Lock page scroll while modal is open — prevents background page from
-  // scrolling behind the modal on mobile/iOS when user interacts with modal content.
+  // Lock the main scroll container while modal is open.
+  // The app scrolls inside <main id="main-scroll">, NOT document.body,
+  // so we must freeze that element. Also freeze body as a fallback.
   useEffect(() => {
     document.body.style.overflow = "hidden";
+    const scroller = document.getElementById("main-scroll");
+    if (scroller) scroller.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = "";
+      const scroller = document.getElementById("main-scroll");
+      if (scroller) scroller.style.overflow = "";
     };
   }, []);
 

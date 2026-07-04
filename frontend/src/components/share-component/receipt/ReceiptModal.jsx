@@ -45,14 +45,19 @@ const ReceiptModal = ({
 
   useEscapeToClose(open, onClose);
 
-  // Lock page scroll while modal is open — prevents background page from
-  // scrolling when user tries to scroll the iframe content on mobile/iOS.
+  // Lock page scroll while modal is open.
+  // The app scrolls via #main-scroll (a div inside Dashboard), NOT document.body.
+  // We must freeze that div. We also freeze body as a fallback for any other layout.
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
+      const scroller = document.getElementById("main-scroll");
+      if (scroller) scroller.style.overflow = "hidden";
     }
     return () => {
       document.body.style.overflow = "";
+      const scroller = document.getElementById("main-scroll");
+      if (scroller) scroller.style.overflow = "";
     };
   }, [open]);
 

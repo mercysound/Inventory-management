@@ -20,6 +20,19 @@ const DeletedProductsPopup = ({
     return () => window.removeEventListener("keydown", handleEsc);
   }, [open, onClose]);
 
+  // Lock main scroll container while popup is open
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    const scroller = document.getElementById("main-scroll");
+    if (scroller) scroller.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+      const scroller = document.getElementById("main-scroll");
+      if (scroller) scroller.style.overflow = "";
+    };
+  }, [open]);
+
   // ── Derived values (after all hooks) ─────────────────────────────────────
   const allSelected  = products.length > 0 && selectedIds.length === products.length;
   const someSelected = selectedIds.length > 0 && !allSelected;
@@ -41,7 +54,7 @@ const DeletedProductsPopup = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50" style={{ touchAction: "none" }}>
       <div className="bg-white w-full max-w-5xl rounded-xl shadow-xl relative overflow-hidden flex flex-col max-h-[88vh]">
 
         {/* Header */}

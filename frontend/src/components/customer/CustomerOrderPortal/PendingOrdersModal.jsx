@@ -182,12 +182,25 @@ const PendingOrdersModal = ({
   const grandTotal      = activeOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
   const totalOrderCount = activeOrders.length + cancelledOrders.length;
 
+  // Lock main scroll container while modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+    document.body.style.overflow = "hidden";
+    const scroller = document.getElementById("main-scroll");
+    if (scroller) scroller.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+      const scroller = document.getElementById("main-scroll");
+      if (scroller) scroller.style.overflow = "";
+    };
+  }, [isOpen]);
+
   return (
     <AnimatePresence>
       {isOpen && (
         <motion.div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+          style={{ backgroundColor: "rgba(0,0,0,0.45)", touchAction: "none" }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

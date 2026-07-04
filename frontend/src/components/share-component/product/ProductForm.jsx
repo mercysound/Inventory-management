@@ -193,6 +193,19 @@ const ProductForm = ({
     }
   }, [open, editProduct]);
 
+  // Lock the main scroll container while form modal is open.
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    const scroller = document.getElementById("main-scroll");
+    if (scroller) scroller.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+      const scroller = document.getElementById("main-scroll");
+      if (scroller) scroller.style.overflow = "";
+    };
+  }, [open]);
+
   // ── Escape key ────────────────────────────────────────────────────────────
   useEffect(() => {
     const handleEsc = (e) => { if (e.key === "Escape") onClose(); };
@@ -284,7 +297,7 @@ const ProductForm = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ touchAction: "none" }}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { motion } from "framer-motion";
 
 const SupplierForm = ({
@@ -13,8 +13,20 @@ const SupplierForm = ({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Lock main scroll container while modal is open
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    const scroller = document.getElementById("main-scroll");
+    if (scroller) scroller.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+      const scroller = document.getElementById("main-scroll");
+      if (scroller) scroller.style.overflow = "";
+    };
+  }, []);
+
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center px-4 z-50">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center px-4 z-50" style={{ touchAction: "none" }}>
       <motion.div
         initial={{ scale: 0.95, opacity: 0, y: 10 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}

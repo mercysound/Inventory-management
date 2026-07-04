@@ -74,12 +74,25 @@ const FulfillmentModal = ({ isOpen, onClose, onConfirm, userProfile = null }) =>
     onClose();
   };
 
+  // Lock main scroll container while modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+    document.body.style.overflow = "hidden";
+    const scroller = document.getElementById("main-scroll");
+    if (scroller) scroller.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+      const scroller = document.getElementById("main-scroll");
+      if (scroller) scroller.style.overflow = "";
+    };
+  }, [isOpen]);
+
   return (
     <AnimatePresence>
       {isOpen && (
         <motion.div
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
+          style={{ backgroundColor: "rgba(0,0,0,0.55)", touchAction: "none" }}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
           onClick={handleClose}
