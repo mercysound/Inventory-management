@@ -45,6 +45,17 @@ const ReceiptModal = ({
 
   useEscapeToClose(open, onClose);
 
+  // Lock page scroll while modal is open — prevents background page from
+  // scrolling when user tries to scroll the iframe content on mobile/iOS.
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
   useEffect(() => {
     if (open && modalRef.current) modalRef.current.focus();
   }, [open]);
@@ -244,6 +255,7 @@ const ReceiptModal = ({
     <AnimatePresence>
       <motion.div
         className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6"
+        style={{ touchAction: "none" }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

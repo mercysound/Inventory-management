@@ -145,6 +145,15 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
   const isUpdate = !!orderData.orderId;
   const qty      = Number(orderData.quantity) || 0;
 
+  // Lock page scroll while modal is open — prevents background page from
+  // scrolling behind the modal on mobile/iOS when user interacts with modal content.
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
   // ── Calculate current price based on mode ───────────────────────────────────
   const getCurrentPrice = () => {
     const storedMode = (() => {
@@ -381,7 +390,7 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
     <AnimatePresence>
       <motion.div
         className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-        style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
+        style={{ backgroundColor: "rgba(0,0,0,0.55)", touchAction: "none" }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
