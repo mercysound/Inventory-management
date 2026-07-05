@@ -10,6 +10,7 @@ import {
 import axiosInstance from "../../../utils/axiosInstance";
 import CartProductSearch from "../../customer/CustomerOrderPortal/CartProductSearch";
 import ReceiptModal from "../../share-component/receipt/ReceiptModal";
+import StaffTable from "./StaffTable";
 import { useAuth } from "../../../context/AuthContext";
 
 const PAYMENT_OPTIONS = [
