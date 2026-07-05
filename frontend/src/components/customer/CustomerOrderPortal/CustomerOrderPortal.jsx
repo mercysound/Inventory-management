@@ -15,6 +15,7 @@ import CartProductSearch from "./CartProductSearch";
 import { useAuth } from "../../../context/AuthContext";
 import { useCart } from "../../../context/CartContext";
 import { useEngagementTracker } from "../../../hooks/useEngagementTracker";
+import ReceiptModal from "../../share-component/receipt/ReceiptModal";
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 const StatCard = ({ icon: Icon, label, value, color }) => (

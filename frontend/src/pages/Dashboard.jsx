@@ -10,6 +10,7 @@ import FloatingScrollButtons from "../components/share-component/scroll/Floating
 import PullToRefresh from "../components/share-component/PullToRefresh";
 import { useAuth } from "../context/AuthContext";
 import axiosInstance from "../utils/axiosInstance";
+import { useCart } from "../context/CartContext";
 
 // ── Route → display name map ──────────────────────────────────────────────────
 const PAGE_NAME_MAP = [
@@ -84,6 +85,7 @@ const Dashboard = () => {
   const navigate   = useNavigate();
   const location   = useLocation();
   const pageName   = getPageName(location.pathname);
+  const { cartCount } = useCart();
 
   // Store name from settings (editable by admin)
   const [storeName, setStoreName] = useState("MELECH SH");
@@ -191,14 +193,20 @@ const Dashboard = () => {
           >
             <FaBars size={20} />
           </button>
-          {/* Store name + current page */}
+          {/* ── Mobile top bar role badge ── */}
           <div className="flex flex-col items-center min-w-0 flex-1 px-2">
             <span className="font-bold text-white text-sm leading-tight truncate max-w-[180px]">
               {storeName}
             </span>
-            <span className="text-white/60 text-[10px] font-medium tracking-wide uppercase">
-              {pageName}
-            </span>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-white/60 text-[10px] font-medium tracking-wide uppercase">
+                {pageName}
+              </span>
+              {user?.role === "admin"     && <span className="text-[9px] bg-red-500    text-white rounded-full px-1.5 py-0.5 font-bold uppercase tracking-wide">Admin</span>}
+              {user?.role === "staff"     && <span className="text-[9px] bg-indigo-500 text-white rounded-full px-1.5 py-0.5 font-bold uppercase tracking-wide">Staff</span>}
+              {user?.role === "customer"  && <span className="text-[9px] bg-green-500  text-white rounded-full px-1.5 py-0.5 font-bold uppercase tracking-wide">Customer</span>}
+              {user?.role === "wholesale" && <span className="text-[9px] bg-amber-500  text-white rounded-full px-1.5 py-0.5 font-bold uppercase tracking-wide">Wholesale</span>}
+            </div>
           </div>
           <div className="shrink-0">
             {user?.role === "admin" ? <ExpiryBell /> : <div className="w-9" />}
@@ -291,13 +299,18 @@ const Dashboard = () => {
                       <button
                         key={label}
                         onClick={() => navigate(path)}
-                        className={`text-xs font-medium transition
+                        className={`relative text-xs font-medium transition
                           ${label === "Logout"
                             ? "text-red-400 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
                             : "text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400"
                           }`}
                       >
                         {label}
+                        {label === "Cart" && cartCount > 0 && (
+                          <span className="absolute -top-2 -right-3 min-w-[16px] h-4 px-0.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                            {cartCount > 99 ? "99+" : cartCount}
+                          </span>
+                        )}
                       </button>
                     ));
                   })()}

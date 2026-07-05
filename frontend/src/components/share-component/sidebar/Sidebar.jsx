@@ -9,11 +9,13 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../../context/AuthContext";
 import { useDelegation } from "../../../hooks/useDelegation";
+import { useCart } from "../../../context/CartContext";
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { isDelegated } = useDelegation();
+  const { cartCount } = useCart();
 
   const adminMenu = [
     { name: "Dashboard",       path: "/admin-dashboard",                    icon: <FaHome /> },
@@ -127,7 +129,12 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                     }
                   >
                     <span className="text-lg">{item.icon}</span>
-                    <span className="ml-3 font-medium">{item.name}</span>
+                    <span className="ml-3 font-medium flex-1">{item.name}</span>
+                    {item.name === "Cart" && cartCount > 0 && (
+                      <span className="ml-auto min-w-[20px] h-5 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                        {cartCount > 99 ? "99+" : cartCount}
+                      </span>
+                    )}
                   </NavLink>
                 )}
               </li>
