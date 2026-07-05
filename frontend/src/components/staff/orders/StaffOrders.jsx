@@ -358,7 +358,7 @@ const StaffOrders = () => {
                   <ShoppingBag size={15} /> Go to Products
                 </button>
               </div>
-              <CartProductSearch priceMode={isWholesale ? "wholesale" : "retail"} onCartUpdated={() => fetchOrders(true)} />
+              <CartProductSearch priceMode={isWholesale ? "wholesale" : "retail"} onCartUpdated={() => fetchOrders(true)} cartMap={{}} />
             </motion.div>
           ) : (
             <>
@@ -376,6 +376,7 @@ const StaffOrders = () => {
               <CartProductSearch
                 priceMode={isWholesale ? "wholesale" : "retail"}
                 onCartUpdated={() => fetchOrders(true)}
+                cartMap={Object.fromEntries(orders.map(o => [o.product?._id || o.product, { quantity: o.quantity, orderId: o._id }]))}
               />
 
               <StaffTable

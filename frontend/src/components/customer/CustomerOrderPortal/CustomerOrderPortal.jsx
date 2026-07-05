@@ -665,7 +665,7 @@ const CustomerOrderPortal = () => {
         {orders.length === 0 ? (
           <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             <EmptyCart />
-            <CartProductSearch priceMode={priceMode} onCartUpdated={() => fetchOrders(true)} />
+            <CartProductSearch priceMode={priceMode} onCartUpdated={() => fetchOrders(true)} cartMap={{}} />
           </motion.div>
         ) : (
           <motion.div key="table" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
@@ -673,6 +673,7 @@ const CustomerOrderPortal = () => {
             <CartProductSearch
               priceMode={priceMode}
               onCartUpdated={() => fetchOrders(true)}
+              cartMap={Object.fromEntries(orders.map(o => [o.product?._id || o.product, { quantity: o.quantity, orderId: o._id }]))}
             />
 
             <CustomerOrderTable

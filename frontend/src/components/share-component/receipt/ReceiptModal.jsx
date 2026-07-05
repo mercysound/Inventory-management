@@ -300,7 +300,7 @@ const ReceiptModal = ({
           </div>
 
           {/* ── BODY ── */}
-          <div className="flex-1 overflow-hidden bg-gray-100">
+          <div className="flex-1 overflow-y-auto bg-gray-100" style={{ WebkitOverflowScrolling: "touch" }}>
             {fetching ? (
               // Loading spinner while HTML is being fetched
               <div className="flex items-center justify-center h-full">

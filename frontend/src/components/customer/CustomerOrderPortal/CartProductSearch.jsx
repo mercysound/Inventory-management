@@ -1,39 +1,33 @@
 // CartProductSearch.jsx
-// Floating search panel on the cart page that lets any user search products
-// and add them directly to their cart without leaving the cart page.
-//
-// Behaviour:
-//  - Collapsed by default; expands when user taps the "+ Add Products" button
-//  - Searches in real-time (300 ms debounce)
-//  - Shows in-stock products with + button; out-of-stock shown greyed with badge
-//  - Respects the current price mode (retail/wholesale) passed from parent
-//  - Works for customer, wholesale, and staff roles
-
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, Plus, ShoppingCart, Package, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, X, Plus, Minus, ShoppingCart, Package, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "react-toastify";
 import axiosInstance from "../../../utils/axiosInstance";
 
-// ── Debounce ─────────────────────────────────────────────────────────────────
 const useDebounce = (val, delay) => {
   const [d, setD] = useState(val);
-  useEffect(() => { const t = setTimeout(() => setD(val), delay); return () => clearTimeout(t); }, [val, delay]);
+  useEffect(() => {
+    const t = setTimeout(() => setD(val), delay);
+    return () => clearTimeout(t);
+  }, [val, delay]);
   return d;
 };
 
-// ── Single product result card ────────────────────────────────────────────────
-const ProductResult = ({ product, priceMode, onAdd, adding }) => {
-  const oos    = product.stock === 0;
-  const price  = priceMode === "wholesale"
+// ── Single product result card ───────────────────────────────────────────────
+const ProductResult = ({ product, priceMode, cartQty, onAdd, onIncrease, onDecrease, busy }) => {
+  const oos   = product.stock === 0;
+  const price = priceMode === "wholesale"
     ? (product.wholesalePrice ?? product.price)
     : product.price;
+  const inCart = cartQty > 0;
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 border-b border-gray-50 last:border-0
+    <div className={`flex items-start gap-3 px-4 py-3 border-b border-gray-50 last:border-0
       hover:bg-gray-50 transition ${oos ? "opacity-60" : ""}`}>
+
       {/* Thumbnail */}
-      <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center shrink-0 border border-gray-100">
+      <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center shrink-0 border border-gray-100 mt-0.5">
         {product.image || product.images?.[0] ? (
           <img src={product.image || product.images[0]} alt={product.name}
             className="w-full h-full object-contain p-0.5" loading="lazy" />
@@ -44,11 +38,14 @@ const ProductResult = ({ product, priceMode, onAdd, adding }) => {
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-gray-800 truncate">{product.name}</p>
-        <p className="text-[11px] text-indigo-600 font-medium truncate">
-          {product.categoryId?.name || "—"}
-        </p>
-        <div className="flex items-center gap-2 mt-0.5">
+        <p className="text-sm font-semibold text-gray-800 leading-snug">{product.name}</p>
+        <p className="text-[11px] text-indigo-600 font-medium">{product.categoryId?.name || "—"}</p>
+        {product.description && (
+          <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-1 leading-relaxed">
+            {product.description}
+          </p>
+        )}
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
           <span className="text-sm font-bold text-gray-900">₦{Number(price).toLocaleString()}</span>
           {oos ? (
             <span className="text-[10px] font-bold text-red-500 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
@@ -56,102 +53,149 @@ const ProductResult = ({ product, priceMode, onAdd, adding }) => {
             </span>
           ) : (
             <span className="text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
-              {product.stock} left
+              {product.stock} in stock
+            </span>
+          )}
+          {inCart && (
+            <span className="text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
+              ✓ {cartQty} in cart
             </span>
           )}
         </div>
       </div>
 
-      {/* Add button */}
-      <button
-        onClick={() => !oos && onAdd(product)}
-        disabled={oos || adding}
-        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition
-          ${oos
-            ? "bg-gray-100 text-gray-300 cursor-not-allowed"
-            : "bg-green-600 hover:bg-green-700 text-white shadow-sm shadow-green-200 active:scale-95"
-          }`}
-      >
-        {adding ? <Loader2 size={14} className="animate-spin" /> : <Plus size={16} />}
-      </button>
+      {/* Qty controls */}
+      <div className="shrink-0 flex items-center gap-1 mt-1">
+        {busy ? (
+          <Loader2 size={16} className="animate-spin text-gray-400" />
+        ) : inCart ? (
+          /* Already in cart — show − qty + */
+          <div className="flex items-center gap-1 bg-green-50 border border-green-200 rounded-xl px-1.5 py-1">
+            <button
+              onClick={() => onDecrease(product)}
+              className="w-7 h-7 rounded-lg bg-white border border-red-200 text-red-500
+                hover:bg-red-50 flex items-center justify-center font-bold text-sm transition active:scale-90"
+            >
+              <Minus size={12} />
+            </button>
+            <span className="font-bold text-green-800 text-sm w-5 text-center select-none">
+              {cartQty}
+            </span>
+            <button
+              onClick={() => onAdd(product)}
+              disabled={oos || cartQty >= product.stock}
+              className="w-7 h-7 rounded-lg bg-green-600 hover:bg-green-700 text-white
+                flex items-center justify-center font-bold text-sm transition active:scale-90
+                disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Plus size={12} />
+            </button>
+          </div>
+        ) : (
+          /* Not in cart — show plain + */
+          <button
+            onClick={() => !oos && onAdd(product)}
+            disabled={oos}
+            className={`w-9 h-9 rounded-xl flex items-center justify-center transition
+              ${oos
+                ? "bg-gray-100 text-gray-300 cursor-not-allowed"
+                : "bg-green-600 hover:bg-green-700 text-white shadow-sm shadow-green-200 active:scale-95"
+              }`}
+          >
+            <Plus size={16} />
+          </button>
+        )}
+      </div>
     </div>
   );
 };
 
 // ── Main component ────────────────────────────────────────────────────────────
-const CartProductSearch = ({ priceMode = "retail", onCartUpdated }) => {
-  const [open,      setOpen]      = useState(false);
-  const [query,     setQuery]     = useState("");
-  const [results,   setResults]   = useState([]);
-  const [loading,   setLoading]   = useState(false);
-  const [addingId,  setAddingId]  = useState(null);
-  const [allProducts, setAllProducts] = useState([]);  // cached on first open
-  const inputRef  = useRef(null);
+const CartProductSearch = ({ priceMode = "retail", onCartUpdated, cartMap = {} }) => {
+  const [open,        setOpen]        = useState(false);
+  const [query,       setQuery]       = useState("");
+  const [results,     setResults]     = useState([]);
+  const [loading,     setLoading]     = useState(false);
+  const [busyId,      setBusyId]      = useState(null);
+  const [allProducts, setAllProducts] = useState([]);
+  // local qty mirror so UI updates instantly without waiting for parent re-fetch
+  const [localCartMap, setLocalCartMap] = useState({});
+  const inputRef       = useRef(null);
   const debouncedQuery = useDebounce(query, 300);
 
-  // Fetch all products once when panel opens for the first time
+  // Sync local cart map when parent cartMap changes
+  useEffect(() => {
+    setLocalCartMap(cartMap);
+  }, [JSON.stringify(cartMap)]); // eslint-disable-line
+
+  // Fetch all products once when panel opens
   const fetchProducts = useCallback(async () => {
-    if (allProducts.length > 0) return; // already cached
+    if (allProducts.length > 0) return;
     try {
       setLoading(true);
       const res = await axiosInstance.get("/products");
-      if (res.data.success) {
-        setAllProducts(res.data.products || []);
-      }
+      if (res.data.success) setAllProducts(res.data.products || []);
     } catch { /* silently fail */ }
     finally { setLoading(false); }
   }, [allProducts.length]);
 
-  // Open/close panel
   const handleToggle = () => {
     setOpen(p => !p);
     if (!open) fetchProducts();
   };
 
-  // Filter locally — instant, no extra API calls
+  // Filter results locally
   useEffect(() => {
-    if (!debouncedQuery.trim()) {
-      setResults([]);
-      return;
-    }
+    if (!debouncedQuery.trim()) { setResults([]); return; }
     const q = debouncedQuery.toLowerCase();
-    const filtered = allProducts.filter(p =>
-      p.name.toLowerCase().includes(q) ||
-      (p.categoryId?.name || "").toLowerCase().includes(q) ||
-      (p.description || "").toLowerCase().includes(q)
-    ).slice(0, 12); // cap at 12 results
-    setResults(filtered);
+    setResults(
+      allProducts.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        (p.categoryId?.name || "").toLowerCase().includes(q) ||
+        (p.description || "").toLowerCase().includes(q)
+      ).slice(0, 12)
+    );
   }, [debouncedQuery, allProducts]);
 
-  // Focus search input when panel opens
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 120);
   }, [open]);
 
-  // Add product to cart
-  const handleAdd = async (product) => {
-    setAddingId(product._id);
+  // ── Cart mutation helper ────────────────────────────────────────────────────
+  const setQty = async (product, newQty) => {
+    const pid    = product._id;
+    const isWS   = priceMode === "wholesale";
+    const price  = isWS ? (product.wholesalePrice ?? product.price) : product.price;
+
+    // Optimistic local update
+    setLocalCartMap(prev => {
+      if (newQty <= 0) { const n = { ...prev }; delete n[pid]; return n; }
+      return { ...prev, [pid]: { ...(prev[pid] || {}), quantity: newQty } };
+    });
+
+    setBusyId(pid);
     try {
-      const isWS   = priceMode === "wholesale";
-      const price  = isWS ? (product.wholesalePrice ?? product.price) : product.price;
-
-      const res = await axiosInstance.put(`/orders/qty/${product._id}`, {
-        quantity:  1,
-        price,
-        priceMode,
-      });
-
-      if (res.data?.success || res.data?._id || res.data?.quantity) {
-        toast.success(`${product.name} added to cart!`);
-        onCartUpdated?.(); // tell parent to re-fetch cart
-      } else {
-        toast.error(res.data?.message || "Could not add to cart");
-      }
+      await axiosInstance.put(`/orders/qty/${pid}`, { quantity: newQty, price, priceMode });
+      onCartUpdated?.();
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to add product");
+      // Rollback on error
+      setLocalCartMap(cartMap);
+      toast.error(err?.response?.data?.message || "Cart update failed");
     } finally {
-      setAddingId(null);
+      setBusyId(null);
     }
+  };
+
+  const handleAdd = async (product) => {
+    const current = localCartMap[product._id]?.quantity || 0;
+    if (current >= product.stock) { toast.warning("Cannot exceed available stock"); return; }
+    await setQty(product, current + 1);
+    if (current === 0) toast.success(`${product.name} added to cart!`);
+  };
+
+  const handleDecrease = async (product) => {
+    const current = localCartMap[product._id]?.quantity || 0;
+    await setQty(product, Math.max(0, current - 1));
   };
 
   return (
@@ -161,16 +205,13 @@ const CartProductSearch = ({ priceMode = "retail", onCartUpdated }) => {
         onClick={handleToggle}
         className="w-full flex items-center justify-between px-4 py-3 rounded-2xl
           bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200
-          hover:from-indigo-100 hover:to-blue-100 transition group"
+          hover:from-indigo-100 hover:to-blue-100 transition"
       >
         <span className="flex items-center gap-2 text-sm font-semibold text-indigo-700">
           <ShoppingCart size={15} className="text-indigo-500" />
           + Add more products to cart
         </span>
-        {open
-          ? <ChevronUp size={16} className="text-indigo-400" />
-          : <ChevronDown size={16} className="text-indigo-400" />
-        }
+        {open ? <ChevronUp size={16} className="text-indigo-400" /> : <ChevronDown size={16} className="text-indigo-400" />}
       </button>
 
       {/* Expandable panel */}
@@ -196,8 +237,7 @@ const CartProductSearch = ({ priceMode = "retail", onCartUpdated }) => {
                   className="flex-1 text-sm outline-none bg-transparent placeholder:text-gray-400"
                 />
                 {query && (
-                  <button onClick={() => setQuery("")}
-                    className="text-gray-400 hover:text-gray-600 transition">
+                  <button onClick={() => setQuery("")} className="text-gray-400 hover:text-gray-600 transition">
                     <X size={14} />
                   </button>
                 )}
@@ -219,14 +259,17 @@ const CartProductSearch = ({ priceMode = "retail", onCartUpdated }) => {
                   No products match "<span className="text-gray-600 font-medium">{query}</span>"
                 </div>
               ) : (
-                <div className="max-h-72 overflow-y-auto overscroll-contain">
+                <div className="max-h-80 overflow-y-auto overscroll-contain">
                   {results.map(p => (
                     <ProductResult
                       key={p._id}
                       product={p}
                       priceMode={priceMode}
+                      cartQty={localCartMap[p._id]?.quantity || 0}
                       onAdd={handleAdd}
-                      adding={addingId === p._id}
+                      onIncrease={handleAdd}
+                      onDecrease={handleDecrease}
+                      busy={busyId === p._id}
                     />
                   ))}
                 </div>
@@ -235,7 +278,7 @@ const CartProductSearch = ({ priceMode = "retail", onCartUpdated }) => {
               {results.length > 0 && (
                 <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 text-center">
                   <p className="text-[10px] text-gray-400">
-                    Showing {results.length} result{results.length !== 1 ? "s" : ""} · tap + to add to cart
+                    {results.length} result{results.length !== 1 ? "s" : ""} · tap + to add · − to remove
                   </p>
                 </div>
               )}
