@@ -23,6 +23,10 @@ const orderSchema = new mongoose.Schema({
     index: { expireAfterSeconds: 0 }, // TTL index — expires AT the date value
   },
 
+  // ✅ Abandoned cart reminder — set when we send the reminder email so we never
+  // send twice in the same cart lifecycle. Cleared when cart items are updated.
+  abandonedReminderSentAt: { type: Date, default: null },
+
 }, { timestamps: true });
 
 orderSchema.index({ userOrdering: 1 });

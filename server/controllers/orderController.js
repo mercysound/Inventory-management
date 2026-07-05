@@ -69,6 +69,9 @@ const addOrder = async (req, res) => {
           cartExpiresAt: ONE_HOUR,
           paymentStatus: "Unpaid",
           paid:          false,
+          // Reset reminder flag so the user can receive a new reminder
+          // if they come back and update their cart
+          abandonedReminderSentAt: null,
         },
         $setOnInsert: {
           userOrdering: userId,

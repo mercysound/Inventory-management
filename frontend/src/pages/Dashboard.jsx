@@ -19,6 +19,7 @@ const PAGE_NAME_MAP = [
   { match: /\/placed-orders/,      label: "Placed Orders"   },
   { match: /\/completed-history/,  label: "History"         },
   { match: /\/expiring-orders/,    label: "Expiring Orders" },
+  { match: /\/engagement/,         label: "Engagement"      },
   { match: /\/users/,              label: "Users"           },
   { match: /\/settings/,           label: "Settings"        },
   { match: /\/orders/,             label: "Cart"            },
@@ -270,6 +271,7 @@ const Dashboard = () => {
                       { label: "History",        path: "/admin-dashboard/completed-history" },
                       { label: "Users",          path: "/admin-dashboard/users" },
                       { label: "Expiring Orders",path: "/admin-dashboard/expiring-orders" },
+                      { label: "Engagement",     path: "/admin-dashboard/engagement" },
                       { label: "Settings",       path: "/admin-dashboard/settings" },
                       { label: "Logout",         path: `${base}/logout` },
                     ];

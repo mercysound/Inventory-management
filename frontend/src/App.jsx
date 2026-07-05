@@ -25,9 +25,10 @@ import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
 
 // ✅ New pages
-import SettingsPage from "./components/admin/settings/SettingsPage.jsx";
-import ExpiringOrders from "./components/admin/expiring/ExpiringOrders.jsx";
-import UserSettingsPage from "./pages/UserSettingsPage.jsx";
+import SettingsPage       from "./components/admin/settings/SettingsPage.jsx";
+import ExpiringOrders     from "./components/admin/expiring/ExpiringOrders.jsx";
+import UserSettingsPage   from "./pages/UserSettingsPage.jsx";
+import EngagementMonitor  from "./pages/admin/EngagementMonitor.jsx";
 
 // ✅ Wholesale pages — reuse customer components with wholesale pricing applied at API level
 // The product page and cart page are the same components; pricing is controlled server-side
@@ -76,6 +77,7 @@ function App() {
             <Route path="completed-history" element={<AdminCompletedHistory />} />
             <Route path="profile"           element={<Navigate to="/admin-dashboard/settings" replace />} />
             <Route path="users"             element={<Users />} />
+            <Route path="engagement"          element={<EngagementMonitor />} />
             <Route path="expiring-orders"   element={<ExpiringOrders />} />
             <Route path="settings"          element={<SettingsPage />} />
             <Route path="logout"            element={<Logout />} />

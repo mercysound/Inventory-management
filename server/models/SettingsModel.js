@@ -74,6 +74,19 @@ const settingsSchema = new mongoose.Schema(
     contactWhatsapp: { type: String, default: "" },
     contactAddress:  { type: String, default: "" },
 
+    // ── Abandoned cart reminder settings ─────────────────────────────────
+    // Master ON/OFF switch
+    abandonedCartReminderEnabled: { type: Boolean, default: false },
+    // How many minutes before cart TTL expires to send the reminder
+    // Default: 15 minutes before the 1-hour TTL = sends at ~45 min mark
+    abandonedCartReminderMinutes: { type: Number, default: 15, min: 1 },
+    // Which roles get the reminder (array of role strings)
+    abandonedCartReminderRoles: {
+      type: [String],
+      enum: ["customer", "wholesale"],
+      default: ["customer", "wholesale"],
+    },
+
     // ── Appearance ────────────────────────────────────────────────────────
     // globalTheme: the admin-chosen brand palette applied to all users.
     // Valid values: default | ocean | forest | royal | sunset

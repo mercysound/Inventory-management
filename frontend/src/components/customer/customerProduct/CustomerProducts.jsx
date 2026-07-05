@@ -15,6 +15,7 @@ import { useAuth } from "../../../context/AuthContext";
 import axiosInstance from "../../../utils/axiosInstance";
 import CustomerProductsSkeleton from "./CustomerProductsSkeleton";
 import OrderModal from "./OrderModal";
+import { useEngagementTracker } from "../../../hooks/useEngagementTracker";
 
 const CART_PATH = {
   staff:     "/customer-dashboard/orders",
@@ -243,6 +244,7 @@ const TabPagination = ({ current, total, count, pageSize, jump, setJump, goTo, c
 // ─── Main component ──────────────────────────────────────────────────────────
 const CustomerProducts = () => {
   const { user } = useAuth();
+  const { trackAction, updateCart } = useEngagementTracker();
   const canSeeStock = user?.role === "staff" || user?.role === "admin";
   const cartPath    = CART_PATH[user?.role] ?? "/user-dashboard/orders";
 
@@ -413,8 +415,14 @@ const CustomerProducts = () => {
     try {
       const total = Object.values(m).reduce((s, i) => s + (i.quantity || 0), 0);
       window.dispatchEvent(new CustomEvent("ordersUpdated", { detail: { cartMap: m, total } }));
+      // Keep engagement tracker cart snapshot in sync
+      const cartItems = Object.entries(m).map(([pid, item]) => {
+        const p = products.find(x => x._id === pid);
+        return { name: p?.name || pid, quantity: item.quantity, price: p?.price || 0 };
+      });
+      updateCart(cartItems, cartItems.reduce((s, i) => s + i.quantity * i.price, 0));
     } catch {}
-  }, []);
+  }, [updateCart, products]);
 
   // ── Core cart updater — replaces add/reduce/increase/decrease ────────────
   // Uses PUT /orders/qty/:productId which is idempotent:
@@ -473,8 +481,9 @@ const CustomerProducts = () => {
     const prev = cartMapRef.current[product._id];
     const qty  = prev?.quantity || 0;
     if (qty >= product.stock) { toast.warning("Cannot add more than available stock"); return; }
+    trackAction("add_to_cart", product._id);
     setCartQty(product, qty + 1);
-  }, [setCartQty]);
+  }, [setCartQty, trackAction]);
 
   // ── Quick increase ─────────────────────────────────────────────────────────
   const handleQuickIncrease = useCallback((productId) => {
@@ -557,6 +566,8 @@ const CustomerProducts = () => {
 
   // ── Open order modal ───────────────────────────────────────────────────────
   const handleOrderChange = (product) => {
+    // Track product view as an engagement event
+    trackAction("product_view", product._id);
     const storedMode = (() => { try { return localStorage.getItem("melech_staff_price_mode"); } catch { return null; } })();
     const isWS = user?.role === "wholesale" || storedMode === "wholesale";
     const basePrice = isWS ? (product.wholesalePrice ?? product.price) : product.price;

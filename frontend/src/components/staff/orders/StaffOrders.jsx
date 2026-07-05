@@ -8,7 +8,7 @@ import {
   CheckCircle2, PackageOpen, Store, ShoppingBag, ChevronDown, ChevronUp,
 } from "lucide-react";
 import axiosInstance from "../../../utils/axiosInstance";
-import StaffTable from "./StaffTable";
+import CartProductSearch from "../../customer/CustomerOrderPortal/CartProductSearch";
 import ReceiptModal from "../../share-component/receipt/ReceiptModal";
 import { useAuth } from "../../../context/AuthContext";
 
@@ -345,16 +345,19 @@ const StaffOrders = () => {
             </div>
           ) : isEmpty ? (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center justify-center py-20 gap-3 text-center">
-              <div className="w-20 h-20 rounded-3xl bg-indigo-50 flex items-center justify-center">
-                <PackageOpen size={32} className="text-indigo-300" />
+              className="flex flex-col gap-4">
+              <div className="flex flex-col items-center justify-center py-14 gap-3 text-center">
+                <div className="w-20 h-20 rounded-3xl bg-indigo-50 flex items-center justify-center">
+                  <PackageOpen size={32} className="text-indigo-300" />
+                </div>
+                <p className="text-gray-500 font-semibold">Cart is empty</p>
+                <p className="text-sm text-gray-400">Browse products and add items to get started.</p>
+                <button onClick={() => navigate("/customer-dashboard")}
+                  className="mt-2 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition">
+                  <ShoppingBag size={15} /> Go to Products
+                </button>
               </div>
-              <p className="text-gray-500 font-semibold">Cart is empty</p>
-              <p className="text-sm text-gray-400">Browse products and add items to get started.</p>
-              <button onClick={() => navigate("/customer-dashboard")}
-                className="mt-2 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition">
-                <ShoppingBag size={15} /> Go to Products
-              </button>
+              <CartProductSearch priceMode={isWholesale ? "wholesale" : "retail"} onCartUpdated={() => fetchOrders(true)} />
             </motion.div>
           ) : (
             <>
@@ -367,6 +370,12 @@ const StaffOrders = () => {
                 </p>
                 <p className="text-xs text-gray-400">{totalItems} unit{totalItems !== 1 ? "s" : ""}</p>
               </div>
+
+              {/* Add more products from cart */}
+              <CartProductSearch
+                priceMode={isWholesale ? "wholesale" : "retail"}
+                onCartUpdated={() => fetchOrders(true)}
+              />
 
               <StaffTable
                 orders={displayOrders}

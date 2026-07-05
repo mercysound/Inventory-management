@@ -32,11 +32,14 @@ import dashboardRouter from "./routes/dashboardRoute.js";
 import allOrdersPlacedRoutes from "./routes/allOrdersPlacedRoutes.js";
 import completedOrderHistoryRoutes from "./routes/completedOrderHistoryRoutes.js";
 import expiringOrdersRoutes from "./routes/expiringOrdersRoutes.js";
-import settingsRoutes from "./routes/settingsRoutes.js";
+import settingsRoutes       from "./routes/settingsRoutes.js";
+import engagementRoutes     from "./routes/engagementRoutes.js";
 import cloudinary from "./config/cloudinary.js";
 import { startOrderExpiryCron }   from "./jobs/orderExpiryCron.js";
 import { startProductExpiryCron } from "./jobs/productExpiryCron.js";
 import { startLowStockCron }      from "./jobs/lowStockCron.js";
+import { startAbandonedCartCron }    from "./jobs/abandonedCartCron.js";
+import { startEngagementRollupCron } from "./jobs/engagementRollupCron.js";
 //meant for production only, to serve frontend from same server whe
 import path from "path";
 import { fileURLToPath } from "url";
@@ -218,7 +221,8 @@ app.use("/api/dashboard", dashboardRouter);
 app.use("/api/expiring-orders", expiringOrdersRoutes);
 app.use("/api/placed-orders", allOrdersPlacedRoutes);
 app.use("/api/completed-history", completedOrderHistoryRoutes);
-app.use("/api/settings", settingsRoutes);
+app.use("/api/settings",    settingsRoutes);
+app.use("/api/engagement",  engagementRoutes);
 
 // ── SERVE FRONTEND IN PRODUCTION WHEN DEPLOYING FULLSTACK TOGETHER ──
 if (!isDev) {
@@ -245,6 +249,8 @@ app.listen(port, "0.0.0.0", async () => {
     startOrderExpiryCron();
     startProductExpiryCron();
     startLowStockCron();
+    startAbandonedCartCron();
+    startEngagementRollupCron();
     console.log(`✅ Server running on http://${IP}:${port}`);
   } catch (error) {
     console.error("❌ Server startup failed:", error);

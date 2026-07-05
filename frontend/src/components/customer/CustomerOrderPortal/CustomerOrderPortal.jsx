@@ -11,9 +11,10 @@ import PaystackButton from "./PaystackButton";
 import CartSkeleton from "./CartSkeleton";
 import PendingOrdersModal from "./PendingOrdersModal";
 import FulfillmentModal from "./FulfillmentModal";
-import ReceiptModal from "../../share-component/receipt/ReceiptModal";
+import CartProductSearch from "./CartProductSearch";
 import { useAuth } from "../../../context/AuthContext";
 import { useCart } from "../../../context/CartContext";
+import { useEngagementTracker } from "../../../hooks/useEngagementTracker";
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 const StatCard = ({ icon: Icon, label, value, color }) => (
@@ -76,6 +77,7 @@ const parseOrderError = (err) => {
 const CustomerOrderPortal = () => {
   const { user }    = useAuth();
   const { resetCart, cartCount } = useCart();
+  const { trackAction, markPurchased } = useEngagementTracker();
   const navigate    = useNavigate();
 
   // Product page route per role
@@ -408,15 +410,21 @@ const CustomerOrderPortal = () => {
       }
 
       // ── Instant wipe: clear orders AND switch status BEFORE blob fetch ────
-      // Cart table is gone from DOM the moment this runs — no flash possible.
       setOrders([]);
       resetCart();
-      setCartStatus("clearing");  // renders success overlay, hides cart table
+      setCartStatus("clearing");
       fulfillmentDataRef.current = null;
       setFulfillmentData(null);
       try {
         window.dispatchEvent(new CustomEvent("ordersUpdated", { detail: { total: 0 } }));
       } catch (_) {}
+
+      // Mark engagement session as purchased
+      markPurchased(grandTotal, orders.map(o => ({
+        name:     o.product?.name || "Product",
+        quantity: o.quantity,
+        price:    o.price,
+      })));
 
       // Fetch invoice blob while overlay is showing
       const query = new URLSearchParams({
@@ -460,9 +468,11 @@ const CustomerOrderPortal = () => {
   const handlePrePayCheck = async () => {
     // Bypass: fulfillment already confirmed, Paystack is being opened via ref
     if (bypassPreCheck.current) {
-      bypassPreCheck.current = false; // reset for next time
-      return true; // proceed straight to Paystack
+      bypassPreCheck.current = false;
+      return true;
     }
+    // Track checkout start as engagement event
+    trackAction("start_checkout");
 
     try {
       const res = await axiosInstance.post("/orders/verify-stock");
@@ -652,9 +662,18 @@ const CustomerOrderPortal = () => {
       {/* Cart table or empty state */}
       <AnimatePresence mode="wait">
         {orders.length === 0 ? (
-          <EmptyCart key="empty" />
+          <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+            <EmptyCart />
+            <CartProductSearch priceMode={priceMode} onCartUpdated={() => fetchOrders(true)} />
+          </motion.div>
         ) : (
           <motion.div key="table" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+            {/* ── Add more products from cart ── */}
+            <CartProductSearch
+              priceMode={priceMode}
+              onCartUpdated={() => fetchOrders(true)}
+            />
+
             <CustomerOrderTable
               orders={orders}
               onIncrease={handleIncreaseQty}
@@ -709,6 +728,17 @@ const CustomerOrderPortal = () => {
                     <FileText size={15} />
                     {previewLoading ? "Generating..." : "Preview Invoice"}
                   </motion.button>
+
+                  {/* ── Payment warning ── */}
+                  <div className="w-full bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800 leading-relaxed">
+                    <p className="font-bold mb-1">⚠️ Before you pay — please note:</p>
+                    <p>
+                      When your Paystack payment completes, ensure the <strong>account name</strong> on
+                      your bank matches what you expect for <strong>{user?.name || "your account"}</strong>.
+                      If unsure, <strong>contact us before paying</strong> to confirm payment details.
+                      Payments cannot be reversed once confirmed.
+                    </p>
+                  </div>
 
                   <PaystackButton
                     triggerRef={paystackRef}

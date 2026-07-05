@@ -63,6 +63,13 @@ export const updateSettings = async (req, res) => {
       if (valid.includes(globalTheme)) update.globalTheme = globalTheme;
     }
     if (expiryReminderEnabled   !== undefined) update.expiryReminderEnabled   = Boolean(expiryReminderEnabled);
+    // Abandoned cart reminder
+    if (req.body.abandonedCartReminderEnabled  !== undefined) update.abandonedCartReminderEnabled  = Boolean(req.body.abandonedCartReminderEnabled);
+    if (req.body.abandonedCartReminderMinutes  !== undefined) update.abandonedCartReminderMinutes  = Math.max(1, Number(req.body.abandonedCartReminderMinutes));
+    if (req.body.abandonedCartReminderRoles    !== undefined) {
+      const validRoles = ["customer", "wholesale"];
+      update.abandonedCartReminderRoles = (req.body.abandonedCartReminderRoles || []).filter((r) => validRoles.includes(r));
+    }
     if (req.body.contactEmail    !== undefined) update.contactEmail    = String(req.body.contactEmail    || "").trim();
     if (req.body.contactPhone    !== undefined) update.contactPhone    = String(req.body.contactPhone    || "").trim();
     if (req.body.contactWhatsapp !== undefined) update.contactWhatsapp = String(req.body.contactWhatsapp || "").trim();

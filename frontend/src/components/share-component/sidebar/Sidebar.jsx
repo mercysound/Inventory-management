@@ -2,6 +2,7 @@ import React from "react";
 import {
   FaBox, FaCog, FaHome, FaShoppingCart, FaSignOutAlt,
   FaTable, FaTruck, FaUsers, FaTimes, FaHistory, FaClipboardList,
+  FaChartBar,
 } from "react-icons/fa";
 import { Clock } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
@@ -15,16 +16,17 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   const { isDelegated } = useDelegation();
 
   const adminMenu = [
-    { name: "Dashboard",       path: "/admin-dashboard",                   icon: <FaHome /> },
-    { name: "Categories",      path: "/admin-dashboard/categories",        icon: <FaTable /> },
-    { name: "Products",        path: "/admin-dashboard/products",          icon: <FaBox /> },
-    { name: "Suppliers",       path: "/admin-dashboard/suppliers",         icon: <FaTruck /> },
-    { name: "Placed Orders",   path: "/admin-dashboard/placed-orders",     icon: <FaShoppingCart /> },
-    { name: "History",         path: "/admin-dashboard/completed-history", icon: <FaHistory /> },
-    { name: "Users",           path: "/admin-dashboard/users",             icon: <FaUsers /> },
-    { name: "Expiring Orders", path: "/admin-dashboard/expiring-orders",   icon: <Clock size={16} className="text-amber-400" />, highlight: true },
-    { name: "Settings",        path: "/admin-dashboard/settings",          icon: <FaCog /> },
-    { name: "Logout",          path: "/logout",                            icon: <FaSignOutAlt /> },
+    { name: "Dashboard",       path: "/admin-dashboard",                    icon: <FaHome /> },
+    { name: "Categories",      path: "/admin-dashboard/categories",         icon: <FaTable /> },
+    { name: "Products",        path: "/admin-dashboard/products",           icon: <FaBox /> },
+    { name: "Suppliers",       path: "/admin-dashboard/suppliers",          icon: <FaTruck /> },
+    { name: "Placed Orders",   path: "/admin-dashboard/placed-orders",      icon: <FaShoppingCart /> },
+    { name: "History",         path: "/admin-dashboard/completed-history",  icon: <FaHistory /> },
+    { name: "Users",           path: "/admin-dashboard/users",              icon: <FaUsers /> },
+    { name: "Expiring Orders", path: "/admin-dashboard/expiring-orders",    icon: <Clock size={16} className="text-amber-400" />, highlight: true },
+    { name: "Engagement",      path: "/admin-dashboard/engagement",         icon: <FaChartBar />, highlight: false },
+    { name: "Settings",        path: "/admin-dashboard/settings",           icon: <FaCog /> },
+    { name: "Logout",          path: "/logout",                             icon: <FaSignOutAlt /> },
   ];
 
   const staffMenuBase = [

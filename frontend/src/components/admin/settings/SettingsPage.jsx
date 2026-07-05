@@ -6,7 +6,7 @@ import {
   Clock, Mail, RefreshCw, Save, AlertTriangle, CheckCircle2,
   Users, ShieldCheck, X, UserCheck, Loader2, Palette, Moon, Sun,
   Store, Package, Settings2, User, Phone, MapPin, Lock, Eye, EyeOff,
-  Pencil, MessageCircle, CreditCard,
+  Pencil, MessageCircle, CreditCard, Bell,
 } from "lucide-react";
 import { useTheme, GLOBAL_THEMES, PERSONAL_MODES } from "../../../context/ThemeContext";
 
@@ -90,6 +90,10 @@ const SettingsPage = () => {
           contactPhone:              s.contactPhone              ?? "",
           contactWhatsapp:           s.contactWhatsapp           ?? "",
           contactAddress:            s.contactAddress            ?? "",
+          // Abandoned cart reminder
+          abandonedCartReminderEnabled: s.abandonedCartReminderEnabled ?? false,
+          abandonedCartReminderMinutes: s.abandonedCartReminderMinutes ?? 15,
+          abandonedCartReminderRoles:   s.abandonedCartReminderRoles   ?? ["customer", "wholesale"],
         });
       }
     } catch { toast.error("Failed to load settings"); }
@@ -1072,6 +1076,112 @@ const SettingsPage = () => {
           </p>
         </div>
       </div>
+
+      {/* ── Abandoned Cart Reminder ────────────────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 space-y-4"
+      >
+        <div className="flex items-center gap-2 mb-1">
+          <Bell size={16} className="text-indigo-500" />
+          <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-sm">
+            Abandoned Cart Reminder
+          </h3>
+        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+          Automatically send an email to customers who left items in their cart without purchasing.
+          The reminder fires before the 1-hour cart TTL expires. The email shows their cart items
+          and links them back to the store to complete the purchase.
+        </p>
+
+        {/* Master ON/OFF */}
+        <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-700">
+          <div>
+            <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Enable abandoned cart emails</p>
+            <p className="text-xs text-gray-400 mt-0.5">Send reminder before cart items expire</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleChange("abandonedCartReminderEnabled", !settings.abandonedCartReminderEnabled)}
+            className={`relative inline-flex h-6 w-11 rounded-full transition-colors focus:outline-none
+              ${settings.abandonedCartReminderEnabled ? "bg-indigo-500" : "bg-gray-300 dark:bg-gray-600"}`}
+          >
+            <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform mt-0.5
+              ${settings.abandonedCartReminderEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
+          </button>
+        </div>
+
+        {settings.abandonedCartReminderEnabled && (
+          <div className="space-y-4">
+            {/* Reminder timing */}
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Send reminder this many minutes before cart expires
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Cart TTL = 60 min. Default 15 = email sent at ~45 min mark.
+                </p>
+              </div>
+              <input
+                {...numInput("abandonedCartReminderMinutes", 1, 55, "focus:ring-indigo-300")}
+                className="w-24 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
+                  focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50 dark:bg-gray-800
+                  dark:text-gray-100 text-center font-semibold"
+              />
+            </div>
+
+            {/* Role toggles */}
+            <div>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                Send to which customer roles
+              </p>
+              <div className="flex gap-3 flex-wrap">
+                {["customer", "wholesale"].map((role) => {
+                  const active = (settings.abandonedCartReminderRoles || []).includes(role);
+                  return (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => {
+                        const current = settings.abandonedCartReminderRoles || [];
+                        const next = active
+                          ? current.filter((r) => r !== role)
+                          : [...current, role];
+                        handleChange("abandonedCartReminderRoles", next);
+                      }}
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold border transition
+                        ${active
+                          ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                          : "bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-indigo-50"
+                        }`}
+                    >
+                      {active ? <CheckCircle2 size={12} /> : <span className="w-3 h-3 rounded-full border border-current inline-block" />}
+                      {role.charAt(0).toUpperCase() + role.slice(1)}
+                    </button>
+                  );
+                })}
+              </div>
+              {(settings.abandonedCartReminderRoles || []).length === 0 && (
+                <p className="text-xs text-amber-600 mt-1.5">
+                  ⚠️ No roles selected — reminder emails will not be sent even if enabled.
+                </p>
+              )}
+            </div>
+
+            {/* Info box */}
+            <div className="flex items-start gap-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3">
+              <Bell size={14} className="text-blue-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
+                The system checks for expiring carts every <strong>10 minutes</strong>.
+                Each cart only receives <strong>one reminder per lifecycle</strong> — if the user
+                comes back and updates their cart, the reminder resets so they can receive another
+                one on the next idle period.
+              </p>
+            </div>
+          </div>
+        )}
+      </motion.div>
 
       {/* Save Button */}
       <div className="flex items-center gap-3 pb-6">
