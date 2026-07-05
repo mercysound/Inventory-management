@@ -329,8 +329,7 @@ const StaffOrders = () => {
         {/* ════════════════════════════════════════════════════════════════
             SCROLLABLE CART BODY — independent scroll, sticky panel stays fixed
         ════════════════════════════════════════════════════════════════ */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-4 md:px-6 pt-4 pb-6"
-          style={{ maxHeight: "calc(100vh - 260px)" }}>
+        <div className="px-4 md:px-6 pt-4 pb-6">
 
           {loading ? (
             <div className="space-y-3">

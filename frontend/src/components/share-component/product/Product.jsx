@@ -509,124 +509,93 @@ const Product = () => {
     <div className="w-full h-full flex flex-col gap-4 p-4">
       <h1 className="text-2xl font-bold mb-2">Product Management</h1>
 
-      {/* Search + Category filter + Batch search + Expiry filter */}
-      <div className="flex flex-col gap-3">
-        {/* Row 1: Name search + Category */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+      {/* Search + Category filter + Batch search + Expiry filter — sticky */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex flex-col gap-2"
+        style={{ position: "sticky", top: 0, zIndex: 20 }}>
+
+        {/* Row 1: Name search + Category — horizontal scroll on mobile */}
+        <div className="flex items-center gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
           <input
             type="text"
-            placeholder="Search by product name..."
+            placeholder="Search by name..."
             value={searchValue}
             onChange={handleSearch}
-            className="border border-gray-300 rounded-md px-3 py-2 w-full sm:w-1/2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm flex-shrink-0 w-40 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <select
             value={selectedCategory}
             onChange={handleCategoryChange}
-            className="border border-gray-300 rounded-md px-3 py-2 w-full sm:w-1/3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm flex-shrink-0 w-36 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">All Categories</option>
             {categories.map((cat) => (
               <option key={cat._id} value={cat._id}>{cat.name}</option>
             ))}
           </select>
-        </div>
 
-        {/* Row 2: Batch number search + Expiry days filter + Clear */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           {/* Batch number text search */}
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <div className="relative flex-shrink-0 w-40">
+            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search by batch number..."
+              placeholder="Batch number..."
               value={batchSearch}
               onChange={(e) => handleBatchSearch(e.target.value)}
-              className="border border-gray-300 rounded-md pl-8 pr-10 py-2 w-full focus:outline-none focus:ring-2 focus:ring-purple-400 text-sm"
+              className="border border-gray-300 rounded-md pl-7 pr-8 py-1.5 w-full focus:outline-none focus:ring-2 focus:ring-purple-400 text-sm"
             />
-            {/* Camera scan button */}
-            <label
-              title="Scan barcode with camera"
-              className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 hover:text-purple-600 transition"
-            >
-              <ScanLine size={16} />
-              <input
-                ref={batchScanInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={(e) => handleScanResult(e.target.files?.[0])}
-              />
+            <label title="Scan barcode" className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 hover:text-purple-600 transition">
+              <ScanLine size={14} />
+              <input ref={batchScanInputRef} type="file" accept="image/*" capture="environment" className="hidden"
+                onChange={(e) => handleScanResult(e.target.files?.[0])} />
             </label>
           </div>
 
-          {/* Expiry days filter — "show products expiring within next N days" */}
-          <div className="relative flex-1">
-            <CalendarClock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          {/* Expiry days filter */}
+          <div className="relative flex-shrink-0 w-36">
+            <CalendarClock size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
-              type="number"
-              min="0"
-              max="3650"
-              placeholder="Expiring within... (days)"
+              type="number" min="0" max="3650"
+              placeholder="Expiring in... days"
               value={expiryDaysFilter}
               onChange={(e) => handleExpiryDaysChange(e.target.value)}
               onWheel={(e) => e.currentTarget.blur()}
-              title="Show products expiring within this many days from today"
-              className="border border-gray-300 rounded-md pl-8 pr-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-orange-400 text-sm text-gray-700"
+              className="border border-gray-300 rounded-md pl-7 pr-3 py-1.5 w-full focus:outline-none focus:ring-2 focus:ring-orange-400 text-sm"
             />
           </div>
 
-          {/* Quick-select day presets */}
-          <div className="flex gap-1.5 flex-wrap">
-            {[7, 14, 30, 60, 90].map((d) => (
-              <button
-                key={d}
-                onClick={() => handleExpiryDaysChange(expiryDaysFilter === String(d) ? "" : String(d))}
-                className={`px-2.5 py-1.5 rounded-md text-xs font-medium border transition whitespace-nowrap
-                  ${expiryDaysFilter === String(d)
-                    ? "bg-orange-500 text-white border-orange-500"
-                    : "border-gray-200 text-gray-500 hover:bg-orange-50 hover:border-orange-300 hover:text-orange-700"
-                  }`}
-              >
-                {d}d
-              </button>
-            ))}
-          </div>
+          {/* Day presets */}
+          {[7, 14, 30, 60, 90].map((d) => (
+            <button key={d}
+              onClick={() => handleExpiryDaysChange(expiryDaysFilter === String(d) ? "" : String(d))}
+              className={`flex-shrink-0 px-2 py-1.5 rounded-md text-xs font-medium border transition whitespace-nowrap
+                ${expiryDaysFilter === String(d)
+                  ? "bg-orange-500 text-white border-orange-500"
+                  : "border-gray-200 text-gray-500 hover:bg-orange-50 hover:border-orange-300 hover:text-orange-700"}`}
+            >{d}d</button>
+          ))}
 
           {/* Clear all filters */}
           {(searchValue || selectedCategory || batchSearch || expiryDaysFilter) && (
-            <button
-              onClick={clearAllFilters}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium border border-gray-200 text-gray-500 hover:bg-gray-50 whitespace-nowrap transition"
-            >
-              <X size={13} /> Clear
+            <button onClick={clearAllFilters}
+              className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium border border-gray-200 text-gray-500 hover:bg-gray-50 whitespace-nowrap transition">
+              <X size={12} /> Clear
             </button>
           )}
         </div>
 
         {/* Active filter pills */}
         {(batchSearch || expiryDaysFilter) && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {batchSearch && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-100">
-                <ScanLine size={11} />
-                Batch: <span className="font-bold">{batchSearch}</span>
-                <button onClick={() => handleBatchSearch("")} className="ml-1 hover:text-purple-900">
-                  <X size={10} />
-                </button>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-100">
+                <ScanLine size={10} /> Batch: <strong>{batchSearch}</strong>
+                <button onClick={() => handleBatchSearch("")} className="ml-1 hover:text-purple-900"><X size={10} /></button>
               </span>
             )}
             {expiryDaysFilter && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-700 border border-orange-100">
-                <CalendarClock size={11} />
-                Expiring within <span className="font-bold">{expiryDaysFilter} day{expiryDaysFilter === "1" ? "" : "s"}</span>
-                <button
-                  onClick={() => handleExpiryDaysChange("")}
-                  className="ml-1 hover:text-orange-900"
-                >
-                  <X size={10} />
-                </button>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-700 border border-orange-100">
+                <CalendarClock size={10} /> Expiring in <strong>{expiryDaysFilter}d</strong>
+                <button onClick={() => handleExpiryDaysChange("")} className="ml-1 hover:text-orange-900"><X size={10} /></button>
               </span>
             )}
           </div>

@@ -164,7 +164,7 @@ const ExpiringOrders = () => {
           </div>
 
           {/* Orders list */}
-          <div className="overflow-y-auto overscroll-contain" style={{ maxHeight: "calc(100vh - 380px)" }}>
+          <div>
           <div className="space-y-3">
             <AnimatePresence>
               {orders.slice((currentPage - 1) * EXPIRY_PAGE_SIZE, currentPage * EXPIRY_PAGE_SIZE).map((order, i) => (

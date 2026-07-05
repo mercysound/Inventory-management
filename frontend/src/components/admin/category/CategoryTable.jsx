@@ -40,7 +40,7 @@ const CategoryTable = ({ categories, onEdit, onDelete }) => {
     <div className="w-full lg:w-2/3">
       {/* Desktop Table */}
       <div className="hidden md:block bg-white shadow-lg rounded-xl p-4 border border-gray-100">
-        <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: "calc(100vh - 320px)" }}>
+        <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-gray-100 text-gray-700 text-left">
@@ -74,7 +74,7 @@ const CategoryTable = ({ categories, onEdit, onDelete }) => {
 
       {/* Mobile Cards */}
       <div className="md:hidden">
-        <div className="space-y-4 overflow-y-auto overscroll-contain" style={{ maxHeight: "calc(100vh - 300px)" }}>
+        <div className="space-y-4">
         {paginated.length === 0 ? (
           <div className="text-center text-gray-500 py-6">No categories found.</div>
         ) : (

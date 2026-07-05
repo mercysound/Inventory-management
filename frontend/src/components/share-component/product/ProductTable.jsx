@@ -344,8 +344,9 @@ const ProductTable = ({
       {/* ── MAIN CARD ── */}
       <div className="w-full bg-white shadow-sm rounded-xl overflow-hidden border border-gray-100">
 
-        {/* Toolbar */}
-        <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-gray-100 flex-wrap gap-2">
+        {/* Toolbar — sticky so Add/View buttons stay visible while scrolling */}
+        <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-gray-100 flex-wrap gap-2 bg-white"
+          style={{ position: "sticky", top: 0, zIndex: 10 }}>
           <div>
             <h2 className="text-sm font-semibold text-gray-800">Product list</h2>
             <p className="text-[11px] text-gray-400 mt-0.5">
@@ -394,8 +395,8 @@ const ProductTable = ({
             tableWrapRef.current = el;
             if (scrollRef) scrollRef.current = el;
           }}
-          className="hidden md:block overflow-x-auto overflow-y-auto"
-          style={{ maxHeight: "calc(100vh - 340px)", minHeight: "200px" }}
+          className="hidden md:block overflow-x-auto"
+          style={{ minHeight: "200px" }}
         >
           <table className="w-full min-w-[900px] border-collapse text-sm">
             <thead className="sticky top-0 z-10">
@@ -602,8 +603,8 @@ const ProductTable = ({
         {/* ── MOBILE CARDS ── */}
         <div
           ref={(el) => { mobileWrapRef.current = el; if (scrollRef) scrollRef.current = el; }}
-          className="md:hidden overflow-y-auto overscroll-contain"
-          style={{ maxHeight: "calc(100vh - 320px)", minHeight: "200px" }}
+          className="md:hidden overscroll-contain"
+          style={{ minHeight: "200px" }}
         >
           {visibleProducts.length > 0 ? (
             <div className="divide-y divide-gray-200">

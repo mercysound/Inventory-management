@@ -76,9 +76,9 @@ const PlacedOrdersTable = ({
       </div>
 
       {/* ── DESKTOP TABLE ── */}
-      <div className="hidden md:block overflow-x-auto overflow-y-auto" style={{ maxHeight: "calc(100vh - 320px)" }}>
+      <div className="hidden md:block overflow-x-auto">
         <table className="min-w-full text-sm text-gray-700 border-collapse">
-          <thead className="bg-gray-100 uppercase font-semibold text-gray-600 text-xs">
+          <thead className="bg-gray-100 uppercase font-semibold text-gray-600 text-xs sticky top-0 z-10">
             <tr>
               <th className="p-3 text-left">#</th>
               <th className="p-3 text-left">Order ID</th>
@@ -241,7 +241,7 @@ const PlacedOrdersTable = ({
       </div>
 
       {/* ── MOBILE CARDS ── */}
-      <div className="md:hidden p-3 space-y-4 overflow-y-auto overscroll-contain" style={{ maxHeight: "calc(100vh - 300px)" }}>
+      <div className="md:hidden p-3 space-y-4">
         {orders.map((order, i) => (
           <div
             key={order._id}

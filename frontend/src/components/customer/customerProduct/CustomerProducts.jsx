@@ -651,23 +651,24 @@ const CustomerProducts = () => {
           </AnimatePresence>
         </div>
 
-        {/* ── Filter bar — sticky once page scrolls past header ──────── */}
+        {/* ── Filter bar — sticky, single scrollable row (Jiji style) ── */}
         <div
-          className="flex flex-wrap gap-2.5 items-center bg-white rounded-2xl
-            border border-gray-100 shadow-sm px-4 py-3"
+          className="bg-white border border-gray-100 shadow-sm rounded-2xl"
           style={{ position: "sticky", top: 0, zIndex: 20 }}
         >
+          <div className="flex items-center gap-2 px-3 py-2 overflow-x-auto"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
 
           {/* Searchable category dropdown */}
-          <div className="relative" ref={catDropdownRef}>
+          <div className="relative flex-shrink-0" ref={catDropdownRef}>
             <button
               type="button"
               onClick={() => { setShowCatDropdown(v => !v); setCatSearch(""); }}
-              className="inline-flex items-center gap-1.5 border border-gray-200 rounded-xl pl-3 pr-3 py-2
-                text-xs text-gray-700 bg-gray-50 hover:bg-white transition min-w-[130px] justify-between"
+              className="inline-flex items-center gap-1 border border-gray-200 rounded-lg pl-2 pr-2 py-1.5
+                text-xs text-gray-700 bg-gray-50 hover:bg-white transition whitespace-nowrap"
             >
-              <SlidersHorizontal size={13} className="text-gray-400 shrink-0" />
-              <span className="truncate max-w-[90px]">{selectedCatName}</span>
+              <SlidersHorizontal size={11} className="text-gray-400 shrink-0" />
+              <span className="truncate max-w-[80px]">{selectedCatName}</span>
               <span className="text-gray-400 text-[10px]">▾</span>
             </button>
             {showCatDropdown && (
@@ -707,12 +708,15 @@ const CustomerProducts = () => {
             )}
           </div>
 
-          {/* Product name search — only on All tab */}
+          {/* Divider */}
+          <div className="w-px h-4 bg-gray-200 flex-shrink-0" />
+
+          {/* Product name search */}
           {activeTab === "all" && (
-            <div className="relative flex-1 min-w-[160px] max-w-xs">
-              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-              <input type="text" placeholder="Search products…" value={searchQuery} onChange={handleSearch}
-                className="w-full border border-gray-200 rounded-xl pl-8 pr-4 py-2 text-xs
+            <div className="relative flex-shrink-0 w-36">
+              <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <input type="text" placeholder="Search…" value={searchQuery} onChange={handleSearch}
+                className="w-full border border-gray-200 rounded-lg pl-7 pr-3 py-1.5 text-xs
                   text-gray-700 bg-gray-50 focus:outline-none focus:ring-2
                   focus:ring-green-400 focus:border-transparent transition placeholder:text-gray-400" />
             </div>
@@ -725,9 +729,9 @@ const CustomerProducts = () => {
                 try { localStorage.setItem("melech_staff_show_wholesale", JSON.stringify(n)); } catch {}
                 return n;
               })}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition
+              className={`flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition whitespace-nowrap
                 ${showWholesaleCol ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}>
-              <span className={`w-2 h-2 rounded-full ${showWholesaleCol ? "bg-amber-500" : "bg-gray-400"}`} />
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${showWholesaleCol ? "bg-amber-500" : "bg-gray-400"}`} />
               WS price
             </button>
           )}
@@ -735,12 +739,12 @@ const CustomerProducts = () => {
           {/* ✨ New Arrivals tab pill */}
           {newArrivalProducts.length > 0 && (
             <button type="button" onClick={handleNewArrivalsToggle}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition
+              className={`flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition whitespace-nowrap
                 ${activeTab === "new"
                   ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
                   : "bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50"}`}>
-              ✨ New Arrivals
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold
+              ✨ New
+              <span className={`px-1 py-0.5 rounded-full text-[10px] font-bold
                 ${activeTab === "new" ? "bg-white/20 text-white" : "bg-indigo-100 text-indigo-700"}`}>
                 {newArrivalProducts.length}
               </span>
@@ -750,17 +754,18 @@ const CustomerProducts = () => {
           {/* 🎉 Bonanza tab pill */}
           {bonanzaProducts.length > 0 && (
             <button type="button" onClick={handleBonanzaToggle}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition
+              className={`flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition whitespace-nowrap
                 ${activeTab === "bonanza"
                   ? "bg-orange-500 text-white border-orange-500 shadow-sm"
                   : "bg-white text-orange-600 border-orange-200 hover:bg-orange-50"}`}>
               🎉 Bonanza
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold
+              <span className={`px-1 py-0.5 rounded-full text-[10px] font-bold
                 ${activeTab === "bonanza" ? "bg-white/20 text-white" : "bg-orange-100 text-orange-700"}`}>
                 {bonanzaProducts.length}
               </span>
             </button>
           )}
+          </div>
         </div>
 
         {/* ── Content ─────────────────────────────────────────────────── */}

@@ -59,8 +59,7 @@ const CustomerOrderTable = ({ orders, onIncrease, onReduce, onDelete }) => {
       {/* Desktop Table View */}
       {visible.length > 0 && (
       <div className="hidden lg:block">
-        <div className="overflow-x-auto overflow-y-auto overscroll-contain rounded-lg shadow-lg border border-gray-200"
-          style={{ maxHeight: "calc(100vh - 360px)" }}>
+        <div className="overflow-x-auto rounded-lg shadow-lg border border-gray-200">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white">
@@ -144,8 +143,7 @@ const CustomerOrderTable = ({ orders, onIncrease, onReduce, onDelete }) => {
 
       {/* Mobile & Tablet Card View */}
       {visible.length > 0 && (
-      <div className="lg:hidden overflow-y-auto overscroll-contain space-y-4"
-        style={{ maxHeight: "calc(100vh - 340px)" }}>
+      <div className="lg:hidden space-y-4">
         {visible.map((order, i) => (
           <motion.div key={order._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-lg border border-gray-200 shadow-md overflow-hidden hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between p-3 bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-gray-200">
