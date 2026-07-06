@@ -29,14 +29,22 @@ const FulfillmentModal = ({ isOpen, onClose, onConfirm, userProfile = null }) =>
     }
   }, [isOpen, userProfile]);
 
-  // Lock scroll
+  // Lock scroll — position:fixed on body for reliable iOS Safari scroll prevention
   useEffect(() => {
     if (!isOpen) return;
+    const scrollY = window.scrollY;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
     document.body.style.overflow = "hidden";
     const el = document.getElementById("main-scroll");
     if (el) el.style.overflow = "hidden";
     return () => {
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
       document.body.style.overflow = "";
+      window.scrollTo(0, scrollY);
       const el2 = document.getElementById("main-scroll");
       if (el2) el2.style.overflow = "";
     };

@@ -161,13 +161,23 @@ const CartProductSearch = ({ priceMode = "retail", onCartUpdated, cartMap = {} }
     if (open) setTimeout(() => inputRef.current?.focus(), 120);
   }, [open]);
 
-  // ── Cart mutation helper ────────────────────────────────────────────────────
-  const setQty = async (product, newQty) => {
-    const pid    = product._id;
-    const isWS   = priceMode === "wholesale";
-    const price  = isWS ? (product.wholesalePrice ?? product.price) : product.price;
+  // ── Cart mutation helper ─────────────────────────────────────────────────
+  // Uses a debounced refresh so the parent cart list updates after user
+  // stops clicking, without reloading on every single tap.
+  const refreshTimer = useRef(null);
+  const scheduleRefresh = useCallback(() => {
+    clearTimeout(refreshTimer.current);
+    refreshTimer.current = setTimeout(() => {
+      onCartUpdated?.();
+    }, 800); // wait 800ms after last action before refreshing parent
+  }, [onCartUpdated]);
 
-    // Optimistic local update
+  const setQty = async (product, newQty) => {
+    const pid   = product._id;
+    const isWS  = priceMode === "wholesale";
+    const price = isWS ? (product.wholesalePrice ?? product.price) : product.price;
+
+    // Optimistic local update — instant UI response
     setLocalCartMap(prev => {
       if (newQty <= 0) { const n = { ...prev }; delete n[pid]; return n; }
       return { ...prev, [pid]: { ...(prev[pid] || {}), quantity: newQty } };
@@ -176,10 +186,10 @@ const CartProductSearch = ({ priceMode = "retail", onCartUpdated, cartMap = {} }
     setBusyId(pid);
     try {
       await axiosInstance.put(`/orders/qty/${pid}`, { quantity: newQty, price, priceMode });
-      onCartUpdated?.();
+      // Schedule a delayed parent refresh — panel stays open
+      scheduleRefresh();
     } catch (err) {
-      // Rollback on error
-      setLocalCartMap(cartMap);
+      setLocalCartMap(cartMap); // rollback
       toast.error(err?.response?.data?.message || "Cart update failed");
     } finally {
       setBusyId(null);
@@ -189,13 +199,15 @@ const CartProductSearch = ({ priceMode = "retail", onCartUpdated, cartMap = {} }
   const handleAdd = async (product) => {
     const current = localCartMap[product._id]?.quantity || 0;
     if (current >= product.stock) { toast.warning("Cannot exceed available stock"); return; }
+    if (current === 0) toast.success(`${product.name} added!`, { autoClose: 1500 });
     await setQty(product, current + 1);
-    if (current === 0) toast.success(`${product.name} added to cart!`);
+    // Panel stays open — do NOT close
   };
 
   const handleDecrease = async (product) => {
     const current = localCartMap[product._id]?.quantity || 0;
-    await setQty(product, Math.max(0, current - 1));
+    if (current <= 0) return;
+    await setQty(product, current - 1);
   };
 
   return (

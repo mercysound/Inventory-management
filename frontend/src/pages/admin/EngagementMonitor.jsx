@@ -457,12 +457,12 @@ const EngagementMonitor = () => {
               </div>
 
               {/* Pagination */}
-              {pages > 1 && (
+              {total > 0 && (
                 <div className="flex items-center justify-center gap-3 pt-2">
                   <button onClick={() => fetchSessions(page - 1)} disabled={page === 1}
                     className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm disabled:opacity-40 hover:bg-gray-50 transition">← Prev</button>
                   <span className="text-sm text-gray-500">Page {page} of {pages} · {total} sessions</span>
-                  <button onClick={() => fetchSessions(page + 1)} disabled={page === pages}
+                  <button onClick={() => fetchSessions(page + 1)} disabled={page >= pages}
                     className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm disabled:opacity-40 hover:bg-gray-50 transition">Next →</button>
                 </div>
               )}

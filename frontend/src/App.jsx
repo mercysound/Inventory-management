@@ -37,6 +37,20 @@ import EngagementMonitor  from "./pages/admin/EngagementMonitor.jsx";
 
 export const BASE_URL = import.meta.env.VITE_API_URL;
 
+// ── Prevent full page reload on browser minimize/tab switch ─────────────────
+// On iOS Safari and some Android browsers, the pageshow event fires with
+// persisted=true when the page is restored from the bfcache (back/forward cache).
+// Reloading in this case causes the "restart from scratch" feeling.
+// We intercept it and prevent the reload so the user lands exactly where they left.
+if (typeof window !== "undefined") {
+  window.addEventListener("pageshow", (e) => {
+    if (e.persisted) {
+      // Page was restored from bfcache — do nothing, keep current state
+      // This prevents the blank-screen reload on iOS when switching apps/tabs
+    }
+  });
+}
+
 function App() {
   return (
     <>
