@@ -1,5 +1,5 @@
 // CartProductSearch.jsx
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, Plus, Minus, ShoppingCart, Package, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "react-toastify";
@@ -129,7 +129,7 @@ const CartProductSearch = ({ priceMode = "retail", onCartUpdated, cartMap = {} }
   }, [JSON.stringify(cartMap)]); // eslint-disable-line
 
   // Fetch all products once when panel opens
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = async () => {
     if (allProducts.length > 0) return;
     try {
       setLoading(true);
@@ -137,7 +137,7 @@ const CartProductSearch = ({ priceMode = "retail", onCartUpdated, cartMap = {} }
       if (res.data.success) setAllProducts(res.data.products || []);
     } catch { /* silently fail */ }
     finally { setLoading(false); }
-  }, [allProducts.length]);
+  };
 
   const handleToggle = () => {
     setOpen(p => !p);
@@ -162,22 +162,15 @@ const CartProductSearch = ({ priceMode = "retail", onCartUpdated, cartMap = {} }
   }, [open]);
 
   // ── Cart mutation helper ─────────────────────────────────────────────────
-  // Uses a debounced refresh so the parent cart list updates after user
-  // stops clicking, without reloading on every single tap.
-  const refreshTimer = useRef(null);
-  const scheduleRefresh = useCallback(() => {
-    clearTimeout(refreshTimer.current);
-    refreshTimer.current = setTimeout(() => {
-      onCartUpdated?.();
-    }, 800); // wait 800ms after last action before refreshing parent
-  }, [onCartUpdated]);
-
+  // Fires a lightweight ordersUpdated event so the parent cart list refreshes
+  // without re-rendering (and remounting) this component.
+  // The panel stays open regardless of how many products are added.
   const setQty = async (product, newQty) => {
     const pid   = product._id;
     const isWS  = priceMode === "wholesale";
     const price = isWS ? (product.wholesalePrice ?? product.price) : product.price;
 
-    // Optimistic local update — instant UI response
+    // Optimistic local update — instant UI response, no panel close
     setLocalCartMap(prev => {
       if (newQty <= 0) { const n = { ...prev }; delete n[pid]; return n; }
       return { ...prev, [pid]: { ...(prev[pid] || {}), quantity: newQty } };
@@ -186,8 +179,13 @@ const CartProductSearch = ({ priceMode = "retail", onCartUpdated, cartMap = {} }
     setBusyId(pid);
     try {
       await axiosInstance.put(`/orders/qty/${pid}`, { quantity: newQty, price, priceMode });
-      // Schedule a delayed parent refresh — panel stays open
-      scheduleRefresh();
+      // Fire the global event so parent cart totals/list update silently.
+      // This does NOT remount CartProductSearch — panel stays open.
+      try {
+        window.dispatchEvent(new CustomEvent("ordersUpdated", {
+          detail: { _source: "cartSearch" },
+        }));
+      } catch (_) {}
     } catch (err) {
       setLocalCartMap(cartMap); // rollback
       toast.error(err?.response?.data?.message || "Cart update failed");
@@ -201,7 +199,7 @@ const CartProductSearch = ({ priceMode = "retail", onCartUpdated, cartMap = {} }
     if (current >= product.stock) { toast.warning("Cannot exceed available stock"); return; }
     if (current === 0) toast.success(`${product.name} added!`, { autoClose: 1500 });
     await setQty(product, current + 1);
-    // Panel stays open — do NOT close
+    // Panel deliberately stays open so user can add more
   };
 
   const handleDecrease = async (product) => {
