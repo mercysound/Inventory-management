@@ -299,8 +299,9 @@ const ReceiptModal = ({
             </button>
           </div>
 
-          {/* ── BODY ── */}
-          <div className="flex-1 overflow-y-auto bg-gray-100" style={{ WebkitOverflowScrolling: "touch" }}>
+          {/* ── BODY — explicitly sized so iOS scrolls correctly ── */}
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-gray-100"
+            style={{ WebkitOverflowScrolling: "touch" }}>
             {fetching ? (
               // Loading spinner while HTML is being fetched
               <div className="flex items-center justify-center h-full">
@@ -316,7 +317,8 @@ const ReceiptModal = ({
                 key={JSON.stringify(invoiceParams)}
                 src={contentUrl || previewUrl || blobUrl}
                 title="Receipt"
-                className="w-full h-full border-0"
+                className="w-full h-full border-0 block"
+                style={{ WebkitOverflowScrolling: "touch", overflowY: "auto" }}
                 sandbox="allow-modals allow-scripts"
               />
             ) : (

@@ -207,17 +207,19 @@ const CartProductSearch = ({ priceMode = "retail", cartMap = {} }) => {
 
   return (
     <div ref={panelRef} className="mb-4">
-      {/* Toggle button */}
-      <button onClick={handleToggle}
-        className="w-full flex items-center justify-between px-4 py-3 rounded-2xl
-          bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200
-          hover:from-indigo-100 hover:to-blue-100 transition">
-        <span className="flex items-center gap-2 text-sm font-semibold text-indigo-700">
-          <ShoppingCart size={15} className="text-indigo-500" />
-          + Add more products to cart
-        </span>
-        {open ? <ChevronUp size={16} className="text-indigo-400" /> : <ChevronDown size={16} className="text-indigo-400" />}
-      </button>
+      {/* Toggle button — sticky so always reachable to collapse the panel */}
+      <div className="sticky z-10 bg-white pb-1" style={{ top: "var(--cart-sticky-h, 0px)" }}>
+        <button onClick={handleToggle}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-2xl
+            bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200
+            hover:from-indigo-100 hover:to-blue-100 transition">
+          <span className="flex items-center gap-2 text-sm font-semibold text-indigo-700">
+            <ShoppingCart size={15} className="text-indigo-500" />
+            + Add more products to cart
+          </span>
+          {open ? <ChevronUp size={16} className="text-indigo-400" /> : <ChevronDown size={16} className="text-indigo-400" />}
+        </button>
+      </div>
 
       <AnimatePresence>
         {open && (

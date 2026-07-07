@@ -380,7 +380,7 @@ const StaffOrders = () => {
           ) : (
             <>
               {/* Cart items label */}
-              <div className="flex items-center justify-between mb-3 px-1">
+              <div className="flex items-center justify-between mb-3 px-1 pt-1">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
                   <ShoppingCart size={12} className="text-indigo-400" />
                   {displayOrders.length} item{displayOrders.length !== 1 ? "s" : ""} in cart
