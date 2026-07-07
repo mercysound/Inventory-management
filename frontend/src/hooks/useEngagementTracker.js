@@ -56,29 +56,26 @@ export const useEngagementTracker = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTracked]);
 
-  // ── Reset inactivity timer on any tracked action ──────────────────────────
-  const resetInactivity = useCallback(() => {
-    clearTimeout(inactivityTimer.current);
-    inactivityTimer.current = setTimeout(() => {
-      endSession();
-    }, INACTIVITY_MS);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // ── End session ───────────────────────────────────────────────────────────
   const endSession = useCallback(() => {
     if (!sessionId.current || !started.current) return;
     clearTimeout(inactivityTimer.current);
-
     axiosInstance.post("/engagement/session/end", {
       sessionId:  sessionId.current,
       purchased:  purchased.current,
       totalSpent: totalSpentRef.current,
       cartItems:  cartSnapshot.current,
     }).catch(() => {});
-
     started.current = false;
   }, []);
+
+  // ── Reset inactivity timer on any tracked action ──────────────────────────
+  const resetInactivity = useCallback(() => {
+    clearTimeout(inactivityTimer.current);
+    inactivityTimer.current = setTimeout(() => {
+      endSession();
+    }, INACTIVITY_MS);
+  }, [endSession]);
 
   // ── Track a single engagement action ─────────────────────────────────────
   const trackAction = useCallback((action, productId = null) => {

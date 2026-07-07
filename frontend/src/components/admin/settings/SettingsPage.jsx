@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import axiosInstance from "../../../utils/axiosInstance";
@@ -10,61 +10,66 @@ import {
 } from "lucide-react";
 import { useTheme, GLOBAL_THEMES, PERSONAL_MODES } from "../../../context/ThemeContext";
 
+// -- SettingSection � collapsible accordion card ------------------------------
+// Defined OUTSIDE SettingsPage so it is never re-created on parent renders.
+const SettingSection = ({ id, icon: Icon, iconColor = "text-indigo-500", title, subtitle, children, badge, openSection, onToggle }) => {
+  const isOpen = openSection === id;
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+      <button type="button"
+        onClick={() => {
+          // Preserve scroll position � read before state update, restore after paint
+          const scroller = document.getElementById("main-scroll");
+          const savedScrollTop = scroller ? scroller.scrollTop : window.scrollY;
+          onToggle(id);
+          // After React re-renders, restore scroll so page doesn't jump
+          requestAnimationFrame(() => {
+            if (scroller) scroller.scrollTop = savedScrollTop;
+            else window.scrollTo(0, savedScrollTop);
+          });
+        }}
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${isOpen ? "bg-indigo-600" : "bg-gray-100 dark:bg-gray-700"}`}>
+            <Icon size={15} className={isOpen ? "text-white" : iconColor} />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">{title}</span>
+              {badge && <span className="text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 px-2 py-0.5 rounded-full font-bold">{badge}</span>}
+            </div>
+            {subtitle && <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate max-w-xs">{subtitle}</p>}
+          </div>
+        </div>
+        <ChevronDown size={16} className={`text-gray-400 transition-transform shrink-0 ml-3 ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div key="body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="overflow-hidden">
+            <div className="px-5 pb-5 pt-1 border-t border-gray-100 dark:border-gray-700">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 const SettingsPage = () => {
   const [loading,  setLoading]  = useState(true);
   const [saving,   setSaving]   = useState(false);
   const [saved,    setSaved]    = useState(false);
   const { globalTheme, setGlobalTheme, personalMode, setPersonalMode } = useTheme();
 
-  // ── Accordion: only one section open at a time. null = all collapsed ──────
+  // -- Accordion state ------------------------------------------------------
   const [openSection, setOpenSection] = useState(null);
   const toggleSection = (id) => setOpenSection((prev) => prev === id ? null : id);
-
-  // ── SettingSection wrapper ─────────────────────────────────────────────────
-  // Renders a collapsible card with a click-to-open header.
-  // icon, title, subtitle, id, openSection, onToggle, children
-  const SettingSection = ({ id, icon: Icon, iconColor = "text-indigo-500", title, subtitle, children, badge }) => {
-    const isOpen = openSection === id;
-    return (
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
-        {/* ── Clickable header ── */}
-        <button type="button" onClick={() => toggleSection(id)}
-          className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${isOpen ? "bg-indigo-600" : "bg-gray-100 dark:bg-gray-700"}`}>
-              <Icon size={15} className={isOpen ? "text-white" : iconColor} />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">{title}</span>
-                {badge && <span className="text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 px-2 py-0.5 rounded-full font-bold">{badge}</span>}
-              </div>
-              {subtitle && <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate max-w-xs">{subtitle}</p>}
-            </div>
-          </div>
-          <ChevronDown size={16} className={`text-gray-400 transition-transform shrink-0 ml-3 ${isOpen ? "rotate-180" : ""}`} />
-        </button>
-        {/* ── Collapsible body ── */}
-        <AnimatePresence initial={false}>
-          {isOpen && (
-            <motion.div
-              key="body"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.22, ease: "easeInOut" }}
-              className="overflow-hidden"
-            >
-              <div className="px-5 pb-5 pt-1 border-t border-gray-100 dark:border-gray-700">
-                {children}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-    );
-  };
 
   const [settings, setSettings] = useState({
     orderExpiryHours:          48,
@@ -96,14 +101,14 @@ const SettingsPage = () => {
   const [showPicker,        setShowPicker]        = useState(false);
   const [pickerSearch,      setPickerSearch]      = useState("");
 
-  // ── Wholesale access state ────────────────────────────────────────────────
+  // -- Wholesale access state ------------------------------------------------
   const [wholesale,        setWholesale]        = useState({ wholesaleAllStaff: false, wholesaleStaffIds: [] });
   const [wholesaleLoading, setWholesaleLoading] = useState(true);
   const [wholesaleSaving,  setWholesaleSaving]  = useState(false);
   const [showWsPicker,     setShowWsPicker]     = useState(false);
   const [wsPickerSearch,   setWsPickerSearch]   = useState("");
 
-  // ── Profile state ─────────────────────────────────────────────────────────
+  // -- Profile state ---------------------------------------------------------
   const [profile,        setProfile]        = useState({ name: "", email: "", phone: "", address: "" });
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [editProfile,    setEditProfile]    = useState(false);
@@ -216,7 +221,7 @@ const SettingsPage = () => {
 
   useEffect(() => { fetchSettings(); fetchDelegation(); fetchWholesaleAccess(); }, []);
 
-  // ── Profile fetch + save ──────────────────────────────────────────────────
+  // -- Profile fetch + save --------------------------------------------------
   useEffect(() => {
     axiosInstance.get("/users/profile")
       .then((res) => {
@@ -333,8 +338,8 @@ const SettingsPage = () => {
         </p>
       </div>
 
-      {/* ── Account / Profile ─────────────────────────────────────────────── */}
-      <SettingSection id="account" icon={User} title="My Account" subtitle="Edit your name, phone, address and password">
+      {/* -- Account / Profile ----------------------------------------------- */}
+      <SettingSection openSection={openSection} onToggle={toggleSection} id="account" icon={User} title="My Account" subtitle="Edit your name, phone, address and password">
         {loadingProfile ? (
           <div className="flex items-center gap-2 text-gray-400 text-sm mt-2">
             <Loader2 size={15} className="animate-spin" /> Loading...
@@ -428,7 +433,7 @@ const SettingsPage = () => {
       </SettingSection>
 
       {/* Store Information */}
-      <SettingSection id="store-info" icon={Store} title="Store Information" subtitle={settings.storeName || "Store name, used in emails & receipts"}>
+      <SettingSection openSection={openSection} onToggle={toggleSection} id="store-info" icon={Store} title="Store Information" subtitle={settings.storeName || "Store name, used in emails & receipts"}>
         <div className="mt-3">
           <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Store Name</label>
           <input type="text" value={settings.storeName} onChange={(e) => handleChange("storeName", e.target.value)}
@@ -441,7 +446,7 @@ const SettingsPage = () => {
       </SettingSection>
 
       {/* Order Pickup Expiry */}
-      <SettingSection id="expiry" icon={Clock} iconColor="text-amber-500" title="Order Pickup Expiry" subtitle={`Threshold: ${settings.orderExpiryHours}h · ${settings.expiryReminderEnabled ? "Emails ON" : "Emails OFF"}`}>
+      <SettingSection openSection={openSection} onToggle={toggleSection} id="expiry" icon={Clock} iconColor="text-amber-500" title="Order Pickup Expiry" subtitle={`Threshold: ${settings.orderExpiryHours}h � ${settings.expiryReminderEnabled ? "Emails ON" : "Emails OFF"}`}>
         <div className="mt-3 space-y-5">
           <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
             <div>
@@ -463,8 +468,8 @@ const SettingsPage = () => {
           </div>
           {!settings.expiryReminderEnabled && (
             <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2">
-              <span className="text-amber-500">🔕</span>
-              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Emails paused — orders still appear on the Expiring Orders page.</p>
+              <span className="text-amber-500">??</span>
+              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Emails paused � orders still appear on the Expiring Orders page.</p>
             </div>
           )}
           <div className={`space-y-5 transition-opacity ${settings.expiryReminderEnabled ? "opacity-100" : "opacity-40 pointer-events-none"}`}>
@@ -509,7 +514,7 @@ const SettingsPage = () => {
       </SettingSection>
 
       {/* Notification Email */}
-      <SettingSection id="notif-email" icon={Mail} iconColor="text-blue-500" title="Admin Notification Email" subtitle={settings.adminNotificationEmail || "Leave blank to use account email"}>
+      <SettingSection openSection={openSection} onToggle={toggleSection} id="notif-email" icon={Mail} iconColor="text-blue-500" title="Admin Notification Email" subtitle={settings.adminNotificationEmail || "Leave blank to use account email"}>
         <div className="mt-3">
           <input type="email" value={settings.adminNotificationEmail}
             onChange={(e) => handleChange("adminNotificationEmail", e.target.value)}
@@ -522,7 +527,7 @@ const SettingsPage = () => {
       </SettingSection>
 
       {/* Store Contact Info */}
-      <SettingSection id="contact" icon={MapPin} iconColor="text-green-500" title="Store Contact Info" subtitle="Shown publicly on the landing page">
+      <SettingSection openSection={openSection} onToggle={toggleSection} id="contact" icon={MapPin} iconColor="text-green-500" title="Store Contact Info" subtitle="Shown publicly on the landing page">
         <div className="space-y-4 mt-3">
           {[
             { label: "Contact Email",    icon: Mail,           field: "contactEmail",    type: "email", placeholder: "store@yourdomain.com",   ring: "focus:ring-green-300" },
@@ -551,7 +556,7 @@ const SettingsPage = () => {
       </SettingSection>
 
       {/* Payment / Bank Account Details */}
-      <SettingSection id="bank" icon={CreditCard} title="Payment / Bank Account Details" subtitle="Shown on staff invoices for bank transfer payments">
+      <SettingSection openSection={openSection} onToggle={toggleSection} id="bank" icon={CreditCard} title="Payment / Bank Account Details" subtitle="Shown on staff invoices for bank transfer payments">
         <div className="mt-3 space-y-5">
           {[["Account 1", "bankName", "accountName", "accountNumber", ""], ["Account 2", "bankName2", "accountName2", "accountNumber2", " (optional)"]].map(([label, fn, an, acc, note]) => (
             <div key={fn}>
@@ -572,7 +577,7 @@ const SettingsPage = () => {
       </SettingSection>
 
       {/* Inventory Alerts */}
-      <SettingSection id="inventory" icon={AlertTriangle} iconColor="text-red-500" title="Inventory Alerts" subtitle={`Low stock ≤ ${settings.lowStockThreshold} units · Expiry ≤ ${settings.productExpiryWarningWeeks}wk · Emails ${settings.productExpiryEmailEnabled ? "ON" : "OFF"}`}>
+      <SettingSection openSection={openSection} onToggle={toggleSection} id="inventory" icon={AlertTriangle} iconColor="text-red-500" title="Inventory Alerts" subtitle={`Low stock = ${settings.lowStockThreshold} units � Expiry = ${settings.productExpiryWarningWeeks}wk � Emails ${settings.productExpiryEmailEnabled ? "ON" : "OFF"}`}>
         <div className="mt-3 space-y-5">
           <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
             <div>
@@ -607,7 +612,7 @@ const SettingsPage = () => {
       </SettingSection>
 
       {/* Global App Theme */}
-      <SettingSection id="theme" icon={Palette} title="Global App Theme" subtitle={`Active: ${GLOBAL_THEMES.find(t => t.id === globalTheme)?.label || globalTheme}`}>
+      <SettingSection openSection={openSection} onToggle={toggleSection} id="theme" icon={Palette} title="Global App Theme" subtitle={`Active: ${GLOBAL_THEMES.find(t => t.id === globalTheme)?.label || globalTheme}`}>
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {GLOBAL_THEMES.map((t) => {
             const active = globalTheme === t.id;
@@ -628,7 +633,7 @@ const SettingsPage = () => {
       </SettingSection>
 
       {/* Personal Display Mode */}
-      <SettingSection id="display-mode" icon={personalMode === "dark" ? Moon : Sun} iconColor={personalMode === "dark" ? "text-indigo-400" : "text-amber-400"} title="My Display Mode" subtitle={`Current: ${PERSONAL_MODES.find(m => m.id === personalMode)?.label || personalMode} — only affects your view`}>
+      <SettingSection openSection={openSection} onToggle={toggleSection} id="display-mode" icon={personalMode === "dark" ? Moon : Sun} iconColor={personalMode === "dark" ? "text-indigo-400" : "text-amber-400"} title="My Display Mode" subtitle={`Current: ${PERSONAL_MODES.find(m => m.id === personalMode)?.label || personalMode} � only affects your view`}>
         <div className="flex flex-col sm:flex-row gap-3 mt-3">
           {PERSONAL_MODES.map((m) => {
             const active = personalMode === m.id;
@@ -649,7 +654,7 @@ const SettingsPage = () => {
       </SettingSection>
 
       {/* Staff Order Delegation */}
-      <SettingSection id="delegation" icon={ShieldCheck} title="Staff Order Delegation" subtitle={delegation.delegateToAllStaff ? "All staff delegated" : `${delegation.delegatedStaffIds.length} staff delegated`}>
+      <SettingSection openSection={openSection} onToggle={toggleSection} id="delegation" icon={ShieldCheck} title="Staff Order Delegation" subtitle={delegation.delegateToAllStaff ? "All staff delegated" : `${delegation.delegatedStaffIds.length} staff delegated`}>
         <div className="mt-3">
             <div className="flex flex-col sm:flex-row gap-3">
               {[{ value: true, label: "All Staff", desc: "Every active staff member can manage placed orders.", icon: "all" },
@@ -751,7 +756,7 @@ const SettingsPage = () => {
             )}
           </div>
       </SettingSection>
-      <SettingSection id="wholesale" icon={Store} iconColor="text-amber-500" title="Staff Wholesale Pricing Access" subtitle={wholesale.wholesaleAllStaff ? "All staff have access" : `${wholesale.wholesaleStaffIds.length} staff allowed`}>
+      <SettingSection openSection={openSection} onToggle={toggleSection} id="wholesale" icon={Store} iconColor="text-amber-500" title="Staff Wholesale Pricing Access" subtitle={wholesale.wholesaleAllStaff ? "All staff have access" : `${wholesale.wholesaleStaffIds.length} staff allowed`}>
         <div className="mt-3">
             {/* All / Specific toggle */}
             <div className="flex flex-col sm:flex-row gap-3">
@@ -861,7 +866,7 @@ const SettingsPage = () => {
       </SettingSection>
 
       {/* Abandoned Cart Reminder */}
-      <SettingSection id="abandoned-cart" icon={Bell} title="Abandoned Cart Reminder" subtitle={`${settings.abandonedCartReminderEnabled ? "ON" : "OFF"} · fires ${settings.abandonedCartReminderMinutes}min before cart expires`}>
+      <SettingSection openSection={openSection} onToggle={toggleSection} id="abandoned-cart" icon={Bell} title="Abandoned Cart Reminder" subtitle={`${settings.abandonedCartReminderEnabled ? "ON" : "OFF"} � fires ${settings.abandonedCartReminderMinutes}min before cart expires`}>
         <div className="mt-3 space-y-4">
           <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
             <div>
@@ -928,3 +933,4 @@ const SettingsPage = () => {
 };
 
 export default SettingsPage;
+
