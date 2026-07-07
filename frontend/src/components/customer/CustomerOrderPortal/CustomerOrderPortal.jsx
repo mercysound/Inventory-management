@@ -80,6 +80,7 @@ const CustomerOrderPortal = () => {
   const { resetCart, cartCount } = useCart();
   const { trackAction, markPurchased } = useEngagementTracker();
   const navigate    = useNavigate();
+  const cartStickyRef = useRef(null);
 
   // Product page route per role
   const productsPath = user?.role === "wholesale"
@@ -190,6 +191,17 @@ const CustomerOrderPortal = () => {
   useEffect(() => {
     fetchOrdersRef.current = fetchOrders;
   }, [fetchOrders]);
+
+  // Measure sticky cart header height → CSS variable used by search bar top offset
+  useEffect(() => {
+    const el = cartStickyRef.current;
+    if (!el) return;
+    const update = () => document.documentElement.style.setProperty("--cart-sticky-h", `${el.offsetHeight}px`);
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    update();
+    return () => ro.disconnect();
+  }, [orders.length]);
 
   useEffect(() => {
     fetchOrders();
@@ -591,25 +603,45 @@ const CustomerOrderPortal = () => {
         )}
       </AnimatePresence>
 
-      {/* ── Sticky header (only when cart has items) — compact single row ── */}
+      {/* ── Sticky header: Row 1 fixed (title + actions), Row 2 stats scrollable ── */}
       {orders.length > 0 && (
         <div className="sticky top-0 z-20 -mx-4 md:-mx-6 -mt-4 md:-mt-6 bg-white border-b border-gray-100 shadow-sm"
-          data-cart-sticky>
-          {/* Single compact row — everything on one line, stats scroll horizontally */}
-          <div className="flex items-center gap-2 px-3 md:px-6 py-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-            {/* Icon + title — shrink-0 so it never compresses */}
+          data-cart-sticky
+          ref={cartStickyRef}>
+
+          {/* Row 1 — fixed, never scrolls: icon + title + action buttons */}
+          <div className="flex items-center justify-between px-3 md:px-6 pt-2 pb-1.5">
             <div className="flex items-center gap-1.5 shrink-0">
               <div className="w-6 h-6 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
                 <ShoppingCart size={12} className="text-white" />
               </div>
               <p className="font-bold text-gray-900 text-xs whitespace-nowrap">My Cart</p>
             </div>
-
-            {/* Divider */}
-            <div className="w-px h-4 bg-gray-200 shrink-0" />
-
-            {/* Stats — horizontal scroll on mobile */}
             <div className="flex items-center gap-1.5 shrink-0">
+              <button onClick={() => navigate(productsPath)}
+                className="flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-lg border border-green-200 text-green-700 bg-green-50 hover:bg-green-100 transition font-semibold whitespace-nowrap">
+                <ShoppingBag size={10} /> Products
+              </button>
+              <button onClick={() => fetchOrders(true)} disabled={refreshing}
+                className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition disabled:opacity-40">
+                <RefreshCw size={11} className={refreshing ? "animate-spin" : ""} />
+              </button>
+              <button onClick={() => setShowPendingModal(true)}
+                className="flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition whitespace-nowrap">
+                <Clock size={10} /> Pending
+                {pendingOrders.length > 0 && (
+                  <span className="bg-white text-indigo-700 text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center ml-0.5">
+                    {pendingOrders.length}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Row 2 — stats pills, scrollable x with visible underline indicator */}
+          <div className="overflow-x-auto pb-2 px-3 md:px-6"
+            style={{ scrollbarWidth: "thin", scrollbarColor: "#c7d2fe transparent" }}>
+            <div className="flex items-center gap-1.5 w-max">
               <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-lg whitespace-nowrap">
                 🛒 {orders.length} item{orders.length !== 1 ? "s" : ""}
               </span>
@@ -624,28 +656,11 @@ const CustomerOrderPortal = () => {
                   ⏳ {pendingOrders.length} pending
                 </span>
               )}
-            </div>
-
-            {/* Actions — pushed right with ml-auto, shrink-0 */}
-            <div className="flex items-center gap-1.5 ml-auto shrink-0">
-              <button onClick={() => navigate(productsPath)}
-                className="flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-lg border border-green-200 text-green-700 bg-green-50 hover:bg-green-100 transition font-semibold whitespace-nowrap">
-                <ShoppingBag size={10} /> Products
-              </button>
-              <button onClick={() => fetchOrders(true)} disabled={refreshing}
-                className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition disabled:opacity-40">
-                <RefreshCw size={11} className={refreshing ? "animate-spin" : ""} />
-              </button>
-              <button onClick={() => setShowPendingModal(true)}
-                className="flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition whitespace-nowrap">
-                <Clock size={10} />
-                Pending
-                {pendingOrders.length > 0 && (
-                  <span className="bg-white text-indigo-700 text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
-                    {pendingOrders.length}
-                  </span>
-                )}
-              </button>
+              {user?.role === "wholesale" && (
+                <span className="text-[10px] font-bold text-amber-700 bg-amber-100 border border-amber-300 px-2 py-1 rounded-lg whitespace-nowrap">
+                  🏪 Wholesale
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -692,20 +707,25 @@ const CustomerOrderPortal = () => {
         </div>
       )}
 
+      {/* ── CartProductSearch — OUTSIDE AnimatePresence so it NEVER unmounts ──
+          This is critical: if it's inside key="empty" or key="table", AnimatePresence
+          destroys it when orders.length crosses 0, resetting open state to false.
+          By living outside, it persists across the empty→table transition. ── */}
+      <div className={`sticky z-10 -mx-4 md:-mx-6 bg-white border-b border-gray-100 px-4 md:px-6 pb-2 pt-2 transition-all ${orders.length > 0 ? "top-[var(--cart-sticky-h,56px)]" : "top-0"}`}>
+        <CartProductSearch
+          priceMode={priceMode}
+          cartMap={Object.fromEntries(orders.map(o => [o.product?._id || o.product, { quantity: o.quantity, orderId: o._id }]))}
+        />
+      </div>
+
       {/* Cart table or empty state */}
       <AnimatePresence mode="wait">
         {orders.length === 0 ? (
-          <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+          <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 pt-2">
             <EmptyCart />
-            <CartProductSearch priceMode={priceMode} cartMap={{}} />
           </motion.div>
         ) : (
-          <motion.div key="table" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-            <CartProductSearch
-              priceMode={priceMode}
-              cartMap={Object.fromEntries(orders.map(o => [o.product?._id || o.product, { quantity: o.quantity, orderId: o._id }]))}
-            />
-
+          <motion.div key="table" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-2">
             <CustomerOrderTable
               orders={orders}
               onIncrease={handleIncreaseQty}

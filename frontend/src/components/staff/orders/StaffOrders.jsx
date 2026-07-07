@@ -335,7 +335,19 @@ const StaffOrders = () => {
         {/* ════════════════════════════════════════════════════════════════
             SCROLLABLE CART BODY — independent scroll, sticky panel stays fixed
         ════════════════════════════════════════════════════════════════ */}
-        <div className="px-4 md:px-6 pt-4 pb-6">
+        <div className="px-4 md:px-6 pt-2 pb-6">
+
+          {/* CartProductSearch lives OUTSIDE the loading/empty/table ternary
+              so it NEVER unmounts when cart transitions from empty→populated.
+              This is what prevents the panel from collapsing on first add. */}
+          {!loading && (
+            <div className="mb-3">
+              <CartProductSearch
+                priceMode={isWholesale ? "wholesale" : "retail"}
+                cartMap={Object.fromEntries(orders.map(o => [o.product?._id || o.product, { quantity: o.quantity, orderId: o._id }]))}
+              />
+            </div>
+          )}
 
           {loading ? (
             <div className="space-y-3">
@@ -376,11 +388,6 @@ const StaffOrders = () => {
                 </p>
                 <p className="text-xs text-gray-400">{totalItems} unit{totalItems !== 1 ? "s" : ""}</p>
               </div>
-
-              <CartProductSearch
-                priceMode={isWholesale ? "wholesale" : "retail"}
-                cartMap={Object.fromEntries(orders.map(o => [o.product?._id || o.product, { quantity: o.quantity, orderId: o._id }]))}
-              />
 
               <StaffTable
                 orders={displayOrders}
