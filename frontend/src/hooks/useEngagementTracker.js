@@ -38,25 +38,7 @@ export const useEngagementTracker = () => {
 
   const isTracked = user && TRACKED_ROLES.includes(user.role);
 
-  // ── Start session once on mount ───────────────────────────────────────────
-  useEffect(() => {
-    if (!isTracked || started.current) return;
-
-    sessionId.current = makeSessionId();
-    started.current   = true;
-
-    axiosInstance.post("/engagement/session/start", {
-      sessionId: sessionId.current,
-    }).catch(() => {}); // fire-and-forget, never block UX
-
-    return () => {
-      // End session on unmount
-      endSession();
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isTracked]);
-
-  // ── End session ───────────────────────────────────────────────────────────
+  // ── End session — declared FIRST so all later functions can reference it ──
   const endSession = useCallback(() => {
     if (!sessionId.current || !started.current) return;
     clearTimeout(inactivityTimer.current);
@@ -69,13 +51,22 @@ export const useEngagementTracker = () => {
     started.current = false;
   }, []);
 
-  // ── Reset inactivity timer on any tracked action ──────────────────────────
+  // ── Reset inactivity timer ────────────────────────────────────────────────
   const resetInactivity = useCallback(() => {
     clearTimeout(inactivityTimer.current);
-    inactivityTimer.current = setTimeout(() => {
-      endSession();
-    }, INACTIVITY_MS);
+    inactivityTimer.current = setTimeout(endSession, INACTIVITY_MS);
   }, [endSession]);
+
+  // ── Start session once on mount ───────────────────────────────────────────
+  useEffect(() => {
+    if (!isTracked || started.current) return;
+    sessionId.current = makeSessionId();
+    started.current   = true;
+    axiosInstance.post("/engagement/session/start", {
+      sessionId: sessionId.current,
+    }).catch(() => {});
+    return () => { endSession(); };
+  }, [isTracked, endSession]); // endSession is stable (empty deps useCallback)
 
   // ── Track a single engagement action ─────────────────────────────────────
   const trackAction = useCallback((action, productId = null) => {

@@ -689,7 +689,7 @@ const generateInvoice = async (req, res) => {
           ["Status:", isCancelled ? "CANCELLED" : paymentStatus],
           ...(roleBadge ? [["PT:", roleBadge === "WS" ? "WSP" : "RTP"]] : []),
           // Show seller name on all staff invoices — preview uses query param, final uses stored data
-          ...(changedByName ? [["Sold by:", changedByName + (changedById ? "  #" + changedById : "")]] : []),
+          ...(changedByName ? [[mode === "preview" ? "About to sell by:" : "Sold by:", changedByName + (changedById ? "  #" + changedById : "")]] : []),
         ].forEach(([label, value]) => {
           const ly = doc.y;
           doc.font("Helvetica-Bold").text(label, margin, ly, { continued: false, width: 70 });
@@ -1014,9 +1014,9 @@ const generateInvoice = async (req, res) => {
       ...(roleBadge ? [
         '<div class="meta-row"><span class="meta-lbl">PT</span><span class="meta-val"><span style="background:' + (roleBadge === "WS" ? "#fef3c7" : "#eff6ff") + ';color:' + (roleBadge === "WS" ? "#92400e" : "#1d4ed8") + ';border:1px solid ' + (roleBadge === "WS" ? "#fde68a" : "#bfdbfe") + ';padding:1px 8px;border-radius:99px;font-size:.7rem;font-weight:700;">' + (roleBadge === "WS" ? "WSP" : "RTP") + '</span></span></div>',
       ] : []),
-      // Sold by row — shown on all staff invoices (preview + final)
+      // Sold by / About to sell by row — shown on all staff invoices
       ...(changedByName ? [
-        '<div class="meta-row"><span class="meta-lbl">Sold by</span><span class="meta-val">' + escapeHtml(changedByName) + (changedById ? ' <span style="font-size:.68rem;color:#9ca3af">#' + changedById + '</span>' : '') + '</span></div>',
+        '<div class="meta-row"><span class="meta-lbl">' + (mode === "preview" ? "About to sell by" : "Sold by") + '</span><span class="meta-val">' + escapeHtml(changedByName) + (changedById ? ' <span style="font-size:.68rem;color:#9ca3af">#' + changedById + '</span>' : '') + '</span></div>',
       ] : []),
       '</div>',
 
