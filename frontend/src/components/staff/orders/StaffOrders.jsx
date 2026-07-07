@@ -208,7 +208,7 @@ const StaffOrders = () => {
         {/* ════════════════════════════════════════════════════════════════
             STICKY TOP PANEL
         ════════════════════════════════════════════════════════════════ */}
-        <div className="sticky top-0 z-20 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 shadow-sm">
+        <div className="sticky top-0 z-20 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 shadow-sm" data-cart-sticky>
 
           {/* ── Row 1: Branding + stats + Products btn ── */}
           <div className="flex items-center gap-2 px-4 pt-3 pb-2">
@@ -358,12 +358,12 @@ const StaffOrders = () => {
                   <ShoppingBag size={15} /> Go to Products
                 </button>
               </div>
-              <CartProductSearch priceMode={isWholesale ? "wholesale" : "retail"} onCartUpdated={() => fetchOrders(true)} cartMap={{}} />
+              <CartProductSearch priceMode={isWholesale ? "wholesale" : "retail"} cartMap={{}} />
             </motion.div>
           ) : (
             <>
               {/* Cart items label */}
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3 px-1">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
                   <ShoppingCart size={12} className="text-indigo-400" />
                   {displayOrders.length} item{displayOrders.length !== 1 ? "s" : ""} in cart
@@ -372,10 +372,8 @@ const StaffOrders = () => {
                 <p className="text-xs text-gray-400">{totalItems} unit{totalItems !== 1 ? "s" : ""}</p>
               </div>
 
-              {/* Add more products from cart */}
               <CartProductSearch
                 priceMode={isWholesale ? "wholesale" : "retail"}
-                onCartUpdated={() => fetchOrders(true)}
                 cartMap={Object.fromEntries(orders.map(o => [o.product?._id || o.product, { quantity: o.quantity, orderId: o._id }]))}
               />
 

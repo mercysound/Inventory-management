@@ -259,7 +259,7 @@ const ReceiptModal = ({
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center overflow-y-auto"
+        className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-start justify-center overflow-y-auto"
         style={{ touchAction: "none", paddingTop: "max(env(safe-area-inset-top, 0px), 8px)", paddingBottom: "max(env(safe-area-inset-bottom, 0px), 8px)", paddingLeft: "12px", paddingRight: "12px" }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

@@ -1,18 +1,10 @@
-import React, { useState } from "react";
+import React from "react";
 import { motion } from "framer-motion";
 import { FiPlus, FiMinus, FiTrash2 } from "react-icons/fi";
 import { FaImage } from "react-icons/fa";
-import { Search, X } from "lucide-react";
 
 const CustomerOrderTable = ({ orders, onIncrease, onReduce, onDelete }) => {
-  const [search, setSearch] = useState("");
-
-  // Filter purely on display — all orders remain in state, API calls use real IDs
-  const visible = search.trim()
-    ? orders.filter((o) =>
-        (o?.product?.name || "").toLowerCase().includes(search.trim().toLowerCase())
-      )
-    : orders;
+  // Search bar removed — use the "Add more products to cart" search above the table
 
   if (!orders.length) {
     return (
@@ -22,40 +14,10 @@ const CustomerOrderTable = ({ orders, onIncrease, onReduce, onDelete }) => {
     );
   }
 
+  const visible = orders;
+
   return (
     <div className="space-y-4">
-
-      {/* ── Search bar ──────────────────────────────────────────────────────── */}
-      <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={`Search ${orders.length} item${orders.length !== 1 ? "s" : ""} in cart…`}
-          className="w-full pl-8 pr-9 py-2.5 text-sm border border-gray-200 rounded-xl bg-white
-            focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition"
-        />
-        {search && (
-          <button
-            onClick={() => setSearch("")}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
-            aria-label="Clear search"
-          >
-            <X size={14} />
-          </button>
-        )}
-      </div>
-
-      {/* No match state */}
-      {visible.length === 0 && search && (
-        <div className="py-10 text-center text-gray-400 bg-white rounded-xl border border-dashed border-gray-200">
-          <p className="text-sm font-medium">No items match "<span className="text-gray-600">{search}</span>"</p>
-          <button onClick={() => setSearch("")} className="mt-2 text-xs text-indigo-500 hover:underline">
-            Clear search
-          </button>
-        </div>
-      )}
       {/* Desktop Table View */}
       {visible.length > 0 && (
       <div className="hidden lg:block">

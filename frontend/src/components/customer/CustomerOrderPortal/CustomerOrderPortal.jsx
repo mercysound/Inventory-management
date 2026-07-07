@@ -580,83 +580,115 @@ const CustomerOrderPortal = () => {
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
 
-      {/* ── Soft refresh indicator — appears when silently revalidating ─────── */}
+      {/* ── Soft refresh indicator ─── */}
       <AnimatePresence>
         {refreshing && (
-          <motion.div
-            key="refreshing"
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className="fixed top-16 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 bg-indigo-600 text-white text-xs font-medium px-4 py-2 rounded-full shadow-lg pointer-events-none"
-          >
+          <motion.div key="refreshing" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+            className="fixed top-16 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 bg-indigo-600 text-white text-xs font-medium px-4 py-2 rounded-full shadow-lg pointer-events-none">
             <RefreshCw size={12} className="animate-spin" />
             Updating cart…
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Page header */}
-      <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <ShoppingCart size={24} className="text-indigo-600" />
-            My Cart
-          </h2>
-          <p className="text-sm text-gray-500 mt-0.5">
-            Review your items before checkout
-            {user?.role === "wholesale" && (
-              <span className="ml-2 inline-flex items-center gap-1 bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full">
-                🏪 Wholesale pricing
-              </span>
-            )}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Browse Products shortcut */}
-          <motion.button
-            onClick={() => navigate(productsPath)}
-            whileTap={{ scale: 0.94 }}
-            className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-green-200 text-green-700 bg-green-50 hover:bg-green-100 transition font-medium"
-          >
-            <ShoppingBag size={14} />
-            Products
-          </motion.button>
-
-          <motion.button
-            onClick={() => fetchOrders(true)}
-            disabled={refreshing}
-            whileTap={{ scale: 0.94 }}
-            className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition disabled:opacity-40"
-          >
-            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
-            <span className="hidden sm:inline">Refresh</span>
-          </motion.button>
-
-          {/* Pending Orders button — shows count badge */}
-          <motion.button
-            onClick={() => setShowPendingModal(true)}
-            whileTap={{ scale: 0.94 }}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg shadow-sm transition"
-          >
-            <Clock size={14} />
-            Pending Orders
-            {pendingOrders.length > 0 && (
-              <span className="bg-white text-indigo-700 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                {pendingOrders.length}
-              </span>
-            )}
-          </motion.button>
-        </div>
-      </div>
-
-      {/* Stats row */}
+      {/* ── Sticky header (only when cart has items) — compact single row ── */}
       {orders.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <StatCard icon={ShoppingCart} label="Items in Cart"   value={orders.length}         color="bg-indigo-500" />
-          <StatCard icon={PackageOpen}  label="Total Units"     value={totalItems}            color="bg-blue-500" />
-          <StatCard icon={Clock}        label="Pending Orders"  value={pendingOrders.length}  color="bg-amber-500" />
+        <div className="sticky top-0 z-20 -mx-4 md:-mx-6 -mt-4 md:-mt-6 bg-white border-b border-gray-100 shadow-sm"
+          data-cart-sticky>
+          {/* Single compact row — everything on one line, stats scroll horizontally */}
+          <div className="flex items-center gap-2 px-3 md:px-6 py-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+            {/* Icon + title — shrink-0 so it never compresses */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <div className="w-6 h-6 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
+                <ShoppingCart size={12} className="text-white" />
+              </div>
+              <p className="font-bold text-gray-900 text-xs whitespace-nowrap">My Cart</p>
+            </div>
+
+            {/* Divider */}
+            <div className="w-px h-4 bg-gray-200 shrink-0" />
+
+            {/* Stats — horizontal scroll on mobile */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-lg whitespace-nowrap">
+                🛒 {orders.length} item{orders.length !== 1 ? "s" : ""}
+              </span>
+              <span className="text-[10px] font-bold text-green-700 bg-green-50 border border-green-100 px-2 py-1 rounded-lg whitespace-nowrap">
+                ₦{grandTotal.toLocaleString()}
+              </span>
+              <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-100 px-2 py-1 rounded-lg whitespace-nowrap">
+                {totalItems} unit{totalItems !== 1 ? "s" : ""}
+              </span>
+              {pendingOrders.length > 0 && (
+                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg whitespace-nowrap">
+                  ⏳ {pendingOrders.length} pending
+                </span>
+              )}
+            </div>
+
+            {/* Actions — pushed right with ml-auto, shrink-0 */}
+            <div className="flex items-center gap-1.5 ml-auto shrink-0">
+              <button onClick={() => navigate(productsPath)}
+                className="flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-lg border border-green-200 text-green-700 bg-green-50 hover:bg-green-100 transition font-semibold whitespace-nowrap">
+                <ShoppingBag size={10} /> Products
+              </button>
+              <button onClick={() => fetchOrders(true)} disabled={refreshing}
+                className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition disabled:opacity-40">
+                <RefreshCw size={11} className={refreshing ? "animate-spin" : ""} />
+              </button>
+              <button onClick={() => setShowPendingModal(true)}
+                className="flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition whitespace-nowrap">
+                <Clock size={10} />
+                Pending
+                {pendingOrders.length > 0 && (
+                  <span className="bg-white text-indigo-700 text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                    {pendingOrders.length}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Non-sticky page header (always visible when no items) ── */}
+      {orders.length === 0 && (
+        <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <ShoppingCart size={24} className="text-indigo-600" />
+              My Cart
+            </h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Review your items before checkout
+              {user?.role === "wholesale" && (
+                <span className="ml-2 inline-flex items-center gap-1 bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                  🏪 Wholesale pricing
+                </span>
+              )}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <motion.button onClick={() => navigate(productsPath)} whileTap={{ scale: 0.94 }}
+              className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-green-200 text-green-700 bg-green-50 hover:bg-green-100 transition font-medium">
+              <ShoppingBag size={14} /> Products
+            </motion.button>
+            <motion.button onClick={() => fetchOrders(true)} disabled={refreshing} whileTap={{ scale: 0.94 }}
+              className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition disabled:opacity-40">
+              <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+              <span className="hidden sm:inline">Refresh</span>
+            </motion.button>
+            <motion.button onClick={() => setShowPendingModal(true)} whileTap={{ scale: 0.94 }}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg shadow-sm transition">
+              <Clock size={14} />
+              Pending Orders
+              {pendingOrders.length > 0 && (
+                <span className="bg-white text-indigo-700 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {pendingOrders.length}
+                </span>
+              )}
+            </motion.button>
+          </div>
         </div>
       )}
 
@@ -665,14 +697,12 @@ const CustomerOrderPortal = () => {
         {orders.length === 0 ? (
           <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             <EmptyCart />
-            <CartProductSearch priceMode={priceMode} onCartUpdated={() => fetchOrders(true)} cartMap={{}} />
+            <CartProductSearch priceMode={priceMode} cartMap={{}} />
           </motion.div>
         ) : (
           <motion.div key="table" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-            {/* ── Add more products from cart ── */}
             <CartProductSearch
               priceMode={priceMode}
-              onCartUpdated={() => fetchOrders(true)}
               cartMap={Object.fromEntries(orders.map(o => [o.product?._id || o.product, { quantity: o.quantity, orderId: o._id }]))}
             />
 

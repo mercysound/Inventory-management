@@ -29,24 +29,17 @@ const FulfillmentModal = ({ isOpen, onClose, onConfirm, userProfile = null }) =>
     }
   }, [isOpen, userProfile]);
 
-  // Lock scroll — position:fixed on body for reliable iOS Safari scroll prevention
+  // Lock scroll on open
   useEffect(() => {
     if (!isOpen) return;
-    const scrollY = window.scrollY;
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = "100%";
+    // Simple overflow lock — don't use position:fixed as it fights with the fixed modal overlay
     document.body.style.overflow = "hidden";
     const el = document.getElementById("main-scroll");
-    if (el) el.style.overflow = "hidden";
+    if (el) { el.dataset.prevOverflow = el.style.overflow; el.style.overflow = "hidden"; }
     return () => {
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.width = "";
       document.body.style.overflow = "";
-      window.scrollTo(0, scrollY);
       const el2 = document.getElementById("main-scroll");
-      if (el2) el2.style.overflow = "";
+      if (el2) el2.style.overflow = el2.dataset.prevOverflow || "";
     };
   }, [isOpen]);
 
@@ -85,8 +78,8 @@ const FulfillmentModal = ({ isOpen, onClose, onConfirm, userProfile = null }) =>
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto"
-          style={{ backgroundColor: "rgba(0,0,0,0.55)", touchAction: "none", padding: "16px" }}
+          className="fixed inset-0 flex items-center justify-center overflow-y-auto"
+          style={{ backgroundColor: "rgba(0,0,0,0.55)", touchAction: "none", padding: "16px", zIndex: 9999 }}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
           onClick={handleClose}

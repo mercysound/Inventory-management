@@ -1,4 +1,9 @@
 // CartProductSearch.jsx
+// Collapsible "Add more products to cart" panel.
+// - Fires window.dispatchEvent("ordersUpdated") to silently refresh the parent cart
+//   WITHOUT causing a re-render of this component — panel stays open always.
+// - Scrolls itself into view just below the sticky header when opened.
+// - Shows − qty + controls when product already in cart.
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, Plus, Minus, ShoppingCart, Package, Loader2, ChevronDown, ChevronUp } from "lucide-react";
@@ -14,8 +19,8 @@ const useDebounce = (val, delay) => {
   return d;
 };
 
-// ── Single product result card ───────────────────────────────────────────────
-const ProductResult = ({ product, priceMode, cartQty, onAdd, onIncrease, onDecrease, busy }) => {
+// ── Single product result row ─────────────────────────────────────────────────
+const ProductResult = ({ product, priceMode, cartQty, onAdd, onDecrease, busy }) => {
   const oos   = product.stock === 0;
   const price = priceMode === "wholesale"
     ? (product.wholesalePrice ?? product.price)
@@ -41,16 +46,12 @@ const ProductResult = ({ product, priceMode, cartQty, onAdd, onIncrease, onDecre
         <p className="text-sm font-semibold text-gray-800 leading-snug">{product.name}</p>
         <p className="text-[11px] text-indigo-600 font-medium">{product.categoryId?.name || "—"}</p>
         {product.description && (
-          <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-1 leading-relaxed">
-            {product.description}
-          </p>
+          <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-1">{product.description}</p>
         )}
         <div className="flex items-center gap-2 mt-1 flex-wrap">
           <span className="text-sm font-bold text-gray-900">₦{Number(price).toLocaleString()}</span>
           {oos ? (
-            <span className="text-[10px] font-bold text-red-500 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
-              Out of stock
-            </span>
+            <span className="text-[10px] font-bold text-red-500 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">Out of stock</span>
           ) : (
             <span className="text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
               {product.stock} in stock
@@ -69,39 +70,22 @@ const ProductResult = ({ product, priceMode, cartQty, onAdd, onIncrease, onDecre
         {busy ? (
           <Loader2 size={16} className="animate-spin text-gray-400" />
         ) : inCart ? (
-          /* Already in cart — show − qty + */
           <div className="flex items-center gap-1 bg-green-50 border border-green-200 rounded-xl px-1.5 py-1">
-            <button
-              onClick={() => onDecrease(product)}
-              className="w-7 h-7 rounded-lg bg-white border border-red-200 text-red-500
-                hover:bg-red-50 flex items-center justify-center font-bold text-sm transition active:scale-90"
-            >
+            <button onClick={() => onDecrease(product)}
+              className="w-7 h-7 rounded-lg bg-white border border-red-200 text-red-500 hover:bg-red-50 flex items-center justify-center transition active:scale-90">
               <Minus size={12} />
             </button>
-            <span className="font-bold text-green-800 text-sm w-5 text-center select-none">
-              {cartQty}
-            </span>
-            <button
-              onClick={() => onAdd(product)}
-              disabled={oos || cartQty >= product.stock}
-              className="w-7 h-7 rounded-lg bg-green-600 hover:bg-green-700 text-white
-                flex items-center justify-center font-bold text-sm transition active:scale-90
-                disabled:opacity-40 disabled:cursor-not-allowed"
-            >
+            <span className="font-bold text-green-800 text-sm w-5 text-center select-none">{cartQty}</span>
+            <button onClick={() => onAdd(product)} disabled={oos || cartQty >= product.stock}
+              className="w-7 h-7 rounded-lg bg-green-600 hover:bg-green-700 text-white flex items-center justify-center transition active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed">
               <Plus size={12} />
             </button>
           </div>
         ) : (
-          /* Not in cart — show plain + */
-          <button
-            onClick={() => !oos && onAdd(product)}
-            disabled={oos}
+          <button onClick={() => !oos && onAdd(product)} disabled={oos}
             className={`w-9 h-9 rounded-xl flex items-center justify-center transition
-              ${oos
-                ? "bg-gray-100 text-gray-300 cursor-not-allowed"
-                : "bg-green-600 hover:bg-green-700 text-white shadow-sm shadow-green-200 active:scale-95"
-              }`}
-          >
+              ${oos ? "bg-gray-100 text-gray-300 cursor-not-allowed"
+                    : "bg-green-600 hover:bg-green-700 text-white shadow-sm shadow-green-200 active:scale-95"}`}>
             <Plus size={16} />
           </button>
         )}
@@ -111,24 +95,26 @@ const ProductResult = ({ product, priceMode, cartQty, onAdd, onIncrease, onDecre
 };
 
 // ── Main component ────────────────────────────────────────────────────────────
-const CartProductSearch = ({ priceMode = "retail", onCartUpdated, cartMap = {} }) => {
-  const [open,        setOpen]        = useState(false);
-  const [query,       setQuery]       = useState("");
-  const [results,     setResults]     = useState([]);
-  const [loading,     setLoading]     = useState(false);
-  const [busyId,      setBusyId]      = useState(null);
-  const [allProducts, setAllProducts] = useState([]);
-  // local qty mirror so UI updates instantly without waiting for parent re-fetch
+const CartProductSearch = ({ priceMode = "retail", cartMap = {} }) => {
+  // NOTE: no onCartUpdated prop — the component fires ordersUpdated event directly
+  // so the parent never re-renders this component, keeping open state stable.
+  const [open,         setOpen]         = useState(false);
+  const [query,        setQuery]        = useState("");
+  const [results,      setResults]      = useState([]);
+  const [loading,      setLoading]      = useState(false);
+  const [busyId,       setBusyId]       = useState(null);
+  const [allProducts,  setAllProducts]  = useState([]);
   const [localCartMap, setLocalCartMap] = useState({});
-  const inputRef       = useRef(null);
-  const debouncedQuery = useDebounce(query, 300);
 
-  // Sync local cart map when parent cartMap changes
-  useEffect(() => {
-    setLocalCartMap(cartMap);
-  }, [JSON.stringify(cartMap)]); // eslint-disable-line
+  const panelRef   = useRef(null); // used to scroll into view on open
+  const inputRef   = useRef(null);
+  const debouncedQ = useDebounce(query, 300);
 
-  // Fetch all products once when panel opens
+  // Sync localCartMap when parent cartMap prop changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setLocalCartMap(cartMap); }, [JSON.stringify(cartMap)]);
+
+  // Fetch all products once on first open
   const fetchProducts = async () => {
     if (allProducts.length > 0) return;
     try {
@@ -140,14 +126,35 @@ const CartProductSearch = ({ priceMode = "retail", onCartUpdated, cartMap = {} }
   };
 
   const handleToggle = () => {
-    setOpen(p => !p);
-    if (!open) fetchProducts();
+    const next = !open;
+    setOpen(next);
+    if (next) {
+      fetchProducts();
+      // Scroll the panel into view below the sticky header after animation
+      setTimeout(() => {
+        if (!panelRef.current) return;
+        const el       = document.getElementById("main-scroll");
+        const sticky   = document.querySelector("[data-cart-sticky]");
+        const stickyH  = sticky?.offsetHeight || 0;
+        const rect     = panelRef.current.getBoundingClientRect();
+        const container = el || window;
+        const scrollTop = el ? el.scrollTop : window.scrollY;
+        const target    = scrollTop + rect.top - stickyH - 8;
+        if (el) el.scrollTo({ top: target, behavior: "smooth" });
+        else window.scrollTo({ top: target, behavior: "smooth" });
+      }, 260); // wait for animation to finish
+    }
   };
 
-  // Filter results locally
+  // Focus input when panel opens
   useEffect(() => {
-    if (!debouncedQuery.trim()) { setResults([]); return; }
-    const q = debouncedQuery.toLowerCase();
+    if (open) setTimeout(() => inputRef.current?.focus(), 140);
+  }, [open]);
+
+  // Filter results
+  useEffect(() => {
+    if (!debouncedQ.trim()) { setResults([]); return; }
+    const q = debouncedQ.toLowerCase();
     setResults(
       allProducts.filter(p =>
         p.name.toLowerCase().includes(q) ||
@@ -155,22 +162,15 @@ const CartProductSearch = ({ priceMode = "retail", onCartUpdated, cartMap = {} }
         (p.description || "").toLowerCase().includes(q)
       ).slice(0, 12)
     );
-  }, [debouncedQuery, allProducts]);
+  }, [debouncedQ, allProducts]);
 
-  useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 120);
-  }, [open]);
-
-  // ── Cart mutation helper ─────────────────────────────────────────────────
-  // Fires a lightweight ordersUpdated event so the parent cart list refreshes
-  // without re-rendering (and remounting) this component.
-  // The panel stays open regardless of how many products are added.
+  // ── Cart mutation — fires global event, never re-renders parent ───────────
   const setQty = async (product, newQty) => {
     const pid   = product._id;
     const isWS  = priceMode === "wholesale";
     const price = isWS ? (product.wholesalePrice ?? product.price) : product.price;
 
-    // Optimistic local update — instant UI response, no panel close
+    // Optimistic local update — panel stays open, no parent re-render
     setLocalCartMap(prev => {
       if (newQty <= 0) { const n = { ...prev }; delete n[pid]; return n; }
       return { ...prev, [pid]: { ...(prev[pid] || {}), quantity: newQty } };
@@ -179,12 +179,9 @@ const CartProductSearch = ({ priceMode = "retail", onCartUpdated, cartMap = {} }
     setBusyId(pid);
     try {
       await axiosInstance.put(`/orders/qty/${pid}`, { quantity: newQty, price, priceMode });
-      // Fire the global event so parent cart totals/list update silently.
-      // This does NOT remount CartProductSearch — panel stays open.
+      // Silent parent cart refresh — does NOT remount this component
       try {
-        window.dispatchEvent(new CustomEvent("ordersUpdated", {
-          detail: { _source: "cartSearch" },
-        }));
+        window.dispatchEvent(new CustomEvent("ordersUpdated", { detail: { _source: "cartSearch" } }));
       } catch (_) {}
     } catch (err) {
       setLocalCartMap(cartMap); // rollback
@@ -197,9 +194,9 @@ const CartProductSearch = ({ priceMode = "retail", onCartUpdated, cartMap = {} }
   const handleAdd = async (product) => {
     const current = localCartMap[product._id]?.quantity || 0;
     if (current >= product.stock) { toast.warning("Cannot exceed available stock"); return; }
-    if (current === 0) toast.success(`${product.name} added!`, { autoClose: 1500 });
+    if (current === 0) toast.success(`${product.name} added!`, { autoClose: 1400 });
     await setQty(product, current + 1);
-    // Panel deliberately stays open so user can add more
+    // Panel STAYS OPEN — never close
   };
 
   const handleDecrease = async (product) => {
@@ -209,14 +206,12 @@ const CartProductSearch = ({ priceMode = "retail", onCartUpdated, cartMap = {} }
   };
 
   return (
-    <div className="mb-5">
+    <div ref={panelRef} className="mb-4">
       {/* Toggle button */}
-      <button
-        onClick={handleToggle}
+      <button onClick={handleToggle}
         className="w-full flex items-center justify-between px-4 py-3 rounded-2xl
           bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200
-          hover:from-indigo-100 hover:to-blue-100 transition"
-      >
+          hover:from-indigo-100 hover:to-blue-100 transition">
         <span className="flex items-center gap-2 text-sm font-semibold text-indigo-700">
           <ShoppingCart size={15} className="text-indigo-500" />
           + Add more products to cart
@@ -224,7 +219,6 @@ const CartProductSearch = ({ priceMode = "retail", onCartUpdated, cartMap = {} }
         {open ? <ChevronUp size={16} className="text-indigo-400" /> : <ChevronDown size={16} className="text-indigo-400" />}
       </button>
 
-      {/* Expandable panel */}
       <AnimatePresence>
         {open && (
           <motion.div
@@ -238,14 +232,10 @@ const CartProductSearch = ({ priceMode = "retail", onCartUpdated, cartMap = {} }
               {/* Search input */}
               <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
                 <Search size={15} className="text-gray-400 shrink-0" />
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={query}
+                <input ref={inputRef} type="text" value={query}
                   onChange={e => setQuery(e.target.value)}
                   placeholder="Search products by name or category…"
-                  className="flex-1 text-sm outline-none bg-transparent placeholder:text-gray-400"
-                />
+                  className="flex-1 text-sm outline-none bg-transparent placeholder:text-gray-400" />
                 {query && (
                   <button onClick={() => setQuery("")} className="text-gray-400 hover:text-gray-600 transition">
                     <X size={14} />
@@ -271,16 +261,10 @@ const CartProductSearch = ({ priceMode = "retail", onCartUpdated, cartMap = {} }
               ) : (
                 <div className="max-h-80 overflow-y-auto overscroll-contain">
                   {results.map(p => (
-                    <ProductResult
-                      key={p._id}
-                      product={p}
-                      priceMode={priceMode}
+                    <ProductResult key={p._id} product={p} priceMode={priceMode}
                       cartQty={localCartMap[p._id]?.quantity || 0}
-                      onAdd={handleAdd}
-                      onIncrease={handleAdd}
-                      onDecrease={handleDecrease}
-                      busy={busyId === p._id}
-                    />
+                      onAdd={handleAdd} onDecrease={handleDecrease}
+                      busy={busyId === p._id} />
                   ))}
                 </div>
               )}

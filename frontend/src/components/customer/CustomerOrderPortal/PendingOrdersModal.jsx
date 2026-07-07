@@ -199,8 +199,8 @@ const PendingOrdersModal = ({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto"
-          style={{ backgroundColor: "rgba(0,0,0,0.45)", touchAction: "none", padding: "16px" }}
+          className="fixed inset-0 flex items-center justify-center overflow-y-auto"
+          style={{ backgroundColor: "rgba(0,0,0,0.45)", touchAction: "none", padding: "16px", zIndex: 9999 }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
