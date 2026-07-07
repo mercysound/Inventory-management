@@ -59,9 +59,10 @@ const StaffOrders = () => {
   const [receiptMode,      setReceiptMode]      = useState("preview");
 
   // ── Fetch orders ──────────────────────────────────────────────────────────
-  const fetchOrders = useCallback(async () => {
+  // silent=true → skip skeleton loader (used for background refreshes)
+  const fetchOrders = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res  = await axiosInstance.get("/orders");
       const data = Array.isArray(res.data) ? res.data : res.data.data || res.data.orders || [];
       setOrders(data);
@@ -78,7 +79,11 @@ const StaffOrders = () => {
 
   useEffect(() => {
     fetchOrders();
-    const h = () => fetchOrders();
+    // ordersUpdated from CartProductSearch uses _source:"cartSearch" — refresh silently
+    const h = (e) => {
+      const silent = e?.detail?._source === "cartSearch";
+      fetchOrders(silent);
+    };
     window.addEventListener("ordersUpdated", h);
     return () => window.removeEventListener("ordersUpdated", h);
   }, [fetchOrders]);
