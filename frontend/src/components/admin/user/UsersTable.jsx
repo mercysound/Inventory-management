@@ -188,6 +188,30 @@ export default function UsersTable({
         .ut-reason-input{border:1px solid #334155;border-radius:7px;padding:5px 10px;font-size:11px;font-family:inherit;background:#1e293b;color:#f1f5f9;outline:none;min-width:200px;}
         .ut-reason-input::placeholder{color:#64748b;}
         .ut-cb{width:15px;height:15px;cursor:pointer;accent-color:#6366f1;}
+        /* ── Dark mode overrides ── */
+        html.dark .ut-wrap{background:#1e2130;border-color:#2d3148;}
+        html.dark .ut-toolbar{border-bottom-color:#2d3148;}
+        html.dark .ut-search{background:#252840;border-color:#2d3148;color:#e2e8f0;}
+        html.dark .ut-search::placeholder{color:#64748b;}
+        html.dark .ut-thead{background:#1a1d2e;}
+        html.dark .ut-th{color:#64748b;border-bottom-color:#2d3148;}
+        html.dark .ut-tr{background:#1e2130;border-bottom-color:#252840;}
+        html.dark .ut-tr:hover{background:#252840;}
+        html.dark .ut-tr-deactivated{background:#1a1d2e;}
+        html.dark .ut-td{color:#cbd5e1;border-color:#252840;}
+        html.dark .ut-card{background:#1e2130;border-color:#2d3148;}
+        html.dark .ut-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.5);}
+        html.dark .ut-card-deactivated{background:#1a1d2e;border-color:#252840;}
+        html.dark .ut-card-name{color:#e2e8f0;}
+        html.dark .ut-card-email{color:#8892a4;}
+        html.dark .ut-card-row{color:#8892a4;}
+        html.dark .ut-result-count{color:#64748b;}
+        html.dark .ut-empty{color:#64748b;}
+        html.dark .ut-edit-btn{background:#1e3a5f;color:#93c5fd;border-color:#1d4ed8;}
+        html.dark .ut-del-btn{background:#3b1212;color:#f87171;border-color:#7f1d1d;}
+        html.dark .ut-suspend-btn{background:#3b2a00;color:#fbbf24;border-color:#92400e;}
+        html.dark .ut-activate-btn{background:#0d2e1a;color:#4ade80;border-color:#166534;}
+        html.dark .ut-bulk-bar{background:#0f172a;}
         @media(min-width:640px){
           .ut-toolbar{flex-direction:row;align-items:center;padding:14px 18px;}
           .ut-search-wrap{max-width:280px;}

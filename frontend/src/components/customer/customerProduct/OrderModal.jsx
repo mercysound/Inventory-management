@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
+import useEscapeToClose from "../../share-component/receipt/useEscapeToClose";
 import {
   AlertTriangle,
   ChevronLeft,
@@ -146,8 +147,8 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
   const qty      = Number(orderData.quantity) || 0;
 
   // Lock the main scroll container while modal is open.
-  // The app scrolls inside <main id="main-scroll">, NOT document.body,
-  // so we must freeze that element. Also freeze body as a fallback.
+  // ESC key closes the modal
+  useEscapeToClose(true, closeModal);
   useEffect(() => {
     document.body.style.overflow = "hidden";
     const scroller = document.getElementById("main-scroll");

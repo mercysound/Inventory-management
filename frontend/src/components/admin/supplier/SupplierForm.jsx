@@ -1,5 +1,6 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
+import useEscapeToClose from "../../share-component/receipt/useEscapeToClose";
 
 const SupplierForm = ({
   formData,
@@ -13,7 +14,8 @@ const SupplierForm = ({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Lock main scroll container while modal is open
+  // Lock scroll + ESC key
+  useEscapeToClose(true, onClose);
   useEffect(() => {
     document.body.style.overflow = "hidden";
     const scroller = document.getElementById("main-scroll");

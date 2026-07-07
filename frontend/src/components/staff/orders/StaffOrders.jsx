@@ -42,6 +42,20 @@ const StaffOrders = () => {
   const navigate  = useNavigate();
   const { canUseWholesale } = useWholesaleAccess();
 
+  // Callback ref — fires the moment the sticky panel mounts in the DOM.
+  // Sets --cart-sticky-h so CartProductSearch toggle button sticks just below it.
+  // Using a callback ref (not useEffect + ref) because the sticky panel is always
+  // mounted (not conditional), but useEffect with [] runs before the DOM is ready.
+  const stickyPanelRef = useCallback((el) => {
+    if (!el) return;
+    const update = () =>
+      document.documentElement.style.setProperty("--cart-sticky-h", `${el.offsetHeight}px`);
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    update();
+    // No cleanup needed — the observer lives as long as the component
+  }, []);
+
   const [orders,       setOrders]       = useState([]);
   const [loading,      setLoading]      = useState(true);
   const [paymentMethod,setPaymentMethod]= useState("");
@@ -213,7 +227,7 @@ const StaffOrders = () => {
         {/* ════════════════════════════════════════════════════════════════
             STICKY TOP PANEL
         ════════════════════════════════════════════════════════════════ */}
-        <div className="sticky top-0 z-20 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 shadow-sm" data-cart-sticky>
+        <div className="sticky top-0 z-20 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 shadow-sm" data-cart-sticky ref={stickyPanelRef}>
 
           {/* ── Row 1: Branding + stats + Products btn ── */}
           <div className="flex items-center gap-2 px-4 pt-3 pb-2">

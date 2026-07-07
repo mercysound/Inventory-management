@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, PackageCheck, Truck, Clock, RefreshCw, AlertTriangle } from "lucide-react";
 import SkeletonLoader from "../../common/SkeletonLoader";
+import useEscapeToClose from "../../share-component/receipt/useEscapeToClose";
 
 // ─── Status badge ──────────────────────────────────────────────────────────────
 const StatusBadge = ({ status }) => {
@@ -181,6 +182,9 @@ const PendingOrdersModal = ({
 
   const grandTotal      = activeOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
   const totalOrderCount = activeOrders.length + cancelledOrders.length;
+
+  // ESC key closes the modal
+  useEscapeToClose(isOpen, onClose);
 
   // Lock main scroll container while modal is open
   useEffect(() => {

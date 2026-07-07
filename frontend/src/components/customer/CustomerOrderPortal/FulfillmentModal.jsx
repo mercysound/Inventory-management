@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, MapPin, Phone, User, Truck, Store, AlertTriangle } from "lucide-react";
+import useEscapeToClose from "../../share-component/receipt/useEscapeToClose";
 
 const inputCls =
   "w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm " +
@@ -28,6 +29,9 @@ const FulfillmentModal = ({ isOpen, onClose, onConfirm, userProfile = null }) =>
       setPhone(userProfile?.phone     || "");
     }
   }, [isOpen, userProfile]);
+
+  // ESC key closes the modal
+  useEscapeToClose(isOpen, handleClose);
 
   // Lock scroll on open
   useEffect(() => {

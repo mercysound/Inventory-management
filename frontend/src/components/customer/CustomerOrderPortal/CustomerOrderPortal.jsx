@@ -80,7 +80,17 @@ const CustomerOrderPortal = () => {
   const { resetCart, cartCount } = useCart();
   const { trackAction, markPurchased } = useEngagementTracker();
   const navigate    = useNavigate();
-  const cartStickyRef = useRef(null);
+
+  // Callback ref — fires the moment the sticky cart header mounts in the DOM.
+  // Writes --cart-sticky-h so CartProductSearch toggle button sticks below it.
+  const cartStickyRef = useCallback((el) => {
+    if (!el) return;
+    const update = () =>
+      document.documentElement.style.setProperty("--cart-sticky-h", `${el.offsetHeight}px`);
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    update();
+  }, []);
 
   // Product page route per role
   const productsPath = user?.role === "wholesale"
@@ -186,22 +196,10 @@ const CustomerOrderPortal = () => {
     }
   }, [user]);
 
-  // Keep ref always pointing to latest fetchOrders — used in SSE/event handlers
-  // so those effects never need fetchOrders in their dependency arrays
+  // Keep ref always pointing to latest fetchOrders
   useEffect(() => {
     fetchOrdersRef.current = fetchOrders;
   }, [fetchOrders]);
-
-  // Measure sticky cart header height → CSS variable used by search bar top offset
-  useEffect(() => {
-    const el = cartStickyRef.current;
-    if (!el) return;
-    const update = () => document.documentElement.style.setProperty("--cart-sticky-h", `${el.offsetHeight}px`);
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    update();
-    return () => ro.disconnect();
-  }, [orders.length]);
 
   useEffect(() => {
     fetchOrders();

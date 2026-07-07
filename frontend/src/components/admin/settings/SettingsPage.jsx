@@ -6,7 +6,7 @@ import {
   Clock, Mail, RefreshCw, Save, AlertTriangle, CheckCircle2,
   Users, ShieldCheck, X, UserCheck, Loader2, Palette, Moon, Sun,
   Store, Package, Settings2, User, Phone, MapPin, Lock, Eye, EyeOff,
-  Pencil, MessageCircle, CreditCard, Bell,
+  Pencil, MessageCircle, CreditCard, Bell, ChevronDown,
 } from "lucide-react";
 import { useTheme, GLOBAL_THEMES, PERSONAL_MODES } from "../../../context/ThemeContext";
 
@@ -15,6 +15,56 @@ const SettingsPage = () => {
   const [saving,   setSaving]   = useState(false);
   const [saved,    setSaved]    = useState(false);
   const { globalTheme, setGlobalTheme, personalMode, setPersonalMode } = useTheme();
+
+  // ── Accordion: only one section open at a time. null = all collapsed ──────
+  const [openSection, setOpenSection] = useState(null);
+  const toggleSection = (id) => setOpenSection((prev) => prev === id ? null : id);
+
+  // ── SettingSection wrapper ─────────────────────────────────────────────────
+  // Renders a collapsible card with a click-to-open header.
+  // icon, title, subtitle, id, openSection, onToggle, children
+  const SettingSection = ({ id, icon: Icon, iconColor = "text-indigo-500", title, subtitle, children, badge }) => {
+    const isOpen = openSection === id;
+    return (
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+        {/* ── Clickable header ── */}
+        <button type="button" onClick={() => toggleSection(id)}
+          className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${isOpen ? "bg-indigo-600" : "bg-gray-100 dark:bg-gray-700"}`}>
+              <Icon size={15} className={isOpen ? "text-white" : iconColor} />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">{title}</span>
+                {badge && <span className="text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 px-2 py-0.5 rounded-full font-bold">{badge}</span>}
+              </div>
+              {subtitle && <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate max-w-xs">{subtitle}</p>}
+            </div>
+          </div>
+          <ChevronDown size={16} className={`text-gray-400 transition-transform shrink-0 ml-3 ${isOpen ? "rotate-180" : ""}`} />
+        </button>
+        {/* ── Collapsible body ── */}
+        <AnimatePresence initial={false}>
+          {isOpen && (
+            <motion.div
+              key="body"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.22, ease: "easeInOut" }}
+              className="overflow-hidden"
+            >
+              <div className="px-5 pb-5 pt-1 border-t border-gray-100 dark:border-gray-700">
+                {children}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    );
+  };
 
   const [settings, setSettings] = useState({
     orderExpiryHours:          48,
@@ -284,120 +334,102 @@ const SettingsPage = () => {
       </div>
 
       {/* ── Account / Profile ─────────────────────────────────────────────── */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-            <User size={16} className="text-indigo-500" /> My Account
-          </h2>
-          {!editProfile && !loadingProfile && (
-            <button onClick={() => setEditProfile(true)}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400
-                hover:text-indigo-800 border border-indigo-200 dark:border-indigo-700 px-3 py-1.5 rounded-lg transition">
-              <Pencil size={12} /> Edit
-            </button>
-          )}
-        </div>
-        <div className="px-6 py-5">
-          {loadingProfile ? (
-            <div className="flex items-center gap-2 text-gray-400 text-sm">
-              <Loader2 size={15} className="animate-spin" /> Loading...
-            </div>
-          ) : (
-            <form onSubmit={handleSaveProfile} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
-                  { label: "Full Name",   icon: User,   field: "name",    type: "text",  placeholder: "Admin name" },
-                  { label: "Phone",       icon: Phone,  field: "phone",   type: "tel",   placeholder: "Phone number" },
-                  { label: "Address",     icon: MapPin, field: "address", type: "text",  placeholder: "Address" },
-                ].map(({ label, icon: Icon, field, type, placeholder }) => (
-                  <div key={field} className="space-y-1.5">
-                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
-                      <Icon size={11} className="text-gray-400" /> {label}
-                    </label>
-                    <input type={type} value={profile[field]}
-                      onChange={(e) => setProfile((p) => ({ ...p, [field]: e.target.value }))}
-                      disabled={!editProfile} placeholder={placeholder}
-                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all ${
-                        !editProfile
-                          ? "bg-gray-100 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-400 cursor-not-allowed"
-                          : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200"
-                      }`} />
-                  </div>
-                ))}
-                {/* Email always disabled */}
-                <div className="space-y-1.5">
+      <SettingSection id="account" icon={User} title="My Account" subtitle="Edit your name, phone, address and password">
+        {loadingProfile ? (
+          <div className="flex items-center gap-2 text-gray-400 text-sm mt-2">
+            <Loader2 size={15} className="animate-spin" /> Loading...
+          </div>
+        ) : (
+          <form onSubmit={handleSaveProfile} className="space-y-4 mt-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[
+                { label: "Full Name",   icon: User,   field: "name",    type: "text",  placeholder: "Admin name" },
+                { label: "Phone",       icon: Phone,  field: "phone",   type: "tel",   placeholder: "Phone number" },
+                { label: "Address",     icon: MapPin, field: "address", type: "text",  placeholder: "Address" },
+              ].map(({ label, icon: Icon, field, type, placeholder }) => (
+                <div key={field} className="space-y-1.5">
                   <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
-                    <Mail size={11} className="text-gray-400" /> Email
+                    <Icon size={11} className="text-gray-400" /> {label}
                   </label>
-                  <input type="email" value={profile.email} disabled
-                    className="w-full border rounded-xl px-3.5 py-2.5 text-sm bg-gray-100 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-400 cursor-not-allowed" />
-                  <p className="text-[10px] text-gray-400">Email cannot be changed</p>
+                  <input type={type} value={profile[field]}
+                    onChange={(e) => setProfile((p) => ({ ...p, [field]: e.target.value }))}
+                    disabled={!editProfile} placeholder={placeholder}
+                    className={`w-full border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all ${
+                      !editProfile
+                        ? "bg-gray-100 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-400 cursor-not-allowed"
+                        : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200"
+                    }`} />
                 </div>
+              ))}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+                  <Mail size={11} className="text-gray-400" /> Email
+                </label>
+                <input type="email" value={profile.email} disabled
+                  className="w-full border rounded-xl px-3.5 py-2.5 text-sm bg-gray-100 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-400 cursor-not-allowed" />
+                <p className="text-[10px] text-gray-400">Email cannot be changed</p>
               </div>
-
-              {/* Password change */}
-              {editProfile && (
-                <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
-                  <button type="button" onClick={() => setChangePwd((p) => !p)}
-                    className="text-sm text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-1.5">
-                    <Lock size={13} /> {changePwd ? "Cancel password change" : "Change password"}
-                  </button>
-                  {changePwd && (
-                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {[
-                        { label: "Current Password", field: "oldPassword", show: showOld, setShow: setShowOld },
-                        { label: "New Password",      field: "newPassword", show: showNew, setShow: setShowNew },
-                        { label: "Confirm Password",  field: "confirmPassword", show: showConf, setShow: setShowConf },
-                      ].map(({ label, field, show, setShow }) => (
-                        <div key={field} className="space-y-1.5">
-                          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</label>
-                          <div className="relative">
-                            <input type={show ? "text" : "password"} placeholder={label}
-                              value={pwdData[field]}
-                              onChange={(e) => setPwdData((p) => ({ ...p, [field]: e.target.value }))}
-                              className="w-full border border-gray-200 dark:border-gray-600 rounded-xl px-3.5 py-2.5 text-sm pr-10
-                                focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white dark:bg-gray-900 dark:text-gray-200" />
-                            <button type="button" onClick={() => setShow((s) => !s)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
-                              {show ? <EyeOff size={14} /> : <Eye size={14} />}
-                            </button>
-                          </div>
+            </div>
+            {editProfile && (
+              <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+                <button type="button" onClick={() => setChangePwd((p) => !p)}
+                  className="text-sm text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-1.5">
+                  <Lock size={13} /> {changePwd ? "Cancel password change" : "Change password"}
+                </button>
+                {changePwd && (
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {[
+                      { label: "Current Password", field: "oldPassword", show: showOld, setShow: setShowOld },
+                      { label: "New Password",      field: "newPassword", show: showNew, setShow: setShowNew },
+                      { label: "Confirm Password",  field: "confirmPassword", show: showConf, setShow: setShowConf },
+                    ].map(({ label, field, show, setShow }) => (
+                      <div key={field} className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</label>
+                        <div className="relative">
+                          <input type={show ? "text" : "password"} placeholder={label}
+                            value={pwdData[field]}
+                            onChange={(e) => setPwdData((p) => ({ ...p, [field]: e.target.value }))}
+                            className="w-full border border-gray-200 dark:border-gray-600 rounded-xl px-3.5 py-2.5 text-sm pr-10
+                              focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white dark:bg-gray-900 dark:text-gray-200" />
+                          <button type="button" onClick={() => setShow((s) => !s)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
+                            {show ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {editProfile && (
-                <div className="flex gap-2 pt-1">
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="flex gap-2 pt-1">
+              {!editProfile ? (
+                <button type="button" onClick={() => setEditProfile(true)}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700 px-3 py-1.5 rounded-lg transition hover:bg-indigo-50">
+                  <Pencil size={12} /> Edit Profile
+                </button>
+              ) : (
+                <>
                   <button type="submit" disabled={savingProfile}
-                    className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700
-                      disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition shadow-sm">
+                    className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition shadow-sm">
                     {savingProfile ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                     {savingProfile ? "Saving..." : "Save Profile"}
                   </button>
                   <button type="button" disabled={savingProfile}
                     onClick={() => { setEditProfile(false); setChangePwd(false); setPwdData({ oldPassword: "", newPassword: "", confirmPassword: "" }); }}
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 border border-gray-200 dark:border-gray-600
-                      text-gray-600 dark:text-gray-300 text-sm font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                     <X size={14} /> Cancel
                   </button>
-                </div>
+                </>
               )}
-            </form>
-          )}
-        </div>
-      </motion.div>
+            </div>
+          </form>
+        )}
+      </SettingSection>
 
       {/* Store Information */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-6">
-        <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
-          <Store size={16} className="text-indigo-500" /> Store Information
-        </h2>
-        <div>
+      <SettingSection id="store-info" icon={Store} title="Store Information" subtitle={settings.storeName || "Store name, used in emails & receipts"}>
+        <div className="mt-3">
           <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Store Name</label>
           <input type="text" value={settings.storeName} onChange={(e) => handleChange("storeName", e.target.value)}
             placeholder="e.g. Melech Store"
@@ -406,332 +438,163 @@ const SettingsPage = () => {
               dark:text-gray-100 dark:placeholder-gray-500" />
           <p className="text-xs text-gray-400 mt-1">Used in email notifications and receipts.</p>
         </div>
-      </motion.div>
+      </SettingSection>
 
       {/* Order Pickup Expiry */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-6">
-
-        {/* Card header — title + ON/OFF email reminder toggle */}
-        <div className="flex items-start justify-between gap-4 mb-1">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-            <Clock size={16} className="text-amber-500" /> Order Pickup Expiry
-          </h2>
-
-          {/* Email reminder master switch */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            <span className={`text-xs font-semibold ${settings.expiryReminderEnabled ? "text-green-600 dark:text-green-400" : "text-gray-400"}`}>
-              {settings.expiryReminderEnabled ? "Emails ON" : "Emails OFF"}
-            </span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={settings.expiryReminderEnabled}
-              title={settings.expiryReminderEnabled ? "Click to stop sending expiry reminder emails" : "Click to enable expiry reminder emails"}
-              onClick={() => handleChange("expiryReminderEnabled", !settings.expiryReminderEnabled)}
-              className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1
-                ${settings.expiryReminderEnabled
-                  ? "bg-green-500 focus:ring-green-400"
-                  : "bg-gray-300 dark:bg-gray-600 focus:ring-gray-400"}`}
-            >
-              <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform
-                ${settings.expiryReminderEnabled ? "translate-x-5" : "translate-x-1"}`}
-              />
-            </button>
-          </div>
-        </div>
-
-        <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">
-          When a paid order exceeds this time limit without being picked up, you are notified by email.
-        </p>
-
-        {/* Subtle OFF banner — explains what's paused */}
-        {!settings.expiryReminderEnabled && (
-          <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2 mb-4 mt-2">
-            <span className="text-amber-500 text-base">🔕</span>
-            <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
-              Expiry reminder emails are paused. Orders will still appear on the Expiring Orders page — only the email notifications are silenced.
-            </p>
-          </div>
-        )}
-
-        {/* Controls — dimmed when reminders are OFF */}
-        <div className={`space-y-5 mt-4 transition-opacity duration-200 ${settings.expiryReminderEnabled ? "opacity-100" : "opacity-40 pointer-events-none"}`}>
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Expiry Threshold (hours)</label>
-            <div className="flex items-center gap-3">
-              <input {...numInput("orderExpiryHours", 1, 720, "focus:ring-amber-300")} />
-              <span className="text-sm text-gray-500 dark:text-gray-400">hours after order placement</span>
+      <SettingSection id="expiry" icon={Clock} iconColor="text-amber-500" title="Order Pickup Expiry" subtitle={`Threshold: ${settings.orderExpiryHours}h · ${settings.expiryReminderEnabled ? "Emails ON" : "Emails OFF"}`}>
+        <div className="mt-3 space-y-5">
+          <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+            <div>
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Expiry email reminders</p>
+              <p className="text-xs text-gray-400 mt-0.5">When a paid order exceeds the limit without being picked up, you get notified.</p>
+            </div>
+            <div className="flex items-center gap-2.5 shrink-0">
+              <span className={`text-xs font-semibold ${settings.expiryReminderEnabled ? "text-green-600 dark:text-green-400" : "text-gray-400"}`}>
+                {settings.expiryReminderEnabled ? "ON" : "OFF"}
+              </span>
+              <button type="button" role="switch" aria-checked={settings.expiryReminderEnabled}
+                onClick={() => handleChange("expiryReminderEnabled", !settings.expiryReminderEnabled)}
+                className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors focus:outline-none
+                  ${settings.expiryReminderEnabled ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"}`}>
+                <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform
+                  ${settings.expiryReminderEnabled ? "translate-x-5" : "translate-x-1"}`} />
+              </button>
             </div>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Email Reminder Mode</label>
-            <div className="flex flex-col sm:flex-row gap-3">
-              {[{ value: "once", label: "One-time only", desc: "Send a single email when the order first expires.", icon: "1x" },
-                { value: "repeat", label: "Repeat reminders", desc: "Keep sending reminders every X hours.", icon: "loop" }]
-                .map((opt) => (
-                  <button key={opt.value} type="button" onClick={() => handleChange("reminderMode", opt.value)}
-                    className={`flex-1 text-left p-4 rounded-xl border-2 transition-all ${
-                      settings.reminderMode === opt.value
-                        ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30"
-                        : "border-gray-200 dark:border-gray-600 hover:border-gray-300 bg-white dark:bg-gray-900"
-                    }`}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-sm font-semibold ${settings.reminderMode === opt.value ? "text-indigo-700 dark:text-indigo-300" : "text-gray-700 dark:text-gray-300"}`}>{opt.label}</span>
-                      {settings.reminderMode === opt.value && <CheckCircle2 size={14} className="text-indigo-500 ml-auto" />}
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{opt.desc}</p>
-                  </button>
-                ))}
+          {!settings.expiryReminderEnabled && (
+            <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2">
+              <span className="text-amber-500">🔕</span>
+              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Emails paused — orders still appear on the Expiring Orders page.</p>
             </div>
-          </div>
-          {settings.reminderMode === "repeat" && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
-              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Reminder Interval (hours)</label>
-              <div className="flex items-center gap-3">
-                <input {...numInput("reminderIntervalHours", 1, 168, "focus:ring-amber-300")} />
-                <span className="text-sm text-gray-500 dark:text-gray-400">hours between each reminder</span>
-              </div>
-            </motion.div>
           )}
+          <div className={`space-y-5 transition-opacity ${settings.expiryReminderEnabled ? "opacity-100" : "opacity-40 pointer-events-none"}`}>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Expiry Threshold (hours)</label>
+              <div className="flex items-center gap-3">
+                <input {...numInput("orderExpiryHours", 1, 720, "focus:ring-amber-300")} />
+                <span className="text-sm text-gray-500 dark:text-gray-400">hours after order placement</span>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Reminder Mode</label>
+              <div className="flex flex-col sm:flex-row gap-3">
+                {[{ value: "once", label: "One-time only", desc: "One email when order first expires." },
+                  { value: "repeat", label: "Repeat reminders", desc: "Keep sending every X hours." }]
+                  .map((opt) => (
+                    <button key={opt.value} type="button" onClick={() => handleChange("reminderMode", opt.value)}
+                      className={`flex-1 text-left p-3 rounded-xl border-2 transition-all ${
+                        settings.reminderMode === opt.value
+                          ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30"
+                          : "border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900"}`}>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className={`text-sm font-semibold ${settings.reminderMode === opt.value ? "text-indigo-700 dark:text-indigo-300" : "text-gray-700 dark:text-gray-300"}`}>{opt.label}</span>
+                        {settings.reminderMode === opt.value && <CheckCircle2 size={13} className="text-indigo-500 ml-auto" />}
+                      </div>
+                      <p className="text-xs text-gray-400">{opt.desc}</p>
+                    </button>
+                  ))}
+              </div>
+            </div>
+            {settings.reminderMode === "repeat" && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Interval (hours)</label>
+                <div className="flex items-center gap-3">
+                  <input {...numInput("reminderIntervalHours", 1, 168, "focus:ring-amber-300")} />
+                  <span className="text-sm text-gray-500 dark:text-gray-400">hours between each reminder</span>
+                </div>
+              </motion.div>
+            )}
+          </div>
         </div>
-      </motion.div>
+      </SettingSection>
 
       {/* Notification Email */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-6">
-        <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1 flex items-center gap-2">
-          <Mail size={16} className="text-blue-500" /> Admin Notification Email
-        </h2>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
-          All admin notifications go here — new orders, expiry alerts, reminders. Leave blank to use your account email.
-        </p>
-        <input type="email" value={settings.adminNotificationEmail}
-          onChange={(e) => handleChange("adminNotificationEmail", e.target.value)}
-          placeholder="admin@yourdomain.com"
-          className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
-            focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50 dark:bg-gray-900
-            dark:text-gray-100 dark:placeholder-gray-500" />
-        <p className="text-xs text-gray-400 mt-1.5">Covers: new order alerts, expiry alerts, and repeat reminders.</p>
-      </motion.div>
+      <SettingSection id="notif-email" icon={Mail} iconColor="text-blue-500" title="Admin Notification Email" subtitle={settings.adminNotificationEmail || "Leave blank to use account email"}>
+        <div className="mt-3">
+          <input type="email" value={settings.adminNotificationEmail}
+            onChange={(e) => handleChange("adminNotificationEmail", e.target.value)}
+            placeholder="admin@yourdomain.com"
+            className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
+              focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50 dark:bg-gray-900
+              dark:text-gray-100 dark:placeholder-gray-500" />
+          <p className="text-xs text-gray-400 mt-1.5">Covers: new order alerts, expiry alerts, and repeat reminders.</p>
+        </div>
+      </SettingSection>
 
       {/* Store Contact Info */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.11 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-6">
-        <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1 flex items-center gap-2">
-          <MapPin size={16} className="text-green-500" /> Store Contact Info
-        </h2>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">
-          These details appear publicly on the landing page so customers know how to reach you.
-        </p>
-        <div className="space-y-4">
-          {/* Contact email */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
-              <Mail size={11} /> Contact Email
-            </label>
-            <input
-              type="email"
-              value={settings.contactEmail}
-              onChange={(e) => handleChange("contactEmail", e.target.value)}
-              placeholder="store@yourdomain.com"
-              className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
-                focus:outline-none focus:ring-2 focus:ring-green-300 bg-gray-50 dark:bg-gray-900
-                dark:text-gray-100 dark:placeholder-gray-500"
-            />
-          </div>
-
-          {/* Contact phone */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
-              <Phone size={11} /> Contact Phone
-            </label>
-            <input
-              type="tel"
-              value={settings.contactPhone}
-              onChange={(e) => handleChange("contactPhone", e.target.value)}
-              placeholder="e.g. 08012345678"
-              className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
-                focus:outline-none focus:ring-2 focus:ring-green-300 bg-gray-50 dark:bg-gray-900
-                dark:text-gray-100 dark:placeholder-gray-500"
-            />
-          </div>
-
-          {/* WhatsApp */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
-              <MessageCircle size={11} /> WhatsApp Number
-              <span className="normal-case font-normal text-gray-400 text-[10px] ml-1">optional</span>
-            </label>
-            <input
-              type="tel"
-              value={settings.contactWhatsapp}
-              onChange={(e) => handleChange("contactWhatsapp", e.target.value)}
-              placeholder="e.g. 2348012345678 (with country code)"
-              className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
-                focus:outline-none focus:ring-2 focus:ring-green-300 bg-gray-50 dark:bg-gray-900
-                dark:text-gray-100 dark:placeholder-gray-500"
-            />
-            <p className="text-xs text-gray-400 mt-1">Enter with country code for the WhatsApp link to work (e.g. 234 for Nigeria).</p>
-          </div>
-
-          {/* Address */}
+      <SettingSection id="contact" icon={MapPin} iconColor="text-green-500" title="Store Contact Info" subtitle="Shown publicly on the landing page">
+        <div className="space-y-4 mt-3">
+          {[
+            { label: "Contact Email",    icon: Mail,           field: "contactEmail",    type: "email", placeholder: "store@yourdomain.com",   ring: "focus:ring-green-300" },
+            { label: "Contact Phone",    icon: Phone,          field: "contactPhone",    type: "tel",   placeholder: "e.g. 08012345678",        ring: "focus:ring-green-300" },
+            { label: "WhatsApp Number",  icon: MessageCircle,  field: "contactWhatsapp", type: "tel",   placeholder: "e.g. 2348012345678",      ring: "focus:ring-green-300" },
+          ].map(({ label, icon: Icon, field, type, placeholder, ring }) => (
+            <div key={field}>
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                <Icon size={11} /> {label}
+              </label>
+              <input type={type} value={settings[field]} placeholder={placeholder}
+                onChange={(e) => handleChange(field, e.target.value)}
+                className={`w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 ${ring} bg-gray-50 dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-500`} />
+            </div>
+          ))}
           <div>
             <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
               <MapPin size={11} /> Physical Address
             </label>
-            <textarea
-              rows={3}
-              value={settings.contactAddress}
+            <textarea rows={3} value={settings.contactAddress}
               onChange={(e) => handleChange("contactAddress", e.target.value)}
               placeholder="e.g. 12 Market Street, Lagos, Nigeria"
-              className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
-                focus:outline-none focus:ring-2 focus:ring-green-300 bg-gray-50 dark:bg-gray-900
-                dark:text-gray-100 dark:placeholder-gray-500 resize-none"
-            />
+              className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-300 bg-gray-50 dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-500 resize-none" />
           </div>
         </div>
-      </motion.div>
+      </SettingSection>
 
       {/* Payment / Bank Account Details */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-6">
-        <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1 flex items-center gap-2">
-          <CreditCard size={16} className="text-indigo-500" /> Payment / Bank Account Details
-        </h2>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">
-          These details appear on staff preview invoices so customers know where to send payment. Leave blank to hide.
-        </p>
-
-        {/* Account 1 */}
-        <div className="space-y-3 mb-5">
-          <p className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">Account 1</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Bank Name</label>
-              <input type="text" value={settings.bankName}
-                onChange={(e) => handleChange("bankName", e.target.value)}
-                placeholder="e.g. GTBank"
-                className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
-                  focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50 dark:bg-gray-900
-                  dark:text-gray-100 dark:placeholder-gray-500" />
+      <SettingSection id="bank" icon={CreditCard} title="Payment / Bank Account Details" subtitle="Shown on staff invoices for bank transfer payments">
+        <div className="mt-3 space-y-5">
+          {[["Account 1", "bankName", "accountName", "accountNumber", ""], ["Account 2", "bankName2", "accountName2", "accountNumber2", " (optional)"]].map(([label, fn, an, acc, note]) => (
+            <div key={fn}>
+              <p className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide mb-2">{label}{note && <span className="normal-case font-normal text-gray-400 text-[10px] ml-1">{note}</span>}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[["Bank Name", fn, "text", "e.g. GTBank"], ["Account Name", an, "text", "e.g. Melech Stores Ltd"], ["Account Number", acc, "text", "e.g. 0123456789"]].map(([l, f, t, p]) => (
+                  <div key={f}>
+                    <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{l}</label>
+                    <input type={t} value={settings[f]} placeholder={p} maxLength={f.includes("Number") ? 20 : undefined}
+                      onChange={(e) => handleChange(f, e.target.value)}
+                      className={`w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50 dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-500 ${f.includes("Number") ? "font-mono tracking-wider" : ""}`} />
+                  </div>
+                ))}
+              </div>
             </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Account Name</label>
-              <input type="text" value={settings.accountName}
-                onChange={(e) => handleChange("accountName", e.target.value)}
-                placeholder="e.g. Melech Stores Ltd"
-                className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
-                  focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50 dark:bg-gray-900
-                  dark:text-gray-100 dark:placeholder-gray-500" />
-            </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Account Number</label>
-              <input type="text" value={settings.accountNumber}
-                onChange={(e) => handleChange("accountNumber", e.target.value)}
-                placeholder="e.g. 0123456789"
-                maxLength={20}
-                className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
-                  focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50 dark:bg-gray-900
-                  dark:text-gray-100 dark:placeholder-gray-500 font-mono tracking-wider" />
-            </div>
-          </div>
+          ))}
         </div>
-
-        {/* Divider */}
-        <div className="border-t border-dashed border-gray-200 dark:border-gray-700 my-4" />
-
-        {/* Account 2 */}
-        <div className="space-y-3">
-          <p className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
-            Account 2
-            <span className="ml-2 normal-case font-normal text-gray-400 text-[10px]">optional — for a second bank</span>
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Bank Name</label>
-              <input type="text" value={settings.bankName2}
-                onChange={(e) => handleChange("bankName2", e.target.value)}
-                placeholder="e.g. Opay"
-                className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
-                  focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50 dark:bg-gray-900
-                  dark:text-gray-100 dark:placeholder-gray-500" />
-            </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Account Name</label>
-              <input type="text" value={settings.accountName2}
-                onChange={(e) => handleChange("accountName2", e.target.value)}
-                placeholder="e.g. Melech Stores Ltd"
-                className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
-                  focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50 dark:bg-gray-900
-                  dark:text-gray-100 dark:placeholder-gray-500" />
-            </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Account Number</label>
-              <input type="text" value={settings.accountNumber2}
-                onChange={(e) => handleChange("accountNumber2", e.target.value)}
-                placeholder="e.g. 0987654321"
-                maxLength={20}
-                className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
-                  focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50 dark:bg-gray-900
-                  dark:text-gray-100 dark:placeholder-gray-500 font-mono tracking-wider" />
-            </div>
-          </div>
-        </div>
-      </motion.div>
+      </SettingSection>
 
       {/* Inventory Alerts */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.13 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-6">
-
-        {/* Card header with product expiry email toggle */}
-        <div className="flex items-start justify-between gap-4 mb-1">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-            <AlertTriangle size={16} className="text-red-500" /> Inventory Alerts
-          </h2>
-          {/* Product expiry email master switch */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            <span className={`text-xs font-semibold ${settings.productExpiryEmailEnabled ? "text-green-600 dark:text-green-400" : "text-gray-400"}`}>
-              {settings.productExpiryEmailEnabled ? "Emails ON" : "Emails OFF"}
-            </span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={settings.productExpiryEmailEnabled}
-              title={settings.productExpiryEmailEnabled ? "Click to stop sending product expiry emails" : "Click to enable product expiry emails"}
-              onClick={() => handleChange("productExpiryEmailEnabled", !settings.productExpiryEmailEnabled)}
-              className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1
-                ${settings.productExpiryEmailEnabled
-                  ? "bg-green-500 focus:ring-green-400"
-                  : "bg-gray-300 dark:bg-gray-600 focus:ring-gray-400"}`}
-            >
-              <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform
-                ${settings.productExpiryEmailEnabled ? "translate-x-5" : "translate-x-1"}`} />
-            </button>
+      <SettingSection id="inventory" icon={AlertTriangle} iconColor="text-red-500" title="Inventory Alerts" subtitle={`Low stock ≤ ${settings.lowStockThreshold} units · Expiry ≤ ${settings.productExpiryWarningWeeks}wk · Emails ${settings.productExpiryEmailEnabled ? "ON" : "OFF"}`}>
+        <div className="mt-3 space-y-5">
+          <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+            <div>
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Product expiry emails</p>
+              <p className="text-xs text-gray-400 mt-0.5">Daily digest of products expiring within the warning window.</p>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <span className={`text-xs font-semibold ${settings.productExpiryEmailEnabled ? "text-green-600 dark:text-green-400" : "text-gray-400"}`}>
+                {settings.productExpiryEmailEnabled ? "ON" : "OFF"}
+              </span>
+              <button type="button" onClick={() => handleChange("productExpiryEmailEnabled", !settings.productExpiryEmailEnabled)}
+                className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors focus:outline-none ${settings.productExpiryEmailEnabled ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"}`}>
+                <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform ${settings.productExpiryEmailEnabled ? "translate-x-5" : "translate-x-1"}`} />
+              </button>
+            </div>
           </div>
-        </div>
-
-        <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">Configure thresholds that trigger notifications.</p>
-
-        {/* OFF banner */}
-        {!settings.productExpiryEmailEnabled && (
-          <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2 mb-4 mt-2">
-            <span className="text-amber-500 text-base">🔕</span>
-            <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
-              Product expiry emails are paused. Products will still appear on the Products page with expiry badges — only the daily digest email is silenced.
-            </p>
-          </div>
-        )}
-
-        {/* Controls — dimmed when OFF */}
-        <div className={`space-y-5 mt-4 transition-opacity duration-200 ${settings.productExpiryEmailEnabled ? "opacity-100" : "opacity-40 pointer-events-none"}`}>
           <div>
             <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Low Stock Alert Threshold (units)</label>
             <div className="flex items-center gap-3">
               <input {...numInput("lowStockThreshold", 1, 10000, "focus:ring-red-300")} />
               <span className="text-sm text-gray-500 dark:text-gray-400">units remaining</span>
             </div>
-            <p className="text-xs text-gray-400 mt-1">Products at or below this count are highlighted as low stock.</p>
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Product Expiry Warning (weeks before)</label>
@@ -739,28 +602,18 @@ const SettingsPage = () => {
               <input {...numInput("productExpiryWarningWeeks", 1, 52, "focus:ring-red-300")} />
               <span className="text-sm text-gray-500 dark:text-gray-400">weeks before expiry date</span>
             </div>
-            <p className="text-xs text-gray-400 mt-1">You receive a daily digest email for products expiring within this window.</p>
           </div>
         </div>
-      </motion.div>
+      </SettingSection>
 
       {/* Global App Theme */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-6">
-        <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1 flex items-center gap-2">
-          <Palette size={16} className="text-indigo-500" /> Global App Theme
-        </h2>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">
-          Choose a colour palette that applies to every user in the store. Changes take effect immediately.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <SettingSection id="theme" icon={Palette} title="Global App Theme" subtitle={`Active: ${GLOBAL_THEMES.find(t => t.id === globalTheme)?.label || globalTheme}`}>
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {GLOBAL_THEMES.map((t) => {
             const active = globalTheme === t.id;
             return (
               <button key={t.id} type="button" onClick={() => setGlobalTheme(t.id)}
-                className={`flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all ${
-                  active ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30" : "border-gray-200 dark:border-gray-600 hover:border-gray-300 bg-white dark:bg-gray-900"
-                }`}>
+                className={`flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all ${active ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30" : "border-gray-200 dark:border-gray-600 hover:border-gray-300 bg-white dark:bg-gray-900"}`}>
                 <span className="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center shadow-sm" style={{ background: t.color }}>
                   {active && <CheckCircle2 size={16} className="text-white" />}
                 </span>
@@ -772,31 +625,16 @@ const SettingsPage = () => {
             );
           })}
         </div>
-        <div className="mt-4 flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl px-4 py-2.5 text-xs text-indigo-700 dark:text-indigo-300">
-          <Palette size={13} />
-          Active: <strong className="ml-1">{GLOBAL_THEMES.find((t) => t.id === globalTheme)?.label}</strong>
-          <span className="ml-1 text-indigo-400"> — saves automatically on click</span>
-        </div>
-      </motion.div>
+      </SettingSection>
 
       {/* Personal Display Mode */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.145 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-6">
-        <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1 flex items-center gap-2">
-          {personalMode === "dark" ? <Moon size={16} className="text-indigo-400" /> : <Sun size={16} className="text-amber-400" />}
-          My Display Mode
-        </h2>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">
-          Your personal light or dark preference. Only affects your view — does not change what other users see.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3">
+      <SettingSection id="display-mode" icon={personalMode === "dark" ? Moon : Sun} iconColor={personalMode === "dark" ? "text-indigo-400" : "text-amber-400"} title="My Display Mode" subtitle={`Current: ${PERSONAL_MODES.find(m => m.id === personalMode)?.label || personalMode} — only affects your view`}>
+        <div className="flex flex-col sm:flex-row gap-3 mt-3">
           {PERSONAL_MODES.map((m) => {
             const active = personalMode === m.id;
             return (
               <button key={m.id} type="button" onClick={() => setPersonalMode(m.id)}
-                className={`flex-1 flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all ${
-                  active ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30" : "border-gray-200 dark:border-gray-600 hover:border-gray-300 bg-white dark:bg-gray-900"
-                }`}>
+                className={`flex-1 flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all ${active ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30" : "border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900"}`}>
                 <span className="text-2xl">{m.icon}</span>
                 <div className="flex-1">
                   <p className={`text-sm font-bold flex items-center gap-2 ${active ? "text-indigo-700 dark:text-indigo-300" : "text-gray-800 dark:text-gray-200"}`}>
@@ -808,23 +646,11 @@ const SettingsPage = () => {
             );
           })}
         </div>
-      </motion.div>
+      </SettingSection>
 
       {/* Staff Order Delegation */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-6">
-        <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1 flex items-center gap-2">
-          <ShieldCheck size={16} className="text-indigo-500" /> Staff Order Management Delegation
-        </h2>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">
-          Grant staff the ability to search, view, and update placed order statuses. Delegated staff receive an email notification when access changes.
-        </p>
-        {delegationLoading ? (
-          <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
-            <Loader2 size={15} className="animate-spin" /> Loading delegation settings...
-          </div>
-        ) : (
-          <div className="space-y-5">
+      <SettingSection id="delegation" icon={ShieldCheck} title="Staff Order Delegation" subtitle={delegation.delegateToAllStaff ? "All staff delegated" : `${delegation.delegatedStaffIds.length} staff delegated`}>
+        <div className="mt-3">
             <div className="flex flex-col sm:flex-row gap-3">
               {[{ value: true, label: "All Staff", desc: "Every active staff member can manage placed orders.", icon: "all" },
                 { value: false, label: "Specific Staff Only", desc: "You choose which staff members have access.", icon: "pick" }]
@@ -924,25 +750,9 @@ const SettingsPage = () => {
               </div>
             )}
           </div>
-        )}
-      </motion.div>
-
-      {/* Staff Wholesale Pricing Access */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.125 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-6">
-        <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1 flex items-center gap-2">
-          <Store size={16} className="text-amber-500" /> Staff Wholesale Pricing Access
-        </h2>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">
-          Control which staff members can switch to wholesale pricing on walk-in sales. Staff without access will not see the wholesale toggle on their cart page.
-        </p>
-
-        {wholesaleLoading ? (
-          <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
-            <Loader2 size={15} className="animate-spin" /> Loading...
-          </div>
-        ) : (
-          <div className="space-y-5">
+      </SettingSection>
+      <SettingSection id="wholesale" icon={Store} iconColor="text-amber-500" title="Staff Wholesale Pricing Access" subtitle={wholesale.wholesaleAllStaff ? "All staff have access" : `${wholesale.wholesaleStaffIds.length} staff allowed`}>
+        <div className="mt-3">
             {/* All / Specific toggle */}
             <div className="flex flex-col sm:flex-row gap-3">
               {[
@@ -1048,140 +858,55 @@ const SettingsPage = () => {
               </div>
             )}
           </div>
-        )}
-      </motion.div>
+      </SettingSection>
 
-      {/* Product Draft Info */}
-      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3 flex gap-3">
-        <Package size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
-        <div className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
-          <p className="font-semibold mb-0.5">Product form draft</p>
-          <p>
-            When you start filling the Add Product form and close it without saving,
-            your progress is automatically saved to your account — not just this device.
-            The draft is cleared automatically when you successfully add the product.
-          </p>
-        </div>
-      </div>
-
-      {/* How expiry notifications work */}
-      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3 flex gap-3">
-        <AlertTriangle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
-        <div className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
-          <p className="font-semibold mb-0.5">How expiry notifications work</p>
-          <p>
-            The system checks all active placed orders every <strong>15 minutes</strong> in the background.
-            When an order exceeds your configured expiry time, you receive an email notification.
-            Cancelled and delivered orders are excluded from future notifications automatically.
-          </p>
-        </div>
-      </div>
-
-      {/* ── Abandoned Cart Reminder ────────────────────────────────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 space-y-4"
-      >
-        <div className="flex items-center gap-2 mb-1">
-          <Bell size={16} className="text-indigo-500" />
-          <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-sm">
-            Abandoned Cart Reminder
-          </h3>
-        </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-          Automatically send an email to customers who left items in their cart without purchasing.
-          The reminder fires before the 1-hour cart TTL expires. The email shows their cart items
-          and links them back to the store to complete the purchase.
-        </p>
-
-        {/* Master ON/OFF */}
-        <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-700">
-          <div>
-            <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Enable abandoned cart emails</p>
-            <p className="text-xs text-gray-400 mt-0.5">Send reminder before cart items expire</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => handleChange("abandonedCartReminderEnabled", !settings.abandonedCartReminderEnabled)}
-            className={`relative inline-flex h-6 w-11 rounded-full transition-colors focus:outline-none
-              ${settings.abandonedCartReminderEnabled ? "bg-indigo-500" : "bg-gray-300 dark:bg-gray-600"}`}
-          >
-            <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform mt-0.5
-              ${settings.abandonedCartReminderEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
-          </button>
-        </div>
-
-        {settings.abandonedCartReminderEnabled && (
-          <div className="space-y-4">
-            {/* Reminder timing */}
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div>
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                  Send reminder this many minutes before cart expires
-                </p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Cart TTL = 60 min. Default 15 = email sent at ~45 min mark.
-                </p>
-              </div>
-              <input
-                {...numInput("abandonedCartReminderMinutes", 1, 55, "focus:ring-indigo-300")}
-                className="w-24 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
-                  focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50 dark:bg-gray-800
-                  dark:text-gray-100 text-center font-semibold"
-              />
-            </div>
-
-            {/* Role toggles */}
+      {/* Abandoned Cart Reminder */}
+      <SettingSection id="abandoned-cart" icon={Bell} title="Abandoned Cart Reminder" subtitle={`${settings.abandonedCartReminderEnabled ? "ON" : "OFF"} · fires ${settings.abandonedCartReminderMinutes}min before cart expires`}>
+        <div className="mt-3 space-y-4">
+          <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
             <div>
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                Send to which customer roles
-              </p>
-              <div className="flex gap-3 flex-wrap">
-                {["customer", "wholesale"].map((role) => {
-                  const active = (settings.abandonedCartReminderRoles || []).includes(role);
-                  return (
-                    <button
-                      key={role}
-                      type="button"
-                      onClick={() => {
-                        const current = settings.abandonedCartReminderRoles || [];
-                        const next = active
-                          ? current.filter((r) => r !== role)
-                          : [...current, role];
-                        handleChange("abandonedCartReminderRoles", next);
-                      }}
-                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold border transition
-                        ${active
-                          ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                          : "bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-indigo-50"
-                        }`}
-                    >
-                      {active ? <CheckCircle2 size={12} /> : <span className="w-3 h-3 rounded-full border border-current inline-block" />}
-                      {role.charAt(0).toUpperCase() + role.slice(1)}
-                    </button>
-                  );
-                })}
-              </div>
-              {(settings.abandonedCartReminderRoles || []).length === 0 && (
-                <p className="text-xs text-amber-600 mt-1.5">
-                  ⚠️ No roles selected — reminder emails will not be sent even if enabled.
-                </p>
-              )}
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Enable abandoned cart emails</p>
+              <p className="text-xs text-gray-400 mt-0.5">Send reminder before cart items expire</p>
             </div>
-
-            {/* Info box */}
-            <div className="flex items-start gap-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3">
-              <Bell size={14} className="text-blue-500 shrink-0 mt-0.5" />
-              <p className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
-                The system checks for expiring carts every <strong>10 minutes</strong>.
-                Each cart only receives <strong>one reminder per lifecycle</strong> — if the user
-                comes back and updates their cart, the reminder resets so they can receive another
-                one on the next idle period.
-              </p>
-            </div>
+            <button type="button"
+              onClick={() => handleChange("abandonedCartReminderEnabled", !settings.abandonedCartReminderEnabled)}
+              className={`relative inline-flex h-6 w-11 rounded-full transition-colors focus:outline-none ${settings.abandonedCartReminderEnabled ? "bg-indigo-500" : "bg-gray-300 dark:bg-gray-600"}`}>
+              <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform mt-0.5 ${settings.abandonedCartReminderEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
+            </button>
           </div>
-        )}
-      </motion.div>
+          {settings.abandonedCartReminderEnabled && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Minutes before cart expires</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Cart TTL = 60 min. Default 15 = email at ~45 min mark.</p>
+                </div>
+                <input {...numInput("abandonedCartReminderMinutes", 1, 55, "focus:ring-indigo-300")}
+                  className="w-24 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-gray-50 dark:bg-gray-800 dark:text-gray-100 text-center font-semibold" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Send to which roles</p>
+                <div className="flex gap-3 flex-wrap">
+                  {["customer", "wholesale"].map((role) => {
+                    const active = (settings.abandonedCartReminderRoles || []).includes(role);
+                    return (
+                      <button key={role} type="button"
+                        onClick={() => {
+                          const current = settings.abandonedCartReminderRoles || [];
+                          handleChange("abandonedCartReminderRoles", active ? current.filter(r => r !== role) : [...current, role]);
+                        }}
+                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold border transition ${active ? "bg-indigo-600 text-white border-indigo-600" : "bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-indigo-50"}`}>
+                        {active ? <CheckCircle2 size={12} /> : <span className="w-3 h-3 rounded-full border border-current inline-block" />}
+                        {role.charAt(0).toUpperCase() + role.slice(1)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </SettingSection>
 
       {/* Save Button */}
       <div className="flex items-center gap-3 pb-6">
