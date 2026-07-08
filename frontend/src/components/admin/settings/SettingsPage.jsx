@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useTheme, GLOBAL_THEMES, PERSONAL_MODES } from "../../../context/ThemeContext";
 
-// -- SettingSection ó collapsible accordion card ------------------------------
+// -- SettingSection ÔøΩ collapsible accordion card ------------------------------
 // Defined OUTSIDE SettingsPage so it is never re-created on parent renders.
 const SettingSection = ({ id, icon: Icon, iconColor = "text-indigo-500", title, subtitle, children, badge, openSection, onToggle }) => {
   const isOpen = openSection === id;
@@ -18,7 +18,7 @@ const SettingSection = ({ id, icon: Icon, iconColor = "text-indigo-500", title, 
     <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
       <button type="button"
         onClick={() => {
-          // Preserve scroll position ó read before state update, restore after paint
+          // Preserve scroll position ÔøΩ read before state update, restore after paint
           const scroller = document.getElementById("main-scroll");
           const savedScrollTop = scroller ? scroller.scrollTop : window.scrollY;
           onToggle(id);
@@ -446,7 +446,7 @@ const SettingsPage = () => {
       </SettingSection>
 
       {/* Order Pickup Expiry */}
-      <SettingSection openSection={openSection} onToggle={toggleSection} id="expiry" icon={Clock} iconColor="text-amber-500" title="Order Pickup Expiry" subtitle={`Threshold: ${settings.orderExpiryHours}h ∑ ${settings.expiryReminderEnabled ? "Emails ON" : "Emails OFF"}`}>
+      <SettingSection openSection={openSection} onToggle={toggleSection} id="expiry" icon={Clock} iconColor="text-amber-500" title="Order Pickup Expiry" subtitle={`Threshold: ${settings.orderExpiryHours}h ÔøΩ ${settings.expiryReminderEnabled ? "Emails ON" : "Emails OFF"}`}>
         <div className="mt-3 space-y-5">
           <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
             <div>
@@ -469,7 +469,7 @@ const SettingsPage = () => {
           {!settings.expiryReminderEnabled && (
             <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2">
               <span className="text-amber-500">??</span>
-              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Emails paused ó orders still appear on the Expiring Orders page.</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Emails paused ÔøΩ orders still appear on the Expiring Orders page.</p>
             </div>
           )}
           <div className={`space-y-5 transition-opacity ${settings.expiryReminderEnabled ? "opacity-100" : "opacity-40 pointer-events-none"}`}>
@@ -514,15 +514,35 @@ const SettingsPage = () => {
       </SettingSection>
 
       {/* Notification Email */}
-      <SettingSection openSection={openSection} onToggle={toggleSection} id="notif-email" icon={Mail} iconColor="text-blue-500" title="Admin Notification Email" subtitle={settings.adminNotificationEmail || "Leave blank to use account email"}>
-        <div className="mt-3">
+      <SettingSection openSection={openSection} onToggle={toggleSection} id="notif-email" icon={Mail} iconColor="text-blue-500" title="Admin Notification Email" subtitle={settings.adminNotificationEmail || "Leave blank to use your account email"}>
+        <div className="mt-3 space-y-3">
           <input type="email" value={settings.adminNotificationEmail}
             onChange={(e) => handleChange("adminNotificationEmail", e.target.value)}
             placeholder="admin@yourdomain.com"
             className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm
               focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50 dark:bg-gray-900
               dark:text-gray-100 dark:placeholder-gray-500" />
-          <p className="text-xs text-gray-400 mt-1.5">Covers: new order alerts, expiry alerts, and repeat reminders.</p>
+          {/* What this email address receives */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3 space-y-1.5">
+            <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide">This email receives ALL admin notifications:</p>
+            <ul className="space-y-1">
+              {[
+                "üõí New customer/wholesale order placed",
+                "‚è∞ Order pickup expiry alerts & repeat reminders",
+                "üïê Low-stock inventory alerts",
+                "üì¶ Product expiry digest emails",
+              ].map((line) => (
+                <li key={line} className="text-xs text-blue-800 dark:text-blue-200 flex items-start gap-1.5">
+                  <span className="shrink-0">{line.slice(0, 2)}</span>
+                  <span>{line.slice(2)}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-[11px] text-blue-500 dark:text-blue-400 pt-1 border-t border-blue-200 dark:border-blue-700 mt-1">
+              Leave blank to fall back to your account login email.
+              Changing this takes effect immediately ‚Äî all future notifications go to the new address.
+            </p>
+          </div>
         </div>
       </SettingSection>
 
@@ -577,7 +597,7 @@ const SettingsPage = () => {
       </SettingSection>
 
       {/* Inventory Alerts */}
-      <SettingSection openSection={openSection} onToggle={toggleSection} id="inventory" icon={AlertTriangle} iconColor="text-red-500" title="Inventory Alerts" subtitle={`Low stock = ${settings.lowStockThreshold} units ∑ Expiry = ${settings.productExpiryWarningWeeks}wk ∑ Emails ${settings.productExpiryEmailEnabled ? "ON" : "OFF"}`}>
+      <SettingSection openSection={openSection} onToggle={toggleSection} id="inventory" icon={AlertTriangle} iconColor="text-red-500" title="Inventory Alerts" subtitle={`Low stock = ${settings.lowStockThreshold} units ÔøΩ Expiry = ${settings.productExpiryWarningWeeks}wk ÔøΩ Emails ${settings.productExpiryEmailEnabled ? "ON" : "OFF"}`}>
         <div className="mt-3 space-y-5">
           <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
             <div>
@@ -633,7 +653,7 @@ const SettingsPage = () => {
       </SettingSection>
 
       {/* Personal Display Mode */}
-      <SettingSection openSection={openSection} onToggle={toggleSection} id="display-mode" icon={personalMode === "dark" ? Moon : Sun} iconColor={personalMode === "dark" ? "text-indigo-400" : "text-amber-400"} title="My Display Mode" subtitle={`Current: ${PERSONAL_MODES.find(m => m.id === personalMode)?.label || personalMode} ó only affects your view`}>
+      <SettingSection openSection={openSection} onToggle={toggleSection} id="display-mode" icon={personalMode === "dark" ? Moon : Sun} iconColor={personalMode === "dark" ? "text-indigo-400" : "text-amber-400"} title="My Display Mode" subtitle={`Current: ${PERSONAL_MODES.find(m => m.id === personalMode)?.label || personalMode} ÔøΩ only affects your view`}>
         <div className="flex flex-col sm:flex-row gap-3 mt-3">
           {PERSONAL_MODES.map((m) => {
             const active = personalMode === m.id;
@@ -654,27 +674,50 @@ const SettingsPage = () => {
       </SettingSection>
 
       {/* Staff Order Delegation */}
-      <SettingSection openSection={openSection} onToggle={toggleSection} id="delegation" icon={ShieldCheck} title="Staff Order Delegation" subtitle={delegation.delegateToAllStaff ? "All staff delegated" : `${delegation.delegatedStaffIds.length} staff delegated`}>
-        <div className="mt-3">
-            <div className="flex flex-col sm:flex-row gap-3">
-              {[{ value: true, label: "All Staff", desc: "Every active staff member can manage placed orders.", icon: "all" },
-                { value: false, label: "Specific Staff Only", desc: "You choose which staff members have access.", icon: "pick" }]
-                .map((opt) => (
-                  <button key={String(opt.value)} type="button" disabled={delegationSaving}
-                    onClick={() => { if (opt.value !== delegation.delegateToAllStaff) toggleDelegateAll(); }}
-                    className={`flex-1 text-left p-4 rounded-xl border-2 transition-all disabled:opacity-60 ${
-                      delegation.delegateToAllStaff === opt.value
-                        ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30"
-                        : "border-gray-200 dark:border-gray-600 hover:border-gray-300 bg-white dark:bg-gray-900"
-                    }`}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-sm font-semibold ${delegation.delegateToAllStaff === opt.value ? "text-indigo-700 dark:text-indigo-300" : "text-gray-700 dark:text-gray-300"}`}>{opt.label}</span>
-                      {delegation.delegateToAllStaff === opt.value && <CheckCircle2 size={14} className="text-indigo-500 ml-auto" />}
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{opt.desc}</p>
-                  </button>
-                ))}
-            </div>
+      <SettingSection openSection={openSection} onToggle={toggleSection} id="delegation" icon={ShieldCheck} title="Staff Order Delegation" subtitle={delegation.delegateToAllStaff ? "All staff can manage placed orders" : delegation.delegatedStaffIds.length > 0 ? `${delegation.delegatedStaffIds.length} staff can manage placed orders` : "No staff delegated yet"}>
+        <div className="mt-3 space-y-4">
+          {/* What this feature does */}
+          <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-xl px-4 py-3 space-y-1.5">
+            <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 uppercase tracking-wide">What delegated staff can do:</p>
+            <ul className="space-y-1">
+              {[
+                "üì¶ See a new \"Placed Orders\" item in their sidebar",
+                "üîç Search any customer order by Order ID",
+                "üîÑ Change order status (pending ‚Üí processing ‚Üí delivered / cancel)",
+                "üí≥ Mark refunds for orders they cancelled",
+              ].map((line) => (
+                <li key={line} className="text-xs text-indigo-800 dark:text-indigo-200 flex items-start gap-1.5">
+                  <span className="shrink-0">{line.slice(0, 2)}</span>
+                  <span>{line.slice(2)}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-[11px] text-indigo-500 dark:text-indigo-400 pt-1 border-t border-indigo-200 dark:border-indigo-700 mt-1">
+              Every status change by a delegated staff is recorded in <strong>their history</strong>,
+              the <strong>customer's history</strong>, and <strong>your admin history</strong> ‚Äî each marked
+              with a üõ°Ô∏è Delegated badge. You can still manage orders yourself at any time.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            {[{ value: true, label: "All Staff", desc: "Every active staff member gets the Placed Orders access.", icon: "all" },
+              { value: false, label: "Specific Staff Only", desc: "You choose exactly which staff members have access.", icon: "pick" }]
+              .map((opt) => (
+                <button key={String(opt.value)} type="button" disabled={delegationSaving}
+                  onClick={() => { if (opt.value !== delegation.delegateToAllStaff) toggleDelegateAll(); }}
+                  className={`flex-1 text-left p-4 rounded-xl border-2 transition-all disabled:opacity-60 ${
+                    delegation.delegateToAllStaff === opt.value
+                      ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30"
+                      : "border-gray-200 dark:border-gray-600 hover:border-gray-300 bg-white dark:bg-gray-900"
+                  }`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-sm font-semibold ${delegation.delegateToAllStaff === opt.value ? "text-indigo-700 dark:text-indigo-300" : "text-gray-700 dark:text-gray-300"}`}>{opt.label}</span>
+                    {delegation.delegateToAllStaff === opt.value && <CheckCircle2 size={14} className="text-indigo-500 ml-auto" />}
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{opt.desc}</p>
+                </button>
+              ))}
+          </div>
 
             {!delegation.delegateToAllStaff && (
               <div className="space-y-3">
@@ -866,7 +909,7 @@ const SettingsPage = () => {
       </SettingSection>
 
       {/* Abandoned Cart Reminder */}
-      <SettingSection openSection={openSection} onToggle={toggleSection} id="abandoned-cart" icon={Bell} title="Abandoned Cart Reminder" subtitle={`${settings.abandonedCartReminderEnabled ? "ON" : "OFF"} ∑ fires ${settings.abandonedCartReminderMinutes}min before cart expires`}>
+      <SettingSection openSection={openSection} onToggle={toggleSection} id="abandoned-cart" icon={Bell} title="Abandoned Cart Reminder" subtitle={`${settings.abandonedCartReminderEnabled ? "ON" : "OFF"} ÔøΩ fires ${settings.abandonedCartReminderMinutes}min before cart expires`}>
         <div className="mt-3 space-y-4">
           <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
             <div>
