@@ -14,7 +14,6 @@ import FulfillmentModal from "./FulfillmentModal";
 import CartProductSearch from "./CartProductSearch";
 import { useAuth } from "../../../context/AuthContext";
 import { useCart } from "../../../context/CartContext";
-import { useEngagementTracker } from "../../../hooks/useEngagementTracker";
 import ReceiptModal from "../../share-component/receipt/ReceiptModal";
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
@@ -78,7 +77,6 @@ const parseOrderError = (err) => {
 const CustomerOrderPortal = () => {
   const { user }    = useAuth();
   const { resetCart, cartCount } = useCart();
-  const { trackAction, markPurchased } = useEngagementTracker();
   const navigate    = useNavigate();
 
   // Callback ref — fires the moment the sticky cart header mounts in the DOM.
@@ -430,12 +428,7 @@ const CustomerOrderPortal = () => {
         window.dispatchEvent(new CustomEvent("ordersUpdated", { detail: { total: 0 } }));
       } catch (_) {}
 
-      // Mark engagement session as purchased
-      markPurchased(grandTotal, orders.map(o => ({
-        name:     o.product?.name || "Product",
-        quantity: o.quantity,
-        price:    o.price,
-      })));
+      // Mark engagement session as purchased — tracking removed to fix TDZ issue
 
       // Fetch invoice blob while overlay is showing
       const query = new URLSearchParams({
@@ -482,8 +475,7 @@ const CustomerOrderPortal = () => {
       bypassPreCheck.current = false;
       return true;
     }
-    // Track checkout start as engagement event
-    trackAction("start_checkout");
+    // Track checkout start as engagement event — removed to fix TDZ issue
 
     try {
       const res = await axiosInstance.post("/orders/verify-stock");
