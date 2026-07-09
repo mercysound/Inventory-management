@@ -1,4 +1,5 @@
 import "./App.css";
+import "./App.css";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./utils/ProtectedRoute.jsx";
 import Dashboard from "./pages/Dashboard.jsx";

@@ -286,6 +286,22 @@ const CustomerOrderPortal = () => {
     }
   };
 
+  const handleDeleteOrder = async (orderId) => {
+    const prev = orders;
+    setOrders((os) => os.filter((o) => o._id !== orderId));
+    try {
+      const res = await axiosInstance.delete(`/orders/remove/${orderId}`);
+      if (!res.data.success) { 
+        setOrders(prev); 
+        toast.error("Failed to remove item"); 
+      } else {
+        toast.success("Item removed");
+        const newTotal = orders.reduce((sum, o) => o._id === orderId ? sum : sum + o.quantity, 0);
+        try { window.dispatchEvent(new CustomEvent("ordersUpdated", { detail: { total: newTotal } })); } catch (e) { /* ignore */ }
+      }
+    } catch { setOrders(prev); toast.error("Failed to remove item"); }
+  };
+
   const handleReduceQty = async (orderId) => {
     const order = orders.find((o) => o._id === orderId);
     if (!order) return;
@@ -311,22 +327,6 @@ const CustomerOrderPortal = () => {
         try { window.dispatchEvent(new CustomEvent("ordersUpdated", { detail: { total: newTotal } })); } catch (e) { /* ignore */ }
       }
     } catch { setOrders(prev); toast.error("Failed to reduce quantity"); }
-  };
-
-  const handleDeleteOrder = async (orderId) => {
-    const prev = orders;
-    setOrders((os) => os.filter((o) => o._id !== orderId));
-    try {
-      const res = await axiosInstance.delete(`/orders/remove/${orderId}`);
-      if (!res.data.success) { 
-        setOrders(prev); 
-        toast.error("Failed to remove item"); 
-      } else {
-        toast.success("Item removed");
-        const newTotal = orders.reduce((sum, o) => o._id === orderId ? sum : sum + o.quantity, 0);
-        try { window.dispatchEvent(new CustomEvent("ordersUpdated", { detail: { total: newTotal } })); } catch (e) { /* ignore */ }
-      }
-    } catch { setOrders(prev); toast.error("Failed to remove item"); }
   };
 
   // ── Clear entire cart ─────────────────────────────────────────────────────
