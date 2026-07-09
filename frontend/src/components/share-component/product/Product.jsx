@@ -1,11 +1,54 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
-import { Search, ScanLine, CalendarClock, X, Trash2, Star, ShieldOff, Tag } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Search, ScanLine, CalendarClock, X, Trash2, Star, ShieldOff, Tag, Layers, FileText } from "lucide-react";
 import ProductTable from "./ProductTable";
 import ProductForm from "./ProductForm";
 import ProductSkeleton from "./ProductSkeleton";
 import axiosInstance from "../../../utils/axiosInstance";
 import DeletedProductsPopup from "./DeletedProductsPopup";
+
+// ── Mode chooser modal — shown before opening the product form ───────────────
+// Lets admin pick between the quick modal or full-page form.
+const ModeChooserModal = ({ onModal, onFullPage, onClose, isEditing }) => (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 px-4"
+    onClick={onClose}>
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6"
+      onClick={e => e.stopPropagation()}>
+      <h2 className="text-base font-bold text-gray-900 mb-1">
+        {isEditing ? "How would you like to edit?" : "How would you like to add?"}
+      </h2>
+      <p className="text-xs text-gray-400 mb-5">Choose quick modal for simple products, full page for products with many details.</p>
+      <div className="flex flex-col gap-3">
+        <button onClick={onModal}
+          className="flex items-start gap-3 p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50
+            hover:border-indigo-500 transition text-left group">
+          <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shrink-0 shadow-sm">
+            <Layers size={16} className="text-white" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-indigo-800">Quick Modal</p>
+            <p className="text-xs text-gray-500 mt-0.5">Opens a compact pop-up. Best for simple products.</p>
+          </div>
+        </button>
+        <button onClick={onFullPage}
+          className="flex items-start gap-3 p-4 rounded-xl border-2 border-violet-200 bg-violet-50
+            hover:border-violet-500 transition text-left group">
+          <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center shrink-0 shadow-sm">
+            <FileText size={16} className="text-white" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-violet-800">Full Page</p>
+            <p className="text-xs text-gray-500 mt-0.5">Routes to a dedicated page. Best for variants, many images, and detailed products.</p>
+          </div>
+        </button>
+      </div>
+      <button onClick={onClose} className="mt-4 w-full py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition">
+        Cancel
+      </button>
+    </div>
+  </div>
+);
 
 // Extract a readable message from an axios error
 const parseApiError = (err) =>
@@ -29,10 +72,14 @@ const EMPTY_FORM = {
   isStaffOnly:    false,
   individualLowStockThreshold:    "",
   individualLowStockAlertEnabled: true,
+  variants:       [],
 };
 
 const Product = () => {
+  const navigate = useNavigate();
   const [openModal,         setOpenModal]         = useState(false);
+  const [showChooser,       setShowChooser]       = useState(false);
+  const [pendingEdit,       setPendingEdit]        = useState(null); // product to edit after mode chosen
   const [editProduct,       setEditProduct]       = useState(null);
   const [categories,        setCategories]        = useState([]);
   const [suppliers,         setSuppliers]         = useState([]);
@@ -256,6 +303,12 @@ const Product = () => {
 
   // ── Edit ─────────────────────────────────────────────────────────────────
   const handleEdit = (product) => {
+    setPendingEdit(product);
+    setShowChooser(true);
+  };
+
+  // ── Open modal edit (after chooser selects modal) ─────────────────────────
+  const openModalEdit = (product) => {
     setEditProduct(product._id);
     setFormData({
       name:           product.name,
@@ -279,6 +332,7 @@ const Product = () => {
       isStaffOnly:  product.isStaffOnly  || false,
       individualLowStockThreshold:    product.individualLowStockThreshold ?? "",
       individualLowStockAlertEnabled: product.individualLowStockAlertEnabled !== false,
+      variants: Array.isArray(product.variants) ? product.variants : [],
     });
     setOpenModal(true);
   };
@@ -321,9 +375,14 @@ const Product = () => {
 
       // Append all non-image text fields
       Object.keys(formData).forEach((key) => {
-        if (["image", "removeImage", "_imageName", "images"].includes(key)) return;
+        if (["image", "removeImage", "_imageName", "images", "variants"].includes(key)) return;
         data.append(key, formData[key] === "" ? "" : formData[key]);
       });
+
+      // Serialize variants as JSON string
+      if (Array.isArray(formData.variants) && formData.variants.length > 0) {
+        data.append("variants", JSON.stringify(formData.variants));
+      }
 
       // Append each new image file under the "images" field (multer array)
       imageFiles.forEach((file) => data.append("images", file));
@@ -474,6 +533,18 @@ const Product = () => {
   }, [fetchProducts]);
 
   const handleViewDeleted = () => { fetchDeletedProducts(); setShowDeletedPopup(true); };
+
+  // ── Duplicate product ─────────────────────────────────────────────────────
+  const handleDuplicate = useCallback(async (productId) => {
+    if (!confirm("Duplicate this product? A copy will be created with 0 stock. You can then edit it.")) return;
+    try {
+      const res = await axiosInstance.post(`/products/${productId}/duplicate`);
+      if (res.data.success) {
+        toast.success("Product duplicated! Edit the copy to set its stock.");
+        fetchProducts();
+      } else { toast.error("Failed to duplicate product"); }
+    } catch { toast.error("Failed to duplicate product"); }
+  }, [fetchProducts]);
 
   const handleRestore = async (id) => {
     try {
@@ -653,8 +724,9 @@ const Product = () => {
             products={filteredProducts}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            onAddClick={() => setOpenModal(true)}
+            onAddClick={() => { setPendingEdit(null); setShowChooser(true); }}
             onViewDeleted={handleViewDeleted}
+            onDuplicate={handleDuplicate}
             updatingProductId={updatingProductId}
             scrollRef={scrollRef}
             lowStockThreshold={lowStockThreshold}
@@ -698,6 +770,32 @@ const Product = () => {
         fetchDeletedProducts={fetchDeletedProducts}
         loading={loadingDeleted}
       />
+
+      {/* ── Mode chooser modal ─────────────────────────────────────────── */}
+      {showChooser && (
+        <ModeChooserModal
+          isEditing={Boolean(pendingEdit)}
+          onClose={() => { setShowChooser(false); setPendingEdit(null); }}
+          onModal={() => {
+            setShowChooser(false);
+            if (pendingEdit) {
+              openModalEdit(pendingEdit);
+            } else {
+              setOpenModal(true);
+            }
+            setPendingEdit(null);
+          }}
+          onFullPage={() => {
+            setShowChooser(false);
+            if (pendingEdit) {
+              navigate(`/admin-dashboard/edit-product/${pendingEdit._id}`);
+            } else {
+              navigate("/admin-dashboard/add-product");
+            }
+            setPendingEdit(null);
+          }}
+        />
+      )}
     </div>
   );
 };

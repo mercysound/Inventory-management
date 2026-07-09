@@ -54,6 +54,8 @@ export const productSchema = Joi.object({
   // Optional product metadata
   expiryDate:   Joi.date().iso().allow(null, "").optional(),
   batchNumber:  Joi.string().trim().max(100).allow("", null).optional(),
+  // Variants — JSON-stringified array sent via multipart form
+  variants:     Joi.string().allow("", null).optional(),
 });
 
 export const productUpdateSchema = productSchema.fork([
@@ -196,6 +198,9 @@ export const updateSettingsSchema = Joi.object({
   reminderIntervalHours:  Joi.number().integer().min(1).max(168).optional(),
   storeName:              Joi.string().trim().max(100).optional(),
   adminNotificationEmail: Joi.string().email().allow("", null).optional(),
+  guestBrowsingEnabled:   Joi.boolean().optional(),
+  maintenanceMode:        Joi.boolean().optional(),
+  maintenanceModeMessage: Joi.string().trim().max(500).allow("", null).optional(),
 }).min(1);
 
 // ─── Product form draft schema ────────────────────────────────────────────────

@@ -34,6 +34,8 @@ import completedOrderHistoryRoutes from "./routes/completedOrderHistoryRoutes.js
 import expiringOrdersRoutes from "./routes/expiringOrdersRoutes.js";
 import settingsRoutes       from "./routes/settingsRoutes.js";
 import engagementRoutes     from "./routes/engagementRoutes.js";
+import favoriteRoutes       from "./routes/favoriteRoutes.js";
+import maintenanceRoutes    from "./routes/maintenanceRoutes.js";
 import cloudinary from "./config/cloudinary.js";
 import { startOrderExpiryCron }   from "./jobs/orderExpiryCron.js";
 import { startProductExpiryCron } from "./jobs/productExpiryCron.js";
@@ -223,6 +225,8 @@ app.use("/api/placed-orders", allOrdersPlacedRoutes);
 app.use("/api/completed-history", completedOrderHistoryRoutes);
 app.use("/api/settings",    settingsRoutes);
 app.use("/api/engagement",  engagementRoutes);
+app.use("/api/favorites",   favoriteRoutes);
+app.use("/api/maintenance", maintenanceRoutes);
 
 // ── SERVE FRONTEND IN PRODUCTION WHEN DEPLOYING FULLSTACK TOGETHER ──
 if (!isDev) {

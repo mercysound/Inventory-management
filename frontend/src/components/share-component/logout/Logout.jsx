@@ -9,7 +9,7 @@ const Logout = () => {
   useEffect(() => {
     const doLogout = async () => {
       await logout();
-      navigate("/", { replace: true });
+      navigate("/login", { replace: true });
     };
 
     doLogout();

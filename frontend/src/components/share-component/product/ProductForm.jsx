@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, Upload, X, ImagePlus, Loader2 } from "lucide-react";
+import { Camera, Upload, X, ImagePlus, Loader2, Plus, Trash2, GripVertical } from "lucide-react";
 import axiosInstance from "../../../utils/axiosInstance";
 
 const MAX_IMAGES = 5;
@@ -103,6 +103,105 @@ const AddSlot = ({ onFileSelect, onCameraCapture, disabled }) => {
   );
 };
 
+// ── Variants editor (optional — admin adds Color/Flavor/etc variants) ─────────
+// Each variant: { _id, label, value, stock, price }
+// price = null means "use product base price"
+const nanoid = () => Math.random().toString(36).slice(2, 10);
+
+const VariantsEditor = ({ variants = [], onChange }) => {
+  const [open, setOpen] = useState(variants.length > 0);
+
+  const addVariant = () => {
+    onChange([...variants, { _id: nanoid(), label: "", value: "", stock: 0, price: null }]);
+    setOpen(true);
+  };
+
+  const updateVariant = (idx, field, val) => {
+    const next = variants.map((v, i) => i === idx ? { ...v, [field]: val } : v);
+    onChange(next);
+  };
+
+  const removeVariant = (idx) => {
+    onChange(variants.filter((_, i) => i !== idx));
+  };
+
+  return (
+    <div className={`p-4 rounded-xl border-2 transition-all ${open && variants.length > 0 ? "border-violet-300 bg-violet-50/30" : "border-gray-200 bg-white"}`}>
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-1">
+        <div>
+          <p className="text-sm font-bold text-gray-700">Product Variants</p>
+          <p className="text-xs text-gray-400 mt-0.5">Optional — add colors, flavors, sizes, etc. Each variant has its own stock and optional price.</p>
+        </div>
+        <button type="button" onClick={() => variants.length === 0 ? addVariant() : setOpen(p => !p)}
+          className="text-xs font-semibold text-violet-600 hover:text-violet-800 border border-violet-200 bg-violet-50 px-2.5 py-1.5 rounded-lg transition">
+          {variants.length === 0 ? "+ Add variant" : open ? "▲ Hide" : `▼ ${variants.length} variant${variants.length > 1 ? "s" : ""}`}
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+            <div className="space-y-2 mt-3">
+              {variants.map((v, idx) => (
+                <div key={v._id} className="grid grid-cols-12 gap-2 items-start bg-white border border-violet-100 rounded-xl p-2">
+                  {/* Label (Color, Flavor, etc.) */}
+                  <div className="col-span-3">
+                    <label className="block text-[10px] text-gray-400 font-semibold uppercase mb-0.5">Label</label>
+                    <input value={v.label} onChange={e => updateVariant(idx, "label", e.target.value)}
+                      placeholder="e.g. Red"
+                      className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-violet-300" />
+                  </div>
+                  {/* Value */}
+                  <div className="col-span-3">
+                    <label className="block text-[10px] text-gray-400 font-semibold uppercase mb-0.5">Value</label>
+                    <input value={v.value} onChange={e => updateVariant(idx, "value", e.target.value)}
+                      placeholder="e.g. Red"
+                      className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-violet-300" />
+                  </div>
+                  {/* Stock */}
+                  <div className="col-span-2">
+                    <label className="block text-[10px] text-gray-400 font-semibold uppercase mb-0.5">Stock</label>
+                    <input type="number" min="0" value={v.stock}
+                      onChange={e => updateVariant(idx, "stock", Math.max(0, Number(e.target.value)))}
+                      onWheel={e => e.currentTarget.blur()}
+                      className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-violet-300" />
+                  </div>
+                  {/* Price override (optional) */}
+                  <div className="col-span-3">
+                    <label className="block text-[10px] text-gray-400 font-semibold uppercase mb-0.5">
+                      Price <span className="normal-case font-normal">(opt)</span>
+                    </label>
+                    <input type="number" min="0" step="0.01"
+                      value={v.price === null || v.price === undefined ? "" : v.price}
+                      onChange={e => updateVariant(idx, "price", e.target.value === "" ? null : Number(e.target.value))}
+                      onWheel={e => e.currentTarget.blur()}
+                      placeholder="Base price"
+                      className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-violet-300" />
+                  </div>
+                  {/* Remove */}
+                  <div className="col-span-1 flex items-end pb-1">
+                    <button type="button" onClick={() => removeVariant(idx)}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <button type="button" onClick={addVariant}
+                className="w-full flex items-center justify-center gap-1.5 py-2 border border-dashed border-violet-300
+                  text-violet-600 text-xs font-semibold rounded-xl hover:bg-violet-50 transition">
+                <Plus size={13} /> Add another variant
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 // ── Main ProductForm component ────────────────────────────────────────────────
 const ProductForm = ({
   open,
@@ -119,6 +218,8 @@ const ProductForm = ({
   // keptImageUrls + setKeptImageUrls: existing URLs admin wants to keep
   keptImageUrls,
   setKeptImageUrls,
+  // inlinePage: when true, renders as an inline card (no fixed overlay)
+  inlinePage = false,
 }) => {
   const [loading,       setLoading]       = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
@@ -296,9 +397,25 @@ const ProductForm = ({
 
   if (!open) return null;
 
+  // ── Outer wrapper differs: inline page vs modal overlay ──────────────────
+  const Outer = inlinePage
+    ? ({ children }) => (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          {children}
+        </div>
+      )
+    : ({ children }) => (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 overflow-y-auto"
+          style={{ touchAction: "none" }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col mx-4 my-4"
+            style={{ maxHeight: "92vh" }}>
+            {children}
+          </div>
+        </div>
+      );
+
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 overflow-y-auto" style={{ touchAction: "none" }}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col mx-4 my-4" style={{ maxHeight: "92vh" }}>
+    <Outer>
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="flex-shrink-0 bg-white flex items-center justify-between px-6 py-4 border-b border-gray-100 rounded-t-2xl">
@@ -640,6 +757,15 @@ const ProductForm = ({
               return null;
             })()}
 
+            {/* ── Product Variants (optional) ──────────────────────── */}
+            <VariantsEditor
+              variants={formData.variants || []}
+              onChange={(v) => {
+                const updated = { ...formData, variants: v };
+                setFormData(updated);
+              }}
+            />
+
             {/* ── Images section ───────────────────────────────────────── */}
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -723,8 +849,7 @@ const ProductForm = ({
             </div>
           </form>
         </div>
-      </div>
-    </div>
+      </Outer>
   );
 };
 

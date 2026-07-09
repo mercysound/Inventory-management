@@ -142,6 +142,12 @@ const addProduct = async (req, res) => {
     const finalWholesalePrice =
       wholesalePrice && wholesalePrice !== '' ? Number(wholesalePrice) : Number(price);
 
+    // Parse variants from JSON string (multipart form sends it as string)
+    let parsedVariants = [];
+    if (req.body.variants) {
+      try { parsedVariants = JSON.parse(req.body.variants); } catch {}
+    }
+
     const product = await ProductModel.create({
       name,
       description,
@@ -158,6 +164,7 @@ const addProduct = async (req, res) => {
       isNewArrival: req.body.isNewArrival === 'true' || req.body.isNewArrival === true,
       isBonanza:    req.body.isBonanza    === 'true' || req.body.isBonanza    === true,
       isStaffOnly:  req.body.isStaffOnly  === 'true' || req.body.isStaffOnly  === true,
+      variants:     parsedVariants,
     });
 
     const out = product.toObject();
@@ -250,6 +257,15 @@ const updateProduct = async (req, res) => {
 
     // Remove old single-image fields from body to avoid conflicts
     delete updateData.removeImage;
+
+    // Parse variants JSON string (sent via multipart/form-data)
+    if ('variants' in updateData && typeof updateData.variants === 'string') {
+      try {
+        updateData.variants = JSON.parse(updateData.variants);
+      } catch {
+        delete updateData.variants;
+      }
+    }
 
     const updated = await ProductModel.findByIdAndUpdate(
       id,
@@ -547,6 +563,187 @@ const setLowStockConfig = async (req, res) => {
   } catch (error) {
     console.error('setLowStockConfig error:', error);
     return sendError(res, 500, 'Failed to update low stock config');
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /products/public
+// No auth required. Returns all non-deleted, non-staff-only products.
+// Respects guestBrowsingEnabled setting — returns 403 when disabled.
+// Retail prices only; wholesale prices stripped.
+// ─────────────────────────────────────────────────────────────────────────────
+export const getPublicProducts = async (req, res) => {
+  try {
+    // Check guest browsing setting
+    const SettingsModel = (await import('../models/SettingsModel.js')).default;
+    const settings = await SettingsModel.findOne({}).sort({ createdAt: 1 });
+    if (settings?.guestBrowsingEnabled === false) {
+      return sendError(res, 403, 'Public browsing is currently disabled');
+    }
+
+    const { skip, limit, page, sort } = getPaginationParams(req);
+    const total = await ProductModel.countDocuments({ isDeleted: false, isStaffOnly: false });
+
+    const products = await ProductModel
+      .find({ isDeleted: false, isStaffOnly: false })
+      .populate('categoryId', 'name')
+      .sort(sort)
+      .skip(skip)
+      .limit(limit);
+
+    const sanitized = products.map((p) => {
+      const obj = p.toObject();
+      obj.images = resolveImages(p);
+      // Strip sensitive/internal fields for public view
+      delete obj.wholesalePrice;
+      delete obj.batchNumber;
+      delete obj.expiryDate;
+      delete obj.supplierId;
+      delete obj.lastExpiryWarningSentAt;
+      delete obj.lastLowStockAlertSentAt;
+      delete obj.individualLowStockThreshold;
+      delete obj.individualLowStockAlertEnabled;
+      // Strip variants with zero stock
+      if (Array.isArray(obj.variants)) {
+        obj.variants = obj.variants.filter(v => v.stock > 0);
+      }
+      return obj;
+    });
+
+    const categories = await (await import('../models/CategoryModel.js')).default.find().select('name');
+    const meta = getPaginationMeta(total, limit, page);
+
+    return sendResponse(res, 200, { products: sanitized, categories }, 'Public products retrieved', meta);
+  } catch (error) {
+    console.error('getPublicProducts error:', error);
+    return sendError(res, 500, 'Failed to fetch products');
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /products/public/:id
+// No auth required. Returns a single product for the detail page.
+// Also respects guestBrowsingEnabled.
+// ─────────────────────────────────────────────────────────────────────────────
+export const getPublicProductById = async (req, res) => {
+  try {
+    const SettingsModel = (await import('../models/SettingsModel.js')).default;
+    const settings = await SettingsModel.findOne({}).sort({ createdAt: 1 });
+    if (settings?.guestBrowsingEnabled === false) {
+      return sendError(res, 403, 'Public browsing is currently disabled');
+    }
+
+    const { id } = req.params;
+    const product = await ProductModel.findOne({ _id: id, isDeleted: false, isStaffOnly: false })
+      .populate('categoryId', 'name');
+    if (!product) return sendError(res, 404, 'Product not found');
+
+    const obj = product.toObject();
+    obj.images = resolveImages(product);
+    delete obj.wholesalePrice;
+    delete obj.batchNumber;
+    delete obj.expiryDate;
+    delete obj.supplierId;
+    delete obj.lastExpiryWarningSentAt;
+    delete obj.lastLowStockAlertSentAt;
+    delete obj.individualLowStockThreshold;
+    delete obj.individualLowStockAlertEnabled;
+    // Only show variants that still have stock
+    if (Array.isArray(obj.variants)) {
+      obj.variants = obj.variants.filter(v => v.stock > 0);
+    }
+
+    // Fetch reviews
+    const ReviewModel = (await import('../models/ReviewModel.js')).default;
+    const reviews = await ReviewModel.find({ productId: id, approved: true })
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .populate('userId', 'name');
+
+    return sendResponse(res, 200, { product: obj, reviews }, 'Product retrieved');
+  } catch (error) {
+    console.error('getPublicProductById error:', error);
+    return sendError(res, 500, 'Failed to fetch product');
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /products/:id/duplicate   (admin only)
+// Creates a copy of the product with a " (Copy)" suffix on the name.
+// Images are reused (same Cloudinary URLs — no re-upload needed).
+// Stock defaults to 0 on the copy so admin can set correct levels.
+// ─────────────────────────────────────────────────────────────────────────────
+export const duplicateProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const source = await ProductModel.findById(id);
+    if (!source) return sendError(res, 404, 'Product not found');
+
+    const sourceObj = source.toObject();
+
+    // Strip identity fields — Mongoose creates new _id automatically
+    delete sourceObj._id;
+    delete sourceObj.createdAt;
+    delete sourceObj.updatedAt;
+    delete sourceObj.__v;
+
+    // Mark as draft so it won't show until admin edits it
+    sourceObj.name        = `${sourceObj.name} (Copy)`;
+    sourceObj.stock       = 0;                 // admin sets correct stock
+    sourceObj.isNewArrival = false;
+    sourceObj.newArrivalAt = null;
+    sourceObj.isBonanza   = false;
+    sourceObj.isDeleted   = false;
+    // Keep variants but zero out their stock too
+    if (Array.isArray(sourceObj.variants)) {
+      sourceObj.variants = sourceObj.variants.map(v => ({ ...v, stock: 0 }));
+    }
+    // Reset tracking timestamps
+    sourceObj.lastExpiryWarningSentAt = null;
+    sourceObj.lastLowStockAlertSentAt = null;
+
+    const copy = await ProductModel.create(sourceObj);
+    const out  = copy.toObject();
+    out.images = resolveImages(copy);
+
+    return sendResponse(res, 201, out, 'Product duplicated successfully');
+  } catch (error) {
+    console.error('duplicateProduct error:', error);
+    return sendError(res, 500, 'Failed to duplicate product');
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /products/authenticated/:id
+// Auth required. Returns full product detail for logged-in users
+// (staff/admin see all fields; customer/wholesale see role-filtered view).
+// ─────────────────────────────────────────────────────────────────────────────
+export const getAuthenticatedProductById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const role   = req.user?.role || 'customer';
+    const product = await ProductModel.findOne({ _id: id, isDeleted: false })
+      .populate('categoryId', 'name')
+      .populate('supplierId', 'name');
+    if (!product) return sendError(res, 404, 'Product not found');
+
+    const sanitized = sanitizeProductForRole(product, role);
+    if (!sanitized) return sendError(res, 403, 'Access denied');
+
+    // Fetch reviews (approved only for customers; all for admin/staff)
+    const ReviewModel = (await import('../models/ReviewModel.js')).default;
+    const reviewQuery = (role === 'admin' || role === 'staff')
+      ? { productId: id }
+      : { productId: id, approved: true };
+    const reviews = await ReviewModel.find(reviewQuery)
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .populate('userId', 'name');
+
+    return sendResponse(res, 200, { product: sanitized, reviews }, 'Product retrieved');
+  } catch (error) {
+    console.error('getAuthenticatedProductById error:', error);
+    return sendError(res, 500, 'Failed to fetch product');
   }
 };
 

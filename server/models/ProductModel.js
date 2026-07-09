@@ -66,6 +66,31 @@ const productSchema = new mongoose.Schema({
   // Tracks when the last low-stock email was sent — prevents duplicate emails
   // within the same check cycle.
   lastLowStockAlertSentAt: { type: Date, default: null },
+
+  // ── Product variants ──────────────────────────────────────────────────────
+  // Optional attribute variants (e.g. Color, Flavor, Size).
+  // Each variant has its own stock and can have an optional price override.
+  // If `price` is null the product's base price is used.
+  // Variants with stock === 0 are hidden from buyers automatically.
+  variants: {
+    type: [
+      {
+        _id:   { type: String, required: true },  // client-generated nanoid
+        label: { type: String, required: true, trim: true, maxlength: 50 },  // e.g. "Red", "Mango"
+        value: { type: String, required: true, trim: true, maxlength: 50 },  // same as label, kept for client convenience
+        stock: { type: Number, required: true, min: 0, default: 0 },
+        price: { type: Number, default: null },   // null = use product base price
+        sku:   { type: String, default: null, trim: true },
+      }
+    ],
+    default: [],
+  },
+
+  // ── Ratings ───────────────────────────────────────────────────────────────
+  // Aggregated rating data stored on the product for fast reads.
+  // Individual reviews live in the ReviewModel collection.
+  ratingAvg:   { type: Number, default: 0, min: 0, max: 5 },
+  ratingCount: { type: Number, default: 0, min: 0 },
   // ─────────────────────────────────────────────────────────────────────────
 
 }, { timestamps: true });

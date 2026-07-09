@@ -16,12 +16,20 @@ import {
   batchToggleFlag,
   batchPermanentDelete,
   setLowStockConfig,
+  getPublicProducts,
+  getPublicProductById,
+  duplicateProduct,
+  getAuthenticatedProductById,
 } from "../controllers/productController.js";
 import { uploadProductImages } from "../config/multer.js";
 import { productSchema, productUpdateSchema } from "../validators/schemas.js";
 import productNotifier from "../utils/productNotifier.js";
 
 const router = express.Router();
+
+// ── Public (no auth) ──────────────────────────────────────────────────────────
+router.get("/public",     getPublicProducts);
+router.get("/public/:id", getPublicProductById);
 
 // ── Standard CRUD ─────────────────────────────────────────────────────────────
 router.get("/",               authMiddleware, getProducts);
@@ -44,6 +52,12 @@ router.post("/batch/flag",             authMiddleware, authorizeRoles("admin"), 
 // ── PUT / DELETE single product ───────────────────────────────────────────────
 router.put("/:id",    authMiddleware, uploadProductImages, validate(productUpdateSchema), updateProduct);
 router.delete("/:id", authMiddleware, deleteProduct);
+
+// ── Duplicate product (admin only) ───────────────────────────────────────────
+router.post("/:id/duplicate", authMiddleware, authorizeRoles("admin"), duplicateProduct);
+
+// ── Authenticated product detail (all logged-in roles) ───────────────────────
+router.get("/:id/detail", authMiddleware, getAuthenticatedProductById);
 
 // ── Product SSE stream — real-time flag updates to all connected clients ──────
 // Emits: productFlagChanged { productId, field, value }

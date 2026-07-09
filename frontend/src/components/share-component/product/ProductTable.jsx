@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import {
   Pencil, Trash2, Plus, Trash,
   Phone, Mail, Package, AlertTriangle,
-  Copy, Check, ScanLine, CalendarClock,
+  Copy, Check, ScanLine, CalendarClock, CopyPlus,
 } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 
@@ -213,6 +213,7 @@ const ProductTable = ({
   onDelete,
   onAddClick,
   onViewDeleted,
+  onDuplicate,
   updatingProductId,
   scrollRef,
   lowStockThreshold = 10,
@@ -575,6 +576,11 @@ const ProductTable = ({
                             <button onClick={() => onEdit(product)}
                               className="w-8 h-8 flex items-center justify-center rounded-lg text-blue-500 hover:bg-blue-100 transition"
                               title="Edit product"><Pencil size={14} /></button>
+                            {isAdmin && onDuplicate && (
+                              <button onClick={() => onDuplicate(product._id)}
+                                className="w-8 h-8 flex items-center justify-center rounded-lg text-violet-500 hover:bg-violet-100 transition"
+                                title="Duplicate product"><CopyPlus size={14} /></button>
+                            )}
                             <button onClick={() => onDelete(product._id)}
                               className="w-8 h-8 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-100 transition"
                               title="Delete product"><Trash2 size={14} /></button>
@@ -695,6 +701,13 @@ const ProductTable = ({
                               title="Edit">
                               <Pencil size={13} />
                             </button>
+                            {isAdmin && onDuplicate && (
+                              <button onClick={() => onDuplicate(product._id)}
+                                className="w-7 h-7 flex items-center justify-center rounded-lg text-violet-500 hover:bg-violet-100 transition"
+                                title="Duplicate">
+                                <CopyPlus size={13} />
+                              </button>
+                            )}
                             <button onClick={() => onDelete(product._id)}
                               className="w-7 h-7 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-100 transition"
                               title="Delete">

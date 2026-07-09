@@ -6,9 +6,18 @@ import Categories from "./components/admin/category/Category.jsx";
 import Summary from "./components/admin/dashboard/Summary.jsx";
 import { ToastContainer } from "react-toastify";
 import LandingPage from "./pages/LandingPage.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
+import PublicShop from "./pages/PublicShop.jsx";
 import Unauthorized from "./pages/unauthorized/Unauthorized.jsx";
 import CustomerOrderPortal from "./components/customer/CustomerOrderPortal/CustomerOrderPortal";
 import CustomerProducts from "./components/customer/customerProduct/CustomerProducts.jsx";
+
+// Wrapper that pre-opens the Favorites tab
+const CustomerFavorites = () => {
+  // Pass initialTab via sessionStorage so CustomerProducts reads it once on mount
+  sessionStorage.setItem("melech_initial_tab", "favorites");
+  return <CustomerProducts />;
+};
 import Suppliers from "./components/admin/supplier/Suppliers.jsx";
 import Users from "./components/admin/user/Users.jsx";
 import PlacedOrders from "./components/admin/purchase/PlacedOrders.jsx";
@@ -23,9 +32,10 @@ import StaffOrders from "./components/staff/orders/StaffOrders.jsx";
 import StaffPlacedOrders from "./components/staff/placedOrders/StaffPlacedOrders.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
+import ProductDetailPage from "./pages/ProductDetailPage.jsx";
 
+import AddProductPage    from "./pages/admin/AddProductPage.jsx";
 // ✅ New pages
-import SettingsPage       from "./components/admin/settings/SettingsPage.jsx";
 import ExpiringOrders     from "./components/admin/expiring/ExpiringOrders.jsx";
 import UserSettingsPage   from "./pages/UserSettingsPage.jsx";
 import EngagementMonitor  from "./pages/admin/EngagementMonitor.jsx";
@@ -69,10 +79,15 @@ function App() {
       <Router>
         <Routes>
           {/* ── Public ── */}
-          <Route path="/"                  element={<LandingPage />} />
+          <Route path="/"                  element={<PublicShop />} />
+          <Route path="/login"             element={<LoginPage />} />
+          {/* Legacy root used to be LandingPage — keep it accessible but redirect to /login */}
+          <Route path="/landing"           element={<LandingPage />} />
           <Route path="/complete-profile"  element={<CompleteProfile />} />
           <Route path="/forgot-password"   element={<ForgotPassword />} />
           <Route path="/reset-password"    element={<ResetPassword />} />
+          {/* Public product detail — no auth needed */}
+          <Route path="/product/:id"       element={<ProductDetailPage />} />
 
           {/* ── Admin Dashboard ── */}
           <Route
@@ -86,6 +101,8 @@ function App() {
             <Route index                    element={<Summary />} />
             <Route path="categories"        element={<Categories />} />
             <Route path="products"          element={<Product />} />
+            <Route path="add-product"       element={<AddProductPage />} />
+            <Route path="edit-product/:id"  element={<AddProductPage />} />
             <Route path="suppliers"         element={<Suppliers />} />
             <Route path="placed-orders"     element={<PlacedOrders />} />
             <Route path="completed-history" element={<AdminCompletedHistory />} />
@@ -109,6 +126,7 @@ function App() {
             <Route index                    element={<CustomerProducts />} />
             <Route path="orders"            element={<StaffOrders />} />
             <Route path="placed-orders"     element={<StaffPlacedOrders />} />
+            <Route path="favorites"         element={<CustomerFavorites />} />
             <Route path="completed-history" element={<StaffCompletedHistory />} />
             <Route path="profile"           element={<Navigate to="/customer-dashboard/settings" replace />} />
             <Route path="settings"          element={<UserSettingsPage />} />
@@ -126,6 +144,7 @@ function App() {
           >
             <Route index                    element={<CustomerProducts />} />
             <Route path="orders"            element={<CustomerOrderPortal />} />
+            <Route path="favorites"         element={<CustomerFavorites />} />
             <Route path="completed-history" element={<CustomerCompletedHistory />} />
             <Route path="profile"           element={<Navigate to="/user-dashboard/settings" replace />} />
             <Route path="settings"          element={<UserSettingsPage />} />
@@ -143,6 +162,7 @@ function App() {
           >
             <Route index                    element={<CustomerProducts />} />
             <Route path="orders"            element={<CustomerOrderPortal />} />
+            <Route path="favorites"         element={<CustomerFavorites />} />
             <Route path="completed-history" element={<CustomerCompletedHistory />} />
             <Route path="profile"           element={<Navigate to="/wholesale-dashboard/settings" replace />} />
             <Route path="settings"          element={<UserSettingsPage />} />

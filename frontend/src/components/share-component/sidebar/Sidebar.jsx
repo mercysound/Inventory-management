@@ -2,7 +2,7 @@ import React from "react";
 import {
   FaBox, FaCog, FaHome, FaShoppingCart, FaSignOutAlt,
   FaTable, FaTruck, FaUsers, FaTimes, FaHistory, FaClipboardList,
-  FaChartBar,
+  FaChartBar, FaHeart,
 } from "react-icons/fa";
 import { Clock } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
@@ -32,11 +32,12 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   ];
 
   const staffMenuBase = [
-    { name: "Products",  path: "/customer-dashboard",                   icon: <FaBox /> },
-    { name: "Cart",      path: "/customer-dashboard/orders",            icon: <FaShoppingCart /> },
-    { name: "History",   path: "/customer-dashboard/completed-history", icon: <FaHistory /> },
-    { name: "Settings",  path: "/customer-dashboard/settings",          icon: <FaCog /> },
-    { name: "Logout",    path: "/logout",                               icon: <FaSignOutAlt /> },
+    { name: "Products",   path: "/customer-dashboard",                   icon: <FaBox /> },
+    { name: "Cart",       path: "/customer-dashboard/orders",            icon: <FaShoppingCart /> },
+    { name: "Favorites",  path: "/customer-dashboard/favorites",         icon: <FaHeart className="text-red-400" /> },
+    { name: "History",    path: "/customer-dashboard/completed-history", icon: <FaHistory /> },
+    { name: "Settings",   path: "/customer-dashboard/settings",          icon: <FaCog /> },
+    { name: "Logout",     path: "/logout",                               icon: <FaSignOutAlt /> },
   ];
 
   const staffMenu = isDelegated
@@ -44,6 +45,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         { name: "Products",      path: "/customer-dashboard",                   icon: <FaBox /> },
         { name: "Cart",          path: "/customer-dashboard/orders",            icon: <FaShoppingCart /> },
         { name: "Placed Orders", path: "/customer-dashboard/placed-orders",     icon: <FaClipboardList />, highlight: true },
+        { name: "Favorites",     path: "/customer-dashboard/favorites",         icon: <FaHeart className="text-red-400" /> },
         { name: "History",       path: "/customer-dashboard/completed-history", icon: <FaHistory /> },
         { name: "Settings",      path: "/customer-dashboard/settings",          icon: <FaCog /> },
         { name: "Logout",        path: "/logout",                               icon: <FaSignOutAlt /> },
@@ -51,19 +53,21 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     : staffMenuBase;
 
   const customerMenu = [
-    { name: "Products", path: "/user-dashboard",                   icon: <FaBox /> },
-    { name: "Cart",     path: "/user-dashboard/orders",            icon: <FaShoppingCart /> },
-    { name: "History",  path: "/user-dashboard/completed-history", icon: <FaHistory /> },
-    { name: "Settings", path: "/user-dashboard/settings",          icon: <FaCog /> },
-    { name: "Logout",   path: "/logout",                           icon: <FaSignOutAlt /> },
+    { name: "Products",   path: "/user-dashboard",                   icon: <FaBox /> },
+    { name: "Cart",       path: "/user-dashboard/orders",            icon: <FaShoppingCart /> },
+    { name: "Favorites",  path: "/user-dashboard/favorites",         icon: <FaHeart className="text-red-400" /> },
+    { name: "History",    path: "/user-dashboard/completed-history", icon: <FaHistory /> },
+    { name: "Settings",   path: "/user-dashboard/settings",          icon: <FaCog /> },
+    { name: "Logout",     path: "/logout",                           icon: <FaSignOutAlt /> },
   ];
 
   const wholesaleMenu = [
-    { name: "Products", path: "/wholesale-dashboard",                   icon: <FaBox /> },
-    { name: "Cart",     path: "/wholesale-dashboard/orders",            icon: <FaShoppingCart /> },
-    { name: "History",  path: "/wholesale-dashboard/completed-history", icon: <FaHistory /> },
-    { name: "Settings", path: "/wholesale-dashboard/settings",          icon: <FaCog /> },
-    { name: "Logout",   path: "/logout",                                icon: <FaSignOutAlt /> },
+    { name: "Products",   path: "/wholesale-dashboard",                   icon: <FaBox /> },
+    { name: "Cart",       path: "/wholesale-dashboard/orders",            icon: <FaShoppingCart /> },
+    { name: "Favorites",  path: "/wholesale-dashboard/favorites",         icon: <FaHeart className="text-red-400" /> },
+    { name: "History",    path: "/wholesale-dashboard/completed-history", icon: <FaHistory /> },
+    { name: "Settings",   path: "/wholesale-dashboard/settings",          icon: <FaCog /> },
+    { name: "Logout",     path: "/wholesale-dashboard/logout",            icon: <FaSignOutAlt /> },
   ];
 
   const menuLinks = (() => {
@@ -107,7 +111,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
               <li key={item.name}>
                 {item.name === "Logout" ? (
                   <button
-                    onClick={() => { logout(); toggleSidebar(); navigate("/"); }}
+                    onClick={() => { logout(); toggleSidebar(); navigate("/login"); }}
                     className="flex items-center w-full p-3 rounded-lg hover:bg-white/10 transition-all duration-200 text-left"
                   >
                     <span className="text-lg">{item.icon}</span>

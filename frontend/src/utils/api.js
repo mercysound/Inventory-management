@@ -116,7 +116,7 @@ axiosInstance.interceptors.response.use(
         { autoClose: 8000, toastId: "account-deactivated" }
       );
       // Small delay so the toast is visible before redirect
-      setTimeout(() => { window.location.href = "/"; }, 1500);
+      setTimeout(() => { window.location.href = "/login"; }, 1500);
       return Promise.reject(error);
     }
 
@@ -151,7 +151,7 @@ axiosInstance.interceptors.response.use(
         localStorage.removeItem("pos-token");
         localStorage.removeItem("pos-user");
         toast.error("Session expired. Please login again.");
-        window.location.href = "/";
+        window.location.href = "/login";
         return Promise.reject(refreshError);
       }
     }

@@ -95,6 +95,23 @@ const settingsSchema = new mongoose.Schema(
       enum:    ["default", "ocean", "forest", "royal", "sunset"],
       default: "default",
     },
+
+    // ── Guest browsing ────────────────────────────────────────────────────
+    // When true (default), unauthenticated visitors can browse products at
+    // the public shop page (/). They cannot place orders until they log in.
+    guestBrowsingEnabled: { type: Boolean, default: true },
+
+    // ── Maintenance mode ──────────────────────────────────────────────────
+    // When true, all non-admin logins are blocked and logged-in users receive
+    // an in-app notification + email then are auto-logged-out.
+    maintenanceMode:        { type: Boolean, default: false },
+    maintenanceModeMessage: {
+      type:    String,
+      default: "We are currently performing scheduled maintenance. We will be back shortly. Thank you for your patience.",
+      trim:    true,
+      maxlength: 500,
+    },
+    maintenanceModeStartedAt: { type: Date, default: null },
     // ─────────────────────────────────────────────────────────────────────
   },
   { timestamps: true }

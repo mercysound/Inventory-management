@@ -6,7 +6,7 @@ import {
   Clock, Mail, RefreshCw, Save, AlertTriangle, CheckCircle2,
   Users, ShieldCheck, X, UserCheck, Loader2, Palette, Moon, Sun,
   Store, Package, Settings2, User, Phone, MapPin, Lock, Eye, EyeOff,
-  Pencil, MessageCircle, CreditCard, Bell, ChevronDown,
+  Pencil, MessageCircle, CreditCard, Bell, ChevronDown, Wrench,
 } from "lucide-react";
 import { useTheme, GLOBAL_THEMES, PERSONAL_MODES } from "../../../context/ThemeContext";
 
@@ -108,6 +108,12 @@ const SettingsPage = () => {
   const [showWsPicker,     setShowWsPicker]     = useState(false);
   const [wsPickerSearch,   setWsPickerSearch]   = useState("");
 
+  // -- Guest browsing + maintenance mode ------------------------------------
+  const [guestBrowsing,   setGuestBrowsing]   = useState(true);
+  const [guestSaving,     setGuestSaving]     = useState(false);
+  const [maintenance,     setMaintenance]     = useState({ maintenanceMode: false, maintenanceModeMessage: "" });
+  const [maintSaving,     setMaintSaving]     = useState(false);
+
   // -- Profile state ---------------------------------------------------------
   const [profile,        setProfile]        = useState({ name: "", email: "", phone: "", address: "" });
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -149,6 +155,12 @@ const SettingsPage = () => {
           abandonedCartReminderEnabled: s.abandonedCartReminderEnabled ?? false,
           abandonedCartReminderMinutes: s.abandonedCartReminderMinutes ?? 15,
           abandonedCartReminderRoles:   s.abandonedCartReminderRoles   ?? ["customer", "wholesale"],
+        });
+        // Guest browsing + maintenance
+        setGuestBrowsing(s.guestBrowsingEnabled !== false);
+        setMaintenance({
+          maintenanceMode:        s.maintenanceMode        ?? false,
+          maintenanceModeMessage: s.maintenanceModeMessage ?? "",
         });
       }
     } catch { toast.error("Failed to load settings"); }
@@ -284,6 +296,34 @@ const SettingsPage = () => {
   const removeStaffDelegate = (staffId) => {
     const newIds = delegation.delegatedStaffIds.map((u) => u._id || String(u)).filter((id) => id !== staffId);
     handleDelegationSave({ delegateToAllStaff: false, delegatedStaffIds: newIds });
+  };
+
+  // ── Guest browsing toggle ─────────────────────────────────────────────────
+  const toggleGuestBrowsing = async () => {
+    const next = !guestBrowsing;
+    setGuestBrowsing(next);
+    setGuestSaving(true);
+    try {
+      await axiosInstance.put("/settings/guest-browsing", { guestBrowsingEnabled: next });
+      toast.success(next ? "Guest browsing enabled" : "Guest browsing disabled");
+    } catch {
+      setGuestBrowsing(!next); // rollback
+      toast.error("Failed to update guest browsing setting");
+    } finally { setGuestSaving(false); }
+  };
+
+  // ── Maintenance mode save ─────────────────────────────────────────────────
+  const saveMaintenance = async (mode, msg) => {
+    setMaintSaving(true);
+    try {
+      await axiosInstance.put("/settings/maintenance", {
+        maintenanceMode:        mode,
+        maintenanceModeMessage: msg,
+      });
+      setMaintenance({ maintenanceMode: mode, maintenanceModeMessage: msg });
+      toast.success(mode ? "⚠️ Maintenance mode ON — users will be notified" : "Maintenance mode OFF");
+    } catch { toast.error("Failed to update maintenance mode"); }
+    finally { setMaintSaving(false); }
   };
 
   const handleSave = async () => {
@@ -953,6 +993,120 @@ const SettingsPage = () => {
               </div>
             </div>
           )}
+        </div>
+      </SettingSection>
+
+      {/* ── Guest Browsing ─────────────────────────────────────────────── */}
+      <SettingSection openSection={openSection} onToggle={toggleSection} id="guest-browsing"
+        icon={Package} iconColor="text-green-500" title="Public Shop / Guest Browsing"
+        subtitle={guestBrowsing ? "ON — visitors can browse products without logging in" : "OFF — login required to see products"}>
+        <div className="mt-3 space-y-4">
+          <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+            <div>
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Allow guest product browsing</p>
+              <p className="text-xs text-gray-400 mt-0.5">When ON, visitors can browse your shop at <strong>/</strong> without signing in. They must log in to place orders.</p>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <span className={`text-xs font-semibold ${guestBrowsing ? "text-green-600 dark:text-green-400" : "text-gray-400"}`}>
+                {guestBrowsing ? "ON" : "OFF"}
+              </span>
+              <button type="button" disabled={guestSaving}
+                onClick={toggleGuestBrowsing}
+                className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors focus:outline-none disabled:opacity-60 ${guestBrowsing ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"}`}>
+                <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform ${guestBrowsing ? "translate-x-5" : "translate-x-1"}`} />
+              </button>
+            </div>
+          </div>
+          <div className={`flex items-start gap-3 px-4 py-3 rounded-xl border ${guestBrowsing ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800" : "bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700"}`}>
+            <span className="text-lg shrink-0">{guestBrowsing ? "🌐" : "🔒"}</span>
+            <p className="text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+              {guestBrowsing
+                ? "Your shop is publicly accessible. Anyone can view products and share product links without an account."
+                : "Your shop is private. Visitors must sign in before they can see any products."}
+            </p>
+          </div>
+        </div>
+      </SettingSection>
+
+      {/* ── Maintenance Mode ───────────────────────────────────────────────── */}
+      <SettingSection openSection={openSection} onToggle={toggleSection} id="maintenance"
+        icon={Settings2} iconColor="text-amber-500"
+        title="Maintenance Mode"
+        subtitle={maintenance.maintenanceMode ? "⚠️ ACTIVE — app is in maintenance" : "OFF — app is running normally"}
+        badge={maintenance.maintenanceMode ? "ACTIVE" : undefined}>
+        <div className="mt-3 space-y-4">
+          {/* Warning banner when active */}
+          {maintenance.maintenanceMode && (
+            <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-xl px-4 py-3">
+              <span className="text-xl shrink-0">⚠️</span>
+              <div>
+                <p className="text-sm font-bold text-amber-800 dark:text-amber-300">Maintenance mode is ON</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                  All non-admin users are blocked from logging in. Logged-in users have received a notification and will be auto-logged-out shortly.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* What this does info */}
+          {!maintenance.maintenanceMode && (
+            <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 space-y-1.5">
+              <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">What happens when you enable maintenance mode:</p>
+              <ul className="space-y-1">
+                {[
+                  "📢 All logged-in users see an in-app notification immediately",
+                  "📧 Users receive an email explaining the maintenance",
+                  "🔒 New logins are blocked — users see the maintenance message",
+                  "⏱️ Logged-in users are auto-logged-out (payment completions are protected)",
+                  "🛑 Guest browsing is also disabled",
+                ].map(line => (
+                  <li key={line} className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-1.5">
+                    <span className="shrink-0">{line.slice(0,2)}</span>
+                    <span>{line.slice(2)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Message input */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+              Maintenance message <span className="normal-case font-normal text-gray-400">(shown to users)</span>
+            </label>
+            <textarea
+              rows={3}
+              value={maintenance.maintenanceModeMessage}
+              onChange={(e) => setMaintenance(p => ({ ...p, maintenanceModeMessage: e.target.value }))}
+              placeholder="e.g. We are performing scheduled maintenance to improve your experience. We'll be back shortly."
+              className="w-full border border-gray-200 dark:border-gray-600 rounded-xl px-3.5 py-2.5 text-sm
+                focus:outline-none focus:ring-2 focus:ring-amber-300 bg-gray-50 dark:bg-gray-900
+                dark:text-gray-100 dark:placeholder-gray-500 resize-none"
+            />
+            <p className="text-[11px] text-gray-400 mt-1">Leave blank to use the default message.</p>
+          </div>
+
+          {/* Toggle button */}
+          <div className="flex gap-3">
+            {!maintenance.maintenanceMode ? (
+              <button type="button" disabled={maintSaving}
+                onClick={() => {
+                  if (!confirm("Enable maintenance mode? All users will be notified and logged out.")) return;
+                  saveMaintenance(true, maintenance.maintenanceModeMessage);
+                }}
+                className="flex-1 py-3 rounded-xl font-bold text-sm text-white bg-amber-500 hover:bg-amber-600
+                  disabled:opacity-60 transition shadow-sm flex items-center justify-center gap-2">
+                {maintSaving ? <><RefreshCw size={14} className="animate-spin" />Enabling…</> : "⚠️ Enable Maintenance Mode"}
+              </button>
+            ) : (
+              <button type="button" disabled={maintSaving}
+                onClick={() => saveMaintenance(false, maintenance.maintenanceModeMessage)}
+                className="flex-1 py-3 rounded-xl font-bold text-sm text-white bg-green-600 hover:bg-green-700
+                  disabled:opacity-60 transition shadow-sm flex items-center justify-center gap-2">
+                {maintSaving ? <><RefreshCw size={14} className="animate-spin" />Disabling…</> : "✅ Disable Maintenance Mode — Resume Normal Operation"}
+              </button>
+            )}
+          </div>
         </div>
       </SettingSection>
 

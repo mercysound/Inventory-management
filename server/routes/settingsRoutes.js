@@ -14,18 +14,30 @@ import {
   getMyWholesaleAccess,
   getWholesaleAccess,
   updateWholesaleAccess,
+  getGuestBrowsingStatus,
+  getMaintenanceStatus,
+  updateMaintenanceMode,
+  updateGuestBrowsing,
+  getAdminFullSettings,
 } from "../controllers/settingsController.js";
 import { authMiddleware, authorizeRoles } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// ── Public ────────────────────────────────────────────────────────────────────
-router.get("/theme",        getGlobalTheme);
-router.get("/contact-info", getContactInfo);
+// ── Fully public (no auth) ────────────────────────────────────────────────────
+router.get("/theme",               getGlobalTheme);
+router.get("/contact-info",        getContactInfo);
+router.get("/maintenance-status",  getMaintenanceStatus);
+router.get("/guest-browsing",      getGuestBrowsingStatus);
 
 // ── Global settings ───────────────────────────────────────────────────────────
-router.get("/",  authMiddleware, authorizeRoles("admin"), getSettings);
-router.put("/",  authMiddleware, authorizeRoles("admin"), updateSettings);
+router.get("/",             authMiddleware, authorizeRoles("admin"), getSettings);
+router.put("/",             authMiddleware, authorizeRoles("admin"), updateSettings);
+router.get("/admin-full",   authMiddleware, authorizeRoles("admin"), getAdminFullSettings);
+
+// ── Guest browsing + Maintenance mode (admin only) ────────────────────────────
+router.put("/guest-browsing", authMiddleware, authorizeRoles("admin"), updateGuestBrowsing);
+router.put("/maintenance",    authMiddleware, authorizeRoles("admin"), updateMaintenanceMode);
 
 // ── Order management delegation ───────────────────────────────────────────────
 router.get("/delegation",    authMiddleware, authorizeRoles("admin"), getDelegation);

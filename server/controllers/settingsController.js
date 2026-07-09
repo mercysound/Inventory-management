@@ -477,3 +477,135 @@ export const getGlobalTheme = async (req, res) => {
     return sendResponse(res, 200, { globalTheme: "default" }, "Default theme");
   }
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /settings/guest-browsing
+// Public — frontend uses this to decide whether to show the public shop.
+// ─────────────────────────────────────────────────────────────────────────────
+export const getGuestBrowsingStatus = async (req, res) => {
+  try {
+    const settings = await SettingsModel.findOne({}).sort({ createdAt: 1 });
+    return sendResponse(res, 200, {
+      guestBrowsingEnabled: settings?.guestBrowsingEnabled !== false, // default true
+    }, "Guest browsing status retrieved");
+  } catch (err) {
+    console.error("getGuestBrowsingStatus error:", err.message);
+    return sendResponse(res, 200, { guestBrowsingEnabled: true }, "Default");
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /settings/maintenance-status
+// Public — login page calls this to block logins during maintenance.
+// Returns { maintenanceMode, maintenanceModeMessage }
+// ─────────────────────────────────────────────────────────────────────────────
+export const getMaintenanceStatus = async (req, res) => {
+  try {
+    const settings = await SettingsModel.findOne({}).sort({ createdAt: 1 });
+    return sendResponse(res, 200, {
+      maintenanceMode:        settings?.maintenanceMode        ?? false,
+      maintenanceModeMessage: settings?.maintenanceModeMessage ?? "We are performing scheduled maintenance. We'll be back shortly.",
+    }, "Maintenance status retrieved");
+  } catch (err) {
+    console.error("getMaintenanceStatus error:", err.message);
+    return sendResponse(res, 200, { maintenanceMode: false, maintenanceModeMessage: "" }, "Default");
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PUT /settings/maintenance
+// Admin only. Toggle maintenance mode ON or OFF.
+// When toggling ON: broadcasts SSE event to all connected non-admin clients
+// so they receive an in-app notification and get auto-logged-out.
+// Body: { maintenanceMode: boolean, maintenanceModeMessage?: string }
+// ─────────────────────────────────────────────────────────────────────────────
+export const updateMaintenanceMode = async (req, res) => {
+  try {
+    const { maintenanceMode, maintenanceModeMessage } = req.body;
+
+    if (typeof maintenanceMode !== "boolean") {
+      return sendError(res, 400, "maintenanceMode must be a boolean");
+    }
+
+    const patch = { maintenanceMode };
+    if (maintenanceModeMessage !== undefined) {
+      patch.maintenanceModeMessage = String(maintenanceModeMessage).trim().slice(0, 500) ||
+        "We are performing scheduled maintenance. We'll be back shortly.";
+    }
+    if (maintenanceMode) {
+      patch.maintenanceModeStartedAt = new Date();
+    } else {
+      patch.maintenanceModeStartedAt = null;
+    }
+
+    const settings = await SettingsModel.findOneAndUpdate(
+      { userId: req.user._id },
+      { $set: patch },
+      { new: true, upsert: true }
+    );
+
+    // Broadcast via global SSE emitter so all connected clients know immediately
+    if (maintenanceMode) {
+      try {
+        global.maintenanceEmitter?.emit("maintenanceStarted", {
+          message: settings.maintenanceModeMessage,
+        });
+      } catch {}
+    } else {
+      try {
+        global.maintenanceEmitter?.emit("maintenanceEnded", {});
+      } catch {}
+    }
+
+    return sendResponse(res, 200, {
+      maintenanceMode:        settings.maintenanceMode,
+      maintenanceModeMessage: settings.maintenanceModeMessage,
+    }, maintenanceMode ? "Maintenance mode enabled" : "Maintenance mode disabled");
+  } catch (err) {
+    console.error("updateMaintenanceMode error:", err.message);
+    return sendError(res, 500, "Failed to update maintenance mode");
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PUT /settings/guest-browsing
+// Admin only. Toggle whether guests can browse products.
+// Body: { guestBrowsingEnabled: boolean }
+// ─────────────────────────────────────────────────────────────────────────────
+export const updateGuestBrowsing = async (req, res) => {
+  try {
+    const { guestBrowsingEnabled } = req.body;
+    if (typeof guestBrowsingEnabled !== "boolean") {
+      return sendError(res, 400, "guestBrowsingEnabled must be a boolean");
+    }
+
+    const settings = await SettingsModel.findOneAndUpdate(
+      { userId: req.user._id },
+      { $set: { guestBrowsingEnabled } },
+      { new: true, upsert: true }
+    );
+
+    return sendResponse(res, 200, {
+      guestBrowsingEnabled: settings.guestBrowsingEnabled,
+    }, "Guest browsing setting updated");
+  } catch (err) {
+    console.error("updateGuestBrowsing error:", err.message);
+    return sendError(res, 500, "Failed to update guest browsing setting");
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /settings/admin-full
+// Admin-only endpoint that returns the full settings doc including
+// guestBrowsingEnabled and maintenanceMode for the settings page.
+// Supplements the existing GET / endpoint.
+// ─────────────────────────────────────────────────────────────────────────────
+export const getAdminFullSettings = async (req, res) => {
+  try {
+    const settings = await getOrCreate(req.user._id);
+    return sendResponse(res, 200, { settings }, "Full settings retrieved");
+  } catch (err) {
+    console.error("getAdminFullSettings error:", err.message);
+    return sendError(res, 500, "Failed to fetch settings");
+  }
+};

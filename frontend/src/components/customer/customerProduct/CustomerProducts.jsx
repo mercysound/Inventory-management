@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AlertTriangle,
+  ExternalLink,
+  Heart,
   Package,
   Search,
   ShoppingBag,
@@ -15,6 +17,7 @@ import { useAuth } from "../../../context/AuthContext";
 import axiosInstance from "../../../utils/axiosInstance";
 import CustomerProductsSkeleton from "./CustomerProductsSkeleton";
 import OrderModal from "./OrderModal";
+import { useFavorites } from "../../../hooks/useFavorites";
 
 const CART_PATH = {
   staff:     "/customer-dashboard/orders",
@@ -94,7 +97,7 @@ const QuickAddButton = ({ product, cartItem, onAdd, onIncrease, onDecrease }) =>
 };
 
 // ─── ProductCard — shared card used by all three tabs ────────────────────────
-const ProductCard = ({ product, index, cartMap, user, canSeeStock, showWholesaleCol, onCardClick, onAdd, onIncrease, onDecrease }) => {
+const ProductCard = ({ product, index, cartMap, user, canSeeStock, showWholesaleCol, onCardClick, onAdd, onIncrease, onDecrease, isFav, onToggleFav }) => {
   const cartItem = cartMap[product._id] || null;
   const inCart   = !!cartItem;
   const thumb    = product.images?.[0] || product.image || null;
@@ -123,7 +126,7 @@ const ProductCard = ({ product, index, cartMap, user, canSeeStock, showWholesale
             <Package size={28} className="text-gray-200" />
           </div>
         )}
-        {/* Badges — only one badge shown at a time (priority: bonanza > new > photos) */}
+        {/* Badges */}
         {product.isBonanza && (
           <span className="absolute top-2 left-2 text-[9px] font-bold bg-orange-500 text-white px-2 py-0.5 rounded-full shadow-sm">
             🎉 DEAL
@@ -149,6 +152,16 @@ const ProductCard = ({ product, index, cartMap, user, canSeeStock, showWholesale
             <span className="bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow">Out of stock</span>
           </div>
         )}
+        {/* Heart / favorite button */}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onToggleFav?.(product._id); }}
+          className="absolute bottom-2 right-2 w-6 h-6 rounded-full bg-white/80 backdrop-blur-sm
+            flex items-center justify-center shadow-sm hover:scale-110 transition"
+          aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
+        >
+          <Heart size={11} className={isFav ? "text-red-500 fill-red-500" : "text-gray-400"} />
+        </button>
       </div>
       <div className="p-2.5 flex flex-col gap-1.5">
         <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full w-fit max-w-full truncate tracking-wide uppercase">
@@ -167,10 +180,8 @@ const ProductCard = ({ product, index, cartMap, user, canSeeStock, showWholesale
         {/* ── Price + action on one row ── */}
         <div className="mt-auto pt-1.5 border-t border-gray-50 flex items-center justify-between gap-2"
           onClick={(e) => e.stopPropagation()}>
-          {/* Price — shrinks to give room to the button on long prices */}
           <div className="flex-1 min-w-0 overflow-hidden">
-            <p className="font-extrabold text-gray-900 leading-none tabular-nums truncate
-              text-sm xs:text-sm"
+            <p className="font-extrabold text-gray-900 leading-none tabular-nums truncate text-sm xs:text-sm"
               style={{ fontSize: "clamp(0.7rem, 2.5vw, 0.875rem)" }}>
               ₦{Number(price).toLocaleString()}
             </p>
@@ -180,8 +191,14 @@ const ProductCard = ({ product, index, cartMap, user, canSeeStock, showWholesale
               </span>
             )}
           </div>
-          {/* Button — never shrinks */}
-          <div className="flex-shrink-0">
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {/* See detail button */}
+            <Link to={`/product/${product._id}`} onClick={e => e.stopPropagation()}
+              className="w-7 h-7 rounded-lg border border-gray-200 flex items-center justify-center
+                text-gray-400 hover:text-indigo-600 hover:border-indigo-300 transition"
+              title="See full details" aria-label="View product details">
+              <ExternalLink size={11} />
+            </Link>
             <QuickAddButton product={product} cartItem={cartItem}
               onAdd={() => onAdd(product)}
               onIncrease={() => onIncrease(product._id)}
@@ -245,6 +262,12 @@ const CustomerProducts = () => {
   const { user } = useAuth();
   const canSeeStock = user?.role === "staff" || user?.role === "admin";
   const cartPath    = CART_PATH[user?.role] ?? "/user-dashboard/orders";
+  const navigate    = useNavigate();
+
+  // ── Favorites ────────────────────────────────────────────────────────────
+  const { isFavorite, toggleFavorite, favoriteIds } = useFavorites(user);
+  // products that are favorited — built from the main products list
+  const [favProducts, setFavProducts] = useState([]);
 
   const [categories,       setCategories]       = useState([]);
   const [products,         setProducts]         = useState([]);
@@ -255,8 +278,15 @@ const CustomerProducts = () => {
   const [loading,          setLoading]          = useState(true);
 
   // ── Main tab / filter state ───────────────────────────────────────────────
-  // activeTab: "all" | "new" | "bonanza"
-  const [activeTab,        setActiveTab]        = useState("all");
+  // activeTab: "all" | "new" | "bonanza" | "favorites"
+  const [activeTab, setActiveTab] = useState(() => {
+    // Check if the Favorites route pre-set a tab
+    try {
+      const t = sessionStorage.getItem("melech_initial_tab");
+      if (t) { sessionStorage.removeItem("melech_initial_tab"); return t; }
+    } catch {}
+    return "all";
+  });
   const [searchQuery,      setSearchQuery]      = useState("");       // "all" tab search
   const [selectedCategory, setSelectedCategory] = useState("");
   const [catSearch,        setCatSearch]        = useState("");       // category dropdown search
@@ -555,6 +585,19 @@ const CustomerProducts = () => {
     setBonanzaPage(1); setBonanzaSearch("");
   };
 
+  const handleFavoritesToggle = () => {
+    setActiveTab((t) => t === "favorites" ? "all" : "favorites");
+  };
+
+  // Keep favProducts in sync whenever favoriteIds or products list changes
+  useEffect(() => {
+    setFavProducts(products.filter(p => favoriteIds.includes(p._id)));
+  }, [favoriteIds, products]);
+
+  const handleToggleFav = useCallback((productId) => {
+    toggleFavorite(productId);
+  }, [toggleFavorite]);
+
   // ── Open order modal ───────────────────────────────────────────────────────
   const handleOrderChange = (product) => {
     const storedMode = (() => { try { return localStorage.getItem("melech_staff_price_mode"); } catch { return null; } })();
@@ -765,6 +808,22 @@ const CustomerProducts = () => {
               </span>
             </button>
           )}
+
+          {/* ❤️ Favorites tab pill */}
+          <button type="button" onClick={handleFavoritesToggle}
+            className={`flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition whitespace-nowrap
+              ${activeTab === "favorites"
+                ? "bg-red-500 text-white border-red-500 shadow-sm"
+                : "bg-white text-red-500 border-red-200 hover:bg-red-50"}`}>
+            <Heart size={11} className={activeTab === "favorites" ? "fill-white text-white" : "text-red-400"} />
+            Favorites
+            {favoriteIds.length > 0 && (
+              <span className={`px-1 py-0.5 rounded-full text-[10px] font-bold
+                ${activeTab === "favorites" ? "bg-white/20 text-white" : "bg-red-100 text-red-600"}`}>
+                {favoriteIds.length}
+              </span>
+            )}
+          </button>
           </div>
         </div>
 
@@ -795,7 +854,7 @@ const CustomerProducts = () => {
             ) : (
               <>
                 <div ref={pageTopRef} className="grid grid-cols-2 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 md:gap-3">
-                  {newPaginated.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} />)}
+                  {newPaginated.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} isFav={isFavorite(product._id)} onToggleFav={handleToggleFav} />)}
                 </div>
                 <TabPagination current={newPage} total={newTotalPages} count={newFiltered.length} pageSize={PRODUCTS_PAGE_SIZE} jump={newJump} setJump={setNewJump} goTo={goToNewPage} color="indigo" />
               </>
@@ -824,10 +883,30 @@ const CustomerProducts = () => {
             ) : (
               <>
                 <div ref={pageTopRef} className="grid grid-cols-2 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 md:gap-3">
-                  {bonanzaPaginated.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} />)}
+                  {bonanzaPaginated.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} isFav={isFavorite(product._id)} onToggleFav={handleToggleFav} />)}
                 </div>
                 <TabPagination current={bonanzaPage} total={bonanzaTotalPages} count={bonanzaFiltered.length} pageSize={PRODUCTS_PAGE_SIZE} jump={bonanzaJump} setJump={setBonanzaJump} goTo={goToBonanzaPage} color="orange" />
               </>
+            )}
+          </div>
+        ) : activeTab === "favorites" ? (
+          /* ── Favorites tab ── */
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Heart size={18} className="text-red-500 fill-red-500" />
+              <span className="text-base font-bold text-gray-800">My Favorites</span>
+              <span className="text-xs text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full font-semibold">{favProducts.length}</span>
+            </div>
+            {favProducts.length === 0 ? (
+              <div className="flex flex-col items-center py-20 gap-3">
+                <Heart size={36} className="text-gray-200" />
+                <p className="text-gray-400 font-medium">No favorites yet</p>
+                <p className="text-xs text-gray-400">Tap the ❤️ on any product card to save it here</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 md:gap-3">
+                {favProducts.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} isFav={true} onToggleFav={handleToggleFav} />)}
+              </div>
             )}
           </div>
         ) : cpPaginated.length === 0 ? (
@@ -842,7 +921,7 @@ const CustomerProducts = () => {
           <>
             {/* ── All products grid ── */}
             <div ref={pageTopRef} className="grid grid-cols-2 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 md:gap-3">
-              {cpPaginated.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} />)}
+              {cpPaginated.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} isFav={isFavorite(product._id)} onToggleFav={handleToggleFav} />)}
             </div>
             <TabPagination current={currentPage} total={totalPages} count={filteredProducts.length} pageSize={PRODUCTS_PAGE_SIZE} jump={jumpInput} setJump={setJumpInput} goTo={goToPage} color="green" />
           </>
