@@ -56,6 +56,7 @@ const SharedOrderTable = memo(({
   const [searchDateTo,  setSearchDateTo]  = useState("");
   const [searchRole,    setSearchRole]    = useState("");
   const [searchOrderId, setSearchOrderId] = useState("");
+  const [searchUserId,  setSearchUserId]  = useState(""); // ← NEW: filter by user _id
   const [sortField,     setSortField]     = useState("createdAt");
   const [sortDir,       setSortDir]       = useState("desc");
   const [expandedRows,  setExpandedRows]  = useState({});
@@ -67,9 +68,8 @@ const SharedOrderTable = memo(({
 
   const PAGE_SIZE = 10;
 
-  useEffect(() => { setCurrentPage(1); }, [searchDate, searchDateTo, searchRole, searchOrderId]);
-  // Clear selection when page or filters change
-  useEffect(() => { setSelectedIds(new Set()); }, [currentPage, searchDate, searchDateTo, searchRole, searchOrderId]);
+  useEffect(() => { setCurrentPage(1); }, [searchDate, searchDateTo, searchRole, searchOrderId, searchUserId]);
+  useEffect(() => { setSelectedIds(new Set()); }, [currentPage, searchDate, searchDateTo, searchRole, searchOrderId, searchUserId]);
 
   if (!orders.length)
     return <p className="text-gray-500 text-center py-10">No completed orders found</p>;
@@ -92,9 +92,13 @@ const SharedOrderTable = memo(({
       const idMatch      = searchOrderId
         ? String(order._id).toLowerCase().includes(searchOrderId.toLowerCase())
         : true;
-      return roleMatch && fromMatch && toMatch && idMatch;
+      // User ID filter — match against the full _id string (immutable, can't be edited by user)
+      const userIdMatch  = searchUserId
+        ? String(order.userOrdering?._id || "").toLowerCase().includes(searchUserId.toLowerCase().trim())
+        : true;
+      return roleMatch && fromMatch && toMatch && idMatch && userIdMatch;
     });
-  }, [orders, searchDate, searchDateTo, searchRole, searchOrderId]);
+  }, [orders, searchDate, searchDateTo, searchRole, searchOrderId, searchUserId]);
 
   // Revenue of filtered set (for admin role-filter revenue display)
   const filteredRevenue = filtered
@@ -230,9 +234,9 @@ const SharedOrderTable = memo(({
   };
 
   const resetFilters = () => {
-    setSearchDate(""); setSearchDateTo(""); setSearchRole(""); setSearchOrderId("");
+    setSearchDate(""); setSearchDateTo(""); setSearchRole(""); setSearchOrderId(""); setSearchUserId("");
   };
-  const hasFilters = searchDate || searchDateTo || searchRole || searchOrderId;
+  const hasFilters = searchDate || searchDateTo || searchRole || searchOrderId || searchUserId;
 
   return (
     <div>
@@ -272,6 +276,31 @@ const SharedOrderTable = memo(({
             className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 w-40"
           />
         </div>
+
+        {/* ── User ID filter — admin only ───────────────────────────────── */}
+        {role === "admin" && (
+          <div className="flex flex-col gap-0.5">
+            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide pl-0.5 flex items-center gap-1">
+              User ID
+              <span
+                title="Filter by user account ID — immutable, cannot be changed by the user. Find a user's ID on the Users page."
+                className="cursor-help inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-gray-300 text-gray-600 text-[9px] font-bold ml-0.5"
+              >?</span>
+            </label>
+            <input
+              type="text"
+              placeholder="Paste user ID…"
+              value={searchUserId}
+              onChange={(e) => setSearchUserId(e.target.value)}
+              className="border border-indigo-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 w-44 font-mono"
+            />
+            {searchUserId && (
+              <p className="text-[10px] text-indigo-500 pl-0.5 mt-0.5">
+                Showing history for 1 specific user
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Date range — labeled inputs */}
         {(role === "admin" || role === "staff") && (
@@ -415,17 +444,36 @@ const SharedOrderTable = memo(({
                   )}
                   {showUser && (
                     <td className="p-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        order.userOrdering?.role === "wholesale"
-                          ? "bg-amber-50 text-amber-700"
-                          : order.userOrdering?.role === "staff"
-                          ? "bg-blue-50 text-blue-700"
-                          : "bg-green-50 text-green-700"
-                      }`}>
-                        {order.userOrdering?.role === "staff"
-                          ? `${order.userOrdering?.name || "Unknown"} (staff)`
-                          : order.userOrdering?.role || "Unknown"}
-                      </span>
+                      <div className="space-y-1">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          order.userOrdering?.role === "wholesale"
+                            ? "bg-amber-50 text-amber-700"
+                            : order.userOrdering?.role === "staff"
+                            ? "bg-blue-50 text-blue-700"
+                            : "bg-green-50 text-green-700"
+                        }`}>
+                          {order.userOrdering?.role === "staff"
+                            ? `${order.userOrdering?.name || "Unknown"} (staff)`
+                            : order.userOrdering?.role || "Unknown"}
+                        </span>
+                        {/* User ID — shown small, copyable, use for filter */}
+                        {order.userOrdering?._id && (
+                          <div className="flex items-center gap-1">
+                            <span
+                              className="text-[10px] font-mono text-gray-400 cursor-pointer hover:text-indigo-600 transition"
+                              title={`User ID: ${String(order.userOrdering._id)} — click to copy`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard?.writeText(String(order.userOrdering._id))
+                                  .then(() => toast.success("User ID copied!", { autoClose: 1500 }))
+                                  .catch(() => {});
+                              }}
+                            >
+                              ID: ...{String(order.userOrdering._id).slice(-8)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </td>
                   )}
                   <td className="p-3">
@@ -527,9 +575,30 @@ const SharedOrderTable = memo(({
                 {expandedRows[order._id] && (
                   <tr className="bg-gray-50 border-t">
                     <td colSpan={12} className="px-6 py-3">
-                      <p className="text-xs font-semibold text-gray-500 uppercase mb-2">
-                        Full ID: {String(order._id)}
+                      <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                        Order ID: <span className="font-mono normal-case text-gray-700">{String(order._id)}</span>
                       </p>
+                      {order.userOrdering?._id && (
+                        <p className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-2">
+                          User ID:{" "}
+                          <span className="font-mono normal-case text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded select-all">
+                            {String(order.userOrdering._id)}
+                          </span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard?.writeText(String(order.userOrdering._id))
+                                .then(() => toast.success("User ID copied!", { autoClose: 1500 }))
+                                .catch(() => {});
+                            }}
+                            className="text-[10px] text-indigo-500 hover:text-indigo-700 border border-indigo-200 rounded px-1.5 py-0.5 hover:bg-indigo-50 transition"
+                          >
+                            Copy
+                          </button>
+                          <span className="text-[10px] text-gray-400 normal-case font-normal">
+                            (paste this in the User ID filter to see all history for this user)
+                          </span>
+                        </p>
+                      )}
 
                       {/* Fulfillment info in history */}
                       {order.fulfillmentType === "delivery" ? (
@@ -648,18 +717,41 @@ const SharedOrderTable = memo(({
             )}
 
             {showUser && (
-              <p className="text-sm mb-2">
-                <span className="font-semibold">User: </span>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  order.userOrdering?.role === "wholesale"
-                    ? "bg-amber-50 text-amber-700"
-                    : order.userOrdering?.role === "staff"
-                    ? "bg-blue-50 text-blue-700"
-                    : "bg-green-50 text-green-700"
-                }`}>
-                  {order.userOrdering?.role || "Unknown"}
-                </span>
-              </p>
+              <div className="mb-2 space-y-1">
+                <p className="text-sm">
+                  <span className="font-semibold">Role: </span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    order.userOrdering?.role === "wholesale"
+                      ? "bg-amber-50 text-amber-700"
+                      : order.userOrdering?.role === "staff"
+                      ? "bg-blue-50 text-blue-700"
+                      : "bg-green-50 text-green-700"
+                  }`}>
+                    {order.userOrdering?.role === "staff"
+                      ? `${order.userOrdering?.name || "Unknown"} (staff)`
+                      : order.userOrdering?.role || "Unknown"}
+                  </span>
+                </p>
+                {/* User ID — immutable, for filter use */}
+                {order.userOrdering?._id && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">User ID:</span>
+                    <span className="text-[11px] font-mono text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded select-all break-all">
+                      {String(order.userOrdering._id)}
+                    </span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard?.writeText(String(order.userOrdering._id))
+                          .then(() => toast.success("User ID copied!", { autoClose: 1500 }))
+                          .catch(() => {});
+                      }}
+                      className="text-[10px] text-indigo-500 border border-indigo-200 rounded px-1.5 py-0.5 hover:bg-indigo-50 transition"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
 
             <button className="text-xs text-blue-500 underline mb-2 flex items-center gap-1"
