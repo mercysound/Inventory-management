@@ -1,22 +1,14 @@
 // server/utils/email/productExpiryAdminEmail.js
-// Email sent to admin when one or more products are approaching their expiry date.
-
 import { sendWithRetry } from "./sendWithRetry.js";
 
-/**
- * sendProductExpiryAdminEmail
- *
- * @param {object}   opts
- * @param {string}   opts.adminEmail
- * @param {Array}    opts.products       — array of { name, batchNumber, expiryDate, stock, daysLeft }
- * @param {string}   [opts.storeName]
- */
 export const sendProductExpiryAdminEmail = async ({
   adminEmail,
   products = [],
   storeName = "Melech Store",
 }) => {
   if (!products.length) return;
+
+  const appUrl = (process.env.FRONTEND_URL || "https://bigpos.onrender.com").replace(/\/$/, "");
 
   const rows = products.map((p) => {
     const urgency = p.daysLeft <= 7 ? "#dc2626" : p.daysLeft <= 14 ? "#d97706" : "#4f46e5";
@@ -32,9 +24,7 @@ export const sendProductExpiryAdminEmail = async ({
         </td>
         <td style="padding:10px 8px;text-align:center;">
           <span style="background:${urgency}1a;color:${urgency};border:1px solid ${urgency}40;
-            padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;">
-            ${label}
-          </span>
+            padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;">${label}</span>
         </td>
         <td style="padding:10px 8px;font-size:12px;color:#374151;text-align:center;">${p.stock}</td>
       </tr>`;
@@ -42,13 +32,12 @@ export const sendProductExpiryAdminEmail = async ({
 
   await sendWithRetry({
     to:      adminEmail,
-    subject: `⚠️ Product Expiry Alert — ${products.length} item${products.length !== 1 ? "s" : ""} expiring soon`,
+    subject: `⚠️ Product Expiry Alert — ${products.length} item${products.length !== 1 ? "s" : ""} expiring soon | ${storeName}`,
     html: `
       <div style="font-family:'Segoe UI',Arial,sans-serif;background:#f8fafc;padding:32px 0;">
         <table width="600" cellpadding="0" cellspacing="0"
           style="background:#fff;border-radius:16px;overflow:hidden;
-                 box-shadow:0 2px 16px rgba(0,0,0,.06);max-width:600px;
-                 width:100%;margin:0 auto;">
+                 box-shadow:0 2px 16px rgba(0,0,0,.06);max-width:600px;width:100%;margin:0 auto;">
           <tr>
             <td style="background:#dc2626;padding:24px 32px;">
               <p style="margin:0;color:#fff;font-size:18px;font-weight:700;">
@@ -66,14 +55,10 @@ export const sendProductExpiryAdminEmail = async ({
                 style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;font-size:13px;">
                 <thead>
                   <tr style="background:#f8fafc;">
-                    <th style="padding:10px 8px;text-align:left;font-size:11px;
-                      color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Product</th>
-                    <th style="padding:10px 8px;text-align:center;font-size:11px;
-                      color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Expiry Date</th>
-                    <th style="padding:10px 8px;text-align:center;font-size:11px;
-                      color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Status</th>
-                    <th style="padding:10px 8px;text-align:center;font-size:11px;
-                      color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Stock</th>
+                    <th style="padding:10px 8px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Product</th>
+                    <th style="padding:10px 8px;text-align:center;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Expiry Date</th>
+                    <th style="padding:10px 8px;text-align:center;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Status</th>
+                    <th style="padding:10px 8px;text-align:center;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Stock</th>
                   </tr>
                 </thead>
                 <tbody>${rows}</tbody>
@@ -81,12 +66,34 @@ export const sendProductExpiryAdminEmail = async ({
             </td>
           </tr>
           <tr>
-            <td style="padding:16px 32px 24px;color:#374151;font-size:13px;">
-              <p style="margin:0;">
-                Please log in to the <strong>admin dashboard → Products</strong>
-                to review and update these items.
+            <td style="padding:20px 32px 8px;color:#374151;font-size:13px;">
+              <p style="margin:0 0 16px;">
+                Please review and update these items in your Products page before they expire.
               </p>
-              <br/>
+              <!-- CTA -->
+              <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
+                <tr>
+                  <td style="border-radius:10px;background:#dc2626;padding:0;">
+                    <a href="${appUrl}/admin-dashboard/products"
+                      style="display:inline-block;color:#fff;font-size:14px;font-weight:700;
+                        padding:12px 28px;text-decoration:none;border-radius:10px;">
+                      📦 Go to Products Page →
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:12px 0 0;font-size:12px;color:#9ca3af;text-align:center;">
+                Or go to
+                <a href="${appUrl}/admin-dashboard/expiring-orders"
+                  style="color:#4f46e5;text-decoration:none;font-weight:600;">
+                  Expiring Orders Dashboard
+                </a>
+                for a full overview.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 32px 24px;color:#374151;font-size:13px;">
               <p style="margin:0;">– <strong>${storeName} System</strong></p>
             </td>
           </tr>

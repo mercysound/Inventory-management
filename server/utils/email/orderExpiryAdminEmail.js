@@ -1,10 +1,6 @@
 // server/utils/email/orderExpiryAdminEmail.js
 import { sendWithRetry } from "./sendWithRetry.js";
 
-/**
- * Sends an email to the admin notifying them that an order has expired
- * (buyer has not collected their goods within the set time limit).
- */
 export const sendOrderExpiryAdminEmail = async ({
   adminEmail,
   buyerName,
@@ -14,6 +10,8 @@ export const sendOrderExpiryAdminEmail = async ({
   hoursElapsed,
   expiryHours,
 }) => {
+  const appUrl = (process.env.FRONTEND_URL || "https://bigpos.onrender.com").replace(/\/$/, "");
+
   await sendWithRetry({
     to:      adminEmail,
     subject: `⏰ Order Pickup Overdue — ${buyerName} (${hoursElapsed}h elapsed)`,
@@ -21,8 +19,7 @@ export const sendOrderExpiryAdminEmail = async ({
       <div style="font-family:'Segoe UI',Arial,sans-serif;background:#f8fafc;padding:32px 0;">
         <table width="560" cellpadding="0" cellspacing="0"
           style="background:#fff;border-radius:16px;overflow:hidden;
-                 box-shadow:0 2px 16px rgba(0,0,0,.06);max-width:560px;
-                 width:100%;margin:0 auto;">
+                 box-shadow:0 2px 16px rgba(0,0,0,.06);max-width:560px;width:100%;margin:0 auto;">
           <tr>
             <td style="background:#b45309;padding:24px 32px;">
               <p style="margin:0;color:#fff;font-size:18px;font-weight:700;">
@@ -39,21 +36,14 @@ export const sendOrderExpiryAdminEmail = async ({
               </p>
 
               <table width="100%" cellpadding="0" cellspacing="0"
-                style="background:#fef3c7;border:1px solid #fde68a;border-radius:10px;
-                       padding:16px;margin:16px 0;">
+                style="background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:16px;margin:16px 0;">
                 <tr>
                   <td style="padding:4px 0;font-size:13px;">
                     <strong>Order ID:</strong>
-                    <span style="font-family:monospace;">
-                      #${String(orderId).slice(-10).toUpperCase()}
-                    </span>
+                    <span style="font-family:monospace;">#${String(orderId).slice(-10).toUpperCase()}</span>
                   </td>
                 </tr>
-                <tr>
-                  <td style="padding:4px 0;font-size:13px;">
-                    <strong>Buyer:</strong> ${buyerName}
-                  </td>
-                </tr>
+                <tr><td style="padding:4px 0;font-size:13px;"><strong>Buyer:</strong> ${buyerName}</td></tr>
                 <tr>
                   <td style="padding:4px 0;font-size:13px;">
                     <strong>Order Amount:</strong> ₦${Number(totalPrice).toLocaleString()}
@@ -76,17 +66,30 @@ export const sendOrderExpiryAdminEmail = async ({
                 </tr>
               </table>
 
-              <p>
-                Please log in to the admin dashboard to review this order.
-                You may choose to:
-              </p>
-              <ul style="margin:8px 0;padding-left:20px;font-size:13px;">
-                <li>Contact the buyer to arrange pickup</li>
-                <li>Cancel the order and restore the stock if the buyer is unresponsive</li>
-              </ul>
-              <p>
-                Go to <strong>Placed Orders</strong> in your admin dashboard to take action.
-              </p>
+              <p style="margin:0 0 16px;">Take action from your admin dashboard:</p>
+
+              <!-- CTA buttons -->
+              <table cellpadding="0" cellspacing="0" style="width:100%;">
+                <tr>
+                  <td style="padding:4px 4px 4px 0;">
+                    <a href="${appUrl}/admin-dashboard/placed-orders"
+                      style="display:block;text-align:center;background:#b45309;color:#fff;
+                        font-size:13px;font-weight:700;padding:11px 16px;border-radius:10px;
+                        text-decoration:none;">
+                      📋 View Placed Orders
+                    </a>
+                  </td>
+                  <td style="padding:4px 0 4px 4px;">
+                    <a href="${appUrl}/admin-dashboard/expiring-orders"
+                      style="display:block;text-align:center;background:#f1f5f9;color:#374151;
+                        font-size:13px;font-weight:600;padding:11px 16px;border-radius:10px;
+                        text-decoration:none;border:1px solid #e2e8f0;">
+                      ⏰ Expiring Orders
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
               <br/>
               <p>– <strong>Melech Store System</strong></p>
             </td>

@@ -259,8 +259,8 @@ const ReceiptModal = ({
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-start justify-center overflow-y-auto"
-        style={{ touchAction: "none", padding: "15px" }}
+        className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center"
+        style={{ padding: "12px" }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -269,24 +269,28 @@ const ReceiptModal = ({
         <motion.div
           ref={modalRef}
           tabIndex={-1}
-          initial={{ scale: 0.95, y: 30 }}
+          initial={{ scale: 0.95, y: 20 }}
           animate={{ scale: 1, y: 0 }}
-          exit={{ scale: 0.95, y: 30 }}
+          exit={{ scale: 0.95, y: 20 }}
           onClick={(e) => e.stopPropagation()}
-          className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col overflow-hidden outline-none"
-          style={{ height: "calc(100vh - 30px)", maxHeight: "calc(100vh - 30px)" }}
+          className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col outline-none"
+          style={{
+            // Use dvh (dynamic viewport height) with px fallback — fixes Firefox/Safari mobile
+            maxHeight: "calc(100dvh - 24px)",
+            height:    "calc(100dvh - 24px)",
+          }}
         >
           {/* ── HEADER ── */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
+            <div className="min-w-0 pr-2">
+              <h3 className="text-base font-semibold text-gray-800 leading-tight">
                 {mode === "preview" ? (
-                  <>Invoice Preview <span className="text-orange-500 text-base">(Unpaid)</span></>
+                  <>Invoice Preview <span className="text-orange-500 text-sm">(Unpaid)</span></>
                 ) : (
-                  <>Receipt <span className="text-green-600 text-base">(Paid)</span></>
+                  <>Receipt <span className="text-green-600 text-sm">(Paid)</span></>
                 )}
               </h3>
-              <p className="text-xs text-gray-400 mt-0.5">
+              <p className="text-xs text-gray-400 mt-0.5 hidden sm:block">
                 Use the buttons below to download or print.
               </p>
             </div>
@@ -294,45 +298,47 @@ const ReceiptModal = ({
               onClick={onClose}
               className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 transition flex-shrink-0"
               aria-label="Close"
-            >
-              ✕
-            </button>
+            >✕</button>
           </div>
 
-          {/* ── BODY — explicitly sized so iOS scrolls correctly ── */}
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-gray-100"
-            style={{ WebkitOverflowScrolling: "touch" }}>
+          {/* ── BODY ── fills all remaining space, scrolls independently ── */}
+          <div
+            className="flex-1 min-h-0 bg-gray-100 overflow-y-auto"
+            style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}
+          >
             {fetching ? (
-              // Loading spinner while HTML is being fetched
-              <div className="flex items-center justify-center h-full">
+              <div className="flex items-center justify-center h-full min-h-[200px]">
                 <div className="flex flex-col items-center gap-3 text-gray-400">
                   <div className="w-8 h-8 border-2 border-gray-200 border-t-indigo-400 rounded-full animate-spin" />
                   <p className="text-sm">Loading receipt...</p>
                 </div>
               </div>
             ) : contentUrl || previewUrl || blobUrl ? (
-              // Render provided content URL or PDF URL
               <iframe
                 ref={iframeRef}
                 key={JSON.stringify(invoiceParams)}
                 src={contentUrl || previewUrl || blobUrl}
                 title="Receipt"
-                className="w-full h-full border-0 block"
-                style={{ WebkitOverflowScrolling: "touch", overflowY: "auto" }}
+                className="w-full border-0 block"
+                style={{
+                  height: "100%",
+                  minHeight: "400px",
+                  WebkitOverflowScrolling: "touch",
+                }}
                 sandbox="allow-modals allow-scripts"
               />
             ) : (
-              <div className="flex items-center justify-center h-full">
+              <div className="flex items-center justify-center h-full min-h-[200px]">
                 <p className="text-sm text-gray-400">Receipt not available.</p>
               </div>
             )}
           </div>
 
-          {/* ── FOOTER — buttons in React, no CSP/iframe issues ── */}
-          <div className="flex justify-between items-center px-5 py-4 border-t border-gray-100 bg-white flex-shrink-0 gap-3">
+          {/* ── FOOTER — always visible, never scrolls away ── */}
+          <div className="flex justify-between items-center px-4 py-3 border-t border-gray-100 bg-white flex-shrink-0 gap-2">
             <button
               onClick={onClose}
-              className="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium transition"
+              className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium transition"
             >
               Close
             </button>
@@ -340,16 +346,16 @@ const ReceiptModal = ({
               <button
                 onClick={handlePrint}
                 disabled={!(html || blobUrl || previewUrl) || fetching}
-                className="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium transition disabled:opacity-40"
+                className="px-3 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium transition disabled:opacity-40 flex items-center gap-1.5"
               >
-                🖨 Print
+                🖨 <span className="hidden sm:inline">Print</span>
               </button>
               <button
                 onClick={handleDownload}
                 disabled={!(invoiceParams || previewUrl || blobUrl || typeof onDownload === 'function') || fetching}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow transition disabled:opacity-40"
+                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow transition disabled:opacity-40 flex items-center gap-1.5"
               >
-                ⬇ Download PDF
+                ⬇ <span>Download PDF</span>
               </button>
             </div>
           </div>

@@ -426,6 +426,9 @@ const completeOrder = async (req, res) => {
         productList,
         paid:          true,
         deliveryStatus: "delivered",
+        // Record the staff member who made this sale — shown as "Sold by" on receipt
+        changedBy:     userId,
+        changedByName: req.user?.name || "Staff",
       }], { session });
     }
 
