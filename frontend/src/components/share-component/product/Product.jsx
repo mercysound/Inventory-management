@@ -11,41 +11,50 @@ import DeletedProductsPopup from "./DeletedProductsPopup";
 // ── Mode chooser modal — shown before opening the product form ───────────────
 // Lets admin pick between the quick modal or full-page form.
 const ModeChooserModal = ({ onModal, onFullPage, onClose, isEditing }) => (
-  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 px-4"
-    onClick={onClose}>
-    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6"
-      onClick={e => e.stopPropagation()}>
-      <h2 className="text-base font-bold text-gray-900 mb-1">
-        {isEditing ? "How would you like to edit?" : "How would you like to add?"}
-      </h2>
-      <p className="text-xs text-gray-400 mb-5">Choose quick modal for simple products, full page for products with many details.</p>
-      <div className="flex flex-col gap-3">
-        <button onClick={onModal}
-          className="flex items-start gap-3 p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50
-            hover:border-indigo-500 transition text-left group">
-          <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shrink-0 shadow-sm">
-            <Layers size={16} className="text-white" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-indigo-800">Quick Modal</p>
-            <p className="text-xs text-gray-500 mt-0.5">Opens a compact pop-up. Best for simple products.</p>
-          </div>
-        </button>
-        <button onClick={onFullPage}
-          className="flex items-start gap-3 p-4 rounded-xl border-2 border-violet-200 bg-violet-50
-            hover:border-violet-500 transition text-left group">
-          <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center shrink-0 shadow-sm">
-            <FileText size={16} className="text-white" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-violet-800">Full Page</p>
-            <p className="text-xs text-gray-500 mt-0.5">Routes to a dedicated page. Best for variants, many images, and detailed products.</p>
-          </div>
+  <div
+    className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 px-4"
+    style={{ padding: "16px" }}
+    onClick={onClose}
+  >
+    <div
+      className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-y-auto"
+      style={{ maxHeight: "calc(100dvh - 32px)" }}
+      onClick={e => e.stopPropagation()}
+    >
+      <div className="p-6">
+        <h2 className="text-base font-bold text-gray-900 mb-1">
+          {isEditing ? "How would you like to edit?" : "How would you like to add?"}
+        </h2>
+        <p className="text-xs text-gray-400 mb-5">Choose quick modal for simple products, full page for products with many details.</p>
+        <div className="flex flex-col gap-3">
+          <button onClick={onModal}
+            className="flex items-start gap-3 p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50
+              hover:border-indigo-500 transition text-left">
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shrink-0 shadow-sm">
+              <Layers size={16} className="text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-indigo-800">Quick Modal</p>
+              <p className="text-xs text-gray-500 mt-0.5">Opens a compact pop-up. Best for simple products.</p>
+            </div>
+          </button>
+          <button onClick={onFullPage}
+            className="flex items-start gap-3 p-4 rounded-xl border-2 border-violet-200 bg-violet-50
+              hover:border-violet-500 transition text-left">
+            <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center shrink-0 shadow-sm">
+              <FileText size={16} className="text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-violet-800">Full Page</p>
+              <p className="text-xs text-gray-500 mt-0.5">Routes to a dedicated page. Best for variants, many images, and detailed products.</p>
+            </div>
+          </button>
+        </div>
+        <button onClick={onClose}
+          className="mt-4 w-full py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition">
+          Cancel
         </button>
       </div>
-      <button onClick={onClose} className="mt-4 w-full py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition">
-        Cancel
-      </button>
     </div>
   </div>
 );

@@ -405,10 +405,12 @@ const ProductForm = ({
         </div>
       )
     : ({ children }) => (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 overflow-y-auto"
-          style={{ touchAction: "none" }}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col mx-4 my-4"
-            style={{ maxHeight: "92vh" }}>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+          style={{ padding: "12px" }}
+          onClick={onClose}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col"
+            style={{ maxHeight: "calc(100dvh - 24px)", height: "calc(100dvh - 24px)" }}
+            onClick={e => e.stopPropagation()}>
             {children}
           </div>
         </div>

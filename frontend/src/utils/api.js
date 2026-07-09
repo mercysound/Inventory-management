@@ -34,20 +34,31 @@ const isEmailRoute = (url = "") => EMAIL_ROUTES.some((route) => url.includes(rou
 const NETWORK_ERROR_TOAST_ID = "network-error";
 
 // ── Network error toast deduplication ────────────────────────────────────────
-// Multiple concurrent requests can fail simultaneously when offline.
-// This flag ensures only ONE network-error toast shows within a 4-second window,
-// regardless of how many requests fail at the same time.
-let _networkToastActive = false;
+// Multiple concurrent requests can fail simultaneously on cold start (Render).
+// Rules:
+//   1. Only ONE network-error toast shows within an 8-second window.
+//   2. If ANY request succeeds BEFORE the toast fires, cancel the toast entirely
+//      (the page clearly has connectivity — it was just a slow cold start).
+//   3. Toast is suppressed for the first 6 seconds after app load to give Render
+//      time to wake up without alarming the user.
+let _networkToastActive  = false;
+let _anySuccessReceived  = false;
+let _appLoadTime         = Date.now();
+const COLD_START_GRACE_MS = 12000; // suppress network toasts for 12s after app load
+
 const showNetworkToast = (message) => {
+  // Grace period — Render cold start can take 8-12 seconds
+  if (Date.now() - _appLoadTime < COLD_START_GRACE_MS) return;
+  // If any request already succeeded, we have connectivity — don't confuse the user
+  if (_anySuccessReceived) return;
   if (_networkToastActive) return;
   _networkToastActive = true;
   toast.error(message, {
-    toastId:     NETWORK_ERROR_TOAST_ID,
-    autoClose:   6000,
+    toastId:      NETWORK_ERROR_TOAST_ID,
+    autoClose:    6000,
     pauseOnHover: true,
-    onClose:     () => { _networkToastActive = false; },
+    onClose:      () => { _networkToastActive = false; },
   });
-  // Safety reset in case onClose never fires (e.g. toast dismissed programmatically)
   setTimeout(() => { _networkToastActive = false; }, 8000);
 };
 const isNetworkError = (error) =>
@@ -94,6 +105,8 @@ axiosInstance.interceptors.response.use(
     if (import.meta.env.DEV) {
       console.log(`✅ ${response.config.method?.toUpperCase()} ${response.status} (${duration}ms)`);
     }
+    // Mark that at least one request succeeded — suppresses false network toasts
+    _anySuccessReceived = true;
     return response;
   },
   async (error) => {

@@ -206,9 +206,10 @@ const CartProductSearch = ({ priceMode = "retail", cartMap = {} }) => {
   };
 
   return (
-    <div ref={panelRef} className="mb-4">
-      {/* Toggle button — sticky so always reachable to collapse the panel */}
-      <div className="sticky z-10 bg-white pb-1" style={{ top: "var(--cart-sticky-h, 0px)" }}>
+    <div ref={panelRef} className="mt-3 mb-4">
+      {/* Toggle button — only sticky when panel is CLOSED so it doesn't cover the search input */}
+      <div className={open ? "" : "sticky z-10 bg-white pb-1"}
+        style={open ? {} : { top: "var(--cart-sticky-h, 0px)" }}>
         <button onClick={handleToggle}
           className="w-full flex items-center justify-between px-4 py-3 rounded-2xl
             bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200
@@ -231,15 +232,19 @@ const CartProductSearch = ({ priceMode = "retail", cartMap = {} }) => {
             className="overflow-hidden"
           >
             <div className="mt-2 bg-white border border-gray-200 rounded-2xl shadow-md overflow-hidden">
-              {/* Search input */}
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+              {/* Search input — ALWAYS rendered when open, never hidden or conditional */}
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-white">
                 <Search size={15} className="text-gray-400 shrink-0" />
-                <input ref={inputRef} type="text" value={query}
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={query}
                   onChange={e => setQuery(e.target.value)}
                   placeholder="Search products by name or category…"
-                  className="flex-1 text-sm outline-none bg-transparent placeholder:text-gray-400" />
+                  className="flex-1 text-sm outline-none bg-transparent placeholder:text-gray-400 min-w-0"
+                />
                 {query && (
-                  <button onClick={() => setQuery("")} className="text-gray-400 hover:text-gray-600 transition">
+                  <button onClick={() => setQuery("")} className="text-gray-400 hover:text-gray-600 transition shrink-0">
                     <X size={14} />
                   </button>
                 )}
@@ -261,7 +266,7 @@ const CartProductSearch = ({ priceMode = "retail", cartMap = {} }) => {
                   No products match "<span className="text-gray-600 font-medium">{query}</span>"
                 </div>
               ) : (
-                <div className="max-h-80 overflow-y-auto overscroll-contain">
+                <div className="max-h-72 overflow-y-auto overscroll-contain">
                   {results.map(p => (
                     <ProductResult key={p._id} product={p} priceMode={priceMode}
                       cartQty={localCartMap[p._id]?.quantity || 0}
