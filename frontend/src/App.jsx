@@ -11,13 +11,6 @@ import PublicShop from "./pages/PublicShop.jsx";
 import Unauthorized from "./pages/unauthorized/Unauthorized.jsx";
 import CustomerOrderPortal from "./components/customer/CustomerOrderPortal/CustomerOrderPortal";
 import CustomerProducts from "./components/customer/customerProduct/CustomerProducts.jsx";
-
-// Wrapper that pre-opens the Favorites tab
-const CustomerFavorites = () => {
-  // Pass initialTab via sessionStorage so CustomerProducts reads it once on mount
-  sessionStorage.setItem("melech_initial_tab", "favorites");
-  return <CustomerProducts />;
-};
 import Suppliers from "./components/admin/supplier/Suppliers.jsx";
 import Users from "./components/admin/user/Users.jsx";
 import PlacedOrders from "./components/admin/purchase/PlacedOrders.jsx";
@@ -33,30 +26,25 @@ import StaffPlacedOrders from "./components/staff/placedOrders/StaffPlacedOrders
 import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
 import ProductDetailPage from "./pages/ProductDetailPage.jsx";
-
-import AddProductPage    from "./pages/admin/AddProductPage.jsx";
-// ✅ New pages
-import ExpiringOrders     from "./components/admin/expiring/ExpiringOrders.jsx";
-import UserSettingsPage   from "./pages/UserSettingsPage.jsx";
-import EngagementMonitor  from "./pages/admin/EngagementMonitor.jsx";
-
-// ✅ Wholesale pages — reuse customer components with wholesale pricing applied at API level
-// The product page and cart page are the same components; pricing is controlled server-side
-// based on the logged-in user's role.
-// We import CustomerCompletedHistory for wholesale history too (same UI, role-filtered data)
+import SettingsPage from "./components/admin/settings/SettingsPage.jsx";
+import ExpiringOrders from "./components/admin/expiring/ExpiringOrders.jsx";
+import UserSettingsPage from "./pages/UserSettingsPage.jsx";
+import EngagementMonitor from "./pages/admin/EngagementMonitor.jsx";
+import AddProductPage from "./pages/admin/AddProductPage.jsx";
 
 export const BASE_URL = import.meta.env.VITE_API_URL;
 
-// ── Prevent full page reload on browser minimize/tab switch ─────────────────
-// On iOS Safari and some Android browsers, the pageshow event fires with
-// persisted=true when the page is restored from the bfcache (back/forward cache).
-// Reloading in this case causes the "restart from scratch" feeling.
-// We intercept it and prevent the reload so the user lands exactly where they left.
+// ── Favorites tab shortcut — sets sessionStorage flag then renders CustomerProducts
+const CustomerFavorites = () => {
+  sessionStorage.setItem("melech_initial_tab", "favorites");
+  return <CustomerProducts />;
+};
+
+// ── Prevent full page reload on bfcache restore (iOS Safari) ─────────────────
 if (typeof window !== "undefined") {
   window.addEventListener("pageshow", (e) => {
     if (e.persisted) {
-      // Page was restored from bfcache — do nothing, keep current state
-      // This prevents the blank-screen reload on iOS when switching apps/tabs
+      // Page restored from bfcache — keep current state, don't reload
     }
   });
 }
@@ -79,15 +67,13 @@ function App() {
       <Router>
         <Routes>
           {/* ── Public ── */}
-          <Route path="/"                  element={<PublicShop />} />
-          <Route path="/login"             element={<LoginPage />} />
-          {/* Legacy root used to be LandingPage — keep it accessible but redirect to /login */}
-          <Route path="/landing"           element={<LandingPage />} />
-          <Route path="/complete-profile"  element={<CompleteProfile />} />
-          <Route path="/forgot-password"   element={<ForgotPassword />} />
-          <Route path="/reset-password"    element={<ResetPassword />} />
-          {/* Public product detail — no auth needed */}
-          <Route path="/product/:id"       element={<ProductDetailPage />} />
+          <Route path="/"                 element={<PublicShop />} />
+          <Route path="/login"            element={<LoginPage />} />
+          <Route path="/landing"          element={<LandingPage />} />
+          <Route path="/complete-profile" element={<CompleteProfile />} />
+          <Route path="/forgot-password"  element={<ForgotPassword />} />
+          <Route path="/reset-password"   element={<ResetPassword />} />
+          <Route path="/product/:id"      element={<ProductDetailPage />} />
 
           {/* ── Admin Dashboard ── */}
           <Route
@@ -108,7 +94,7 @@ function App() {
             <Route path="completed-history" element={<AdminCompletedHistory />} />
             <Route path="profile"           element={<Navigate to="/admin-dashboard/settings" replace />} />
             <Route path="users"             element={<Users />} />
-            <Route path="engagement"          element={<EngagementMonitor />} />
+            <Route path="engagement"        element={<EngagementMonitor />} />
             <Route path="expiring-orders"   element={<ExpiringOrders />} />
             <Route path="settings"          element={<SettingsPage />} />
             <Route path="logout"            element={<Logout />} />
