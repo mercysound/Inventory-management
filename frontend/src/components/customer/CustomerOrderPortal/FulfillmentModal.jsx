@@ -30,23 +30,6 @@ const FulfillmentModal = ({ isOpen, onClose, onConfirm, userProfile = null }) =>
     }
   }, [isOpen, userProfile]);
 
-  // ESC key closes the modal
-  useEscapeToClose(isOpen, handleClose);
-
-  // Lock scroll on open
-  useEffect(() => {
-    if (!isOpen) return;
-    // Simple overflow lock — don't use position:fixed as it fights with the fixed modal overlay
-    document.body.style.overflow = "hidden";
-    const el = document.getElementById("main-scroll");
-    if (el) { el.dataset.prevOverflow = el.style.overflow; el.style.overflow = "hidden"; }
-    return () => {
-      document.body.style.overflow = "";
-      const el2 = document.getElementById("main-scroll");
-      if (el2) el2.style.overflow = el2.dataset.prevOverflow || "";
-    };
-  }, [isOpen]);
-
   const validate = () => {
     if (type === "pickup") return true;
     const errs = {};
@@ -59,6 +42,16 @@ const FulfillmentModal = ({ isOpen, onClose, onConfirm, userProfile = null }) =>
     return Object.keys(errs).length === 0;
   };
 
+  // ── MUST be declared before useEscapeToClose which references it ──────────
+  const handleClose = () => {
+    setType("pickup");
+    setAddress(userProfile?.address || "");
+    setRecipient(userProfile?.name  || "");
+    setPhone(userProfile?.phone     || "");
+    setErrors({});
+    onClose();
+  };
+
   const handleConfirm = () => {
     if (!validate()) return;
     onConfirm({
@@ -69,14 +62,21 @@ const FulfillmentModal = ({ isOpen, onClose, onConfirm, userProfile = null }) =>
     });
   };
 
-  const handleClose = () => {
-    setType("pickup");
-    setAddress(userProfile?.address || "");
-    setRecipient(userProfile?.name  || "");
-    setPhone(userProfile?.phone     || "");
-    setErrors({});
-    onClose();
-  };
+  // ESC key closes the modal — handleClose must be declared above this line
+  useEscapeToClose(isOpen, handleClose);
+
+  // Lock scroll on open
+  useEffect(() => {
+    if (!isOpen) return;
+    document.body.style.overflow = "hidden";
+    const el = document.getElementById("main-scroll");
+    if (el) { el.dataset.prevOverflow = el.style.overflow; el.style.overflow = "hidden"; }
+    return () => {
+      document.body.style.overflow = "";
+      const el2 = document.getElementById("main-scroll");
+      if (el2) el2.style.overflow = el2.dataset.prevOverflow || "";
+    };
+  }, [isOpen]);
 
   return (
     <AnimatePresence>
