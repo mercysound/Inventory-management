@@ -59,7 +59,11 @@ const PlacedOrders = () => {
       setLoading(true);
       const res = await axiosInstance.get("/placed-orders");
       if (res.data.success) {
-        setOrders(res.data.orders || []);
+        // Always ensure newest orders are first regardless of server order
+        const sorted = [...(res.data.orders || [])].sort(
+          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        );
+        setOrders(sorted);
         lastFetchedAt.current = now;
       }
     } catch (err) {
@@ -69,6 +73,23 @@ const PlacedOrders = () => {
       setLoading(false);
     }
   };
+
+  // ── SSE — live new-order notifications ───────────────────────────────────
+  // When a customer places a new order, the server fires placedOrderUpdated.
+  // We force-refresh (bypass cache) so the new order appears at the top immediately.
+  useEffect(() => {
+    const token = localStorage.getItem("pos-token");
+    if (!token) return;
+    const base = import.meta.env.VITE_API_URL || "/api";
+    const es   = new EventSource(`${base}/placed-orders/stream?token=${encodeURIComponent(token)}`);
+    es.addEventListener("placedOrderUpdated", () => {
+      lastFetchedAt.current = null; // bust cache
+      fetchOrders(true);
+    });
+    es.addEventListener("error", () => { /* auto-reconnects */ });
+    return () => es.close();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const updateDeliveryStatus = useCallback(async (orderId, newStatus) => {
     if (newStatus === "cancelled") {

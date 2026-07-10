@@ -212,7 +212,11 @@ const StaffPlacedOrders = () => {
       setLoading(true);
       const res = await axiosInstance.get("/placed-orders");
       if (res.data.success) {
-        setOrders(res.data.orders || []);
+        // Always ensure newest orders are first
+        const sortedOrders = [...(res.data.orders || [])].sort(
+          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        );
+        setOrders(sortedOrders);
         lastFetchedAt.current = now;
       }
     } catch (err) {
@@ -222,6 +226,21 @@ const StaffPlacedOrders = () => {
       setLoading(false);
     }
   };
+
+  // ── SSE — new order arrives → force refresh → newest at top ─────────────
+  useEffect(() => {
+    const token = localStorage.getItem("pos-token");
+    if (!token) return;
+    const base = import.meta.env.VITE_API_URL || "/api";
+    const es   = new EventSource(`${base}/placed-orders/stream?token=${encodeURIComponent(token)}`);
+    es.addEventListener("placedOrderUpdated", () => {
+      lastFetchedAt.current = null;
+      fetchOrders(true);
+    });
+    es.addEventListener("error", () => {});
+    return () => es.close();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Update delivery status ───────────────────────────────────────────────
   // Used by both the full list table AND the Quick Lookup table

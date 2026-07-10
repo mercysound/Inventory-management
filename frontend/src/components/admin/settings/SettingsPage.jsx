@@ -6,9 +6,10 @@ import {
   Clock, Mail, RefreshCw, Save, AlertTriangle, CheckCircle2,
   Users, ShieldCheck, X, UserCheck, Loader2, Palette, Moon, Sun,
   Store, Package, Settings2, User, Phone, MapPin, Lock, Eye, EyeOff,
-  Pencil, MessageCircle, CreditCard, Bell, ChevronDown, Wrench,
+  Pencil, MessageCircle, CreditCard, Bell, ChevronDown, Wrench, Calculator,
 } from "lucide-react";
 import { useTheme, GLOBAL_THEMES, PERSONAL_MODES } from "../../../context/ThemeContext";
+import { isCalculatorEnabled, setCalculatorEnabled } from "../../share-component/calculator/FloatingCalculator";
 
 // -- SettingSection � collapsible accordion card ------------------------------
 // Defined OUTSIDE SettingsPage so it is never re-created on parent renders.
@@ -70,6 +71,9 @@ const SettingsPage = () => {
   // -- Accordion state ------------------------------------------------------
   const [openSection, setOpenSection] = useState(null);
   const toggleSection = (id) => setOpenSection((prev) => prev === id ? null : id);
+
+  // ── Calculator preference (per-device, localStorage) ─────────────────────
+  const [calcEnabled, setCalcEnabled] = useState(isCalculatorEnabled);
 
   const [settings, setSettings] = useState({
     orderExpiryHours:          48,
@@ -1106,6 +1110,60 @@ const SettingsPage = () => {
                 {maintSaving ? <><RefreshCw size={14} className="animate-spin" />Disabling…</> : "✅ Disable Maintenance Mode — Resume Normal Operation"}
               </button>
             )}
+          </div>
+        </div>
+      </SettingSection>
+
+      {/* ── Floating Calculator ─────────────────────────────────────────────── */}
+      <SettingSection openSection={openSection} onToggle={toggleSection} id="calculator"
+        icon={Calculator} iconColor="text-emerald-500"
+        title="Floating Calculator"
+        subtitle={calcEnabled ? "ON — visible on all pages" : "OFF"}>
+        <div className="mt-3 space-y-3">
+          <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+            <div>
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Show calculator button</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                A green 🧮 button floats bottom-left on every page. Great for quick price and quantity calculations.
+              </p>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <span className={`text-xs font-semibold ${calcEnabled ? "text-emerald-600 dark:text-emerald-400" : "text-gray-400"}`}>
+                {calcEnabled ? "ON" : "OFF"}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !calcEnabled;
+                  setCalcEnabled(next);
+                  setCalculatorEnabled(next);
+                }}
+                className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors focus:outline-none
+                  ${calcEnabled ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600"}`}
+              >
+                <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform
+                  ${calcEnabled ? "translate-x-5" : "translate-x-1"}`} />
+              </button>
+            </div>
+          </div>
+          <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-4 py-3">
+            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-1.5">Calculator features:</p>
+            <ul className="space-y-0.5">
+              {[
+                "Standard arithmetic (+ − × ÷)",
+                "×Qty shortcut — multiply price by quantity instantly",
+                "Margin% shortcut — calculate selling price from cost + margin",
+                "Last 10 calculations history",
+                "Memory store (M+ / MR / MC)",
+              ].map(f => (
+                <li key={f} className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                  <span className="text-emerald-400">✓</span> {f}
+                </li>
+              ))}
+            </ul>
+            <p className="text-[11px] text-emerald-500 dark:text-emerald-500 mt-2">
+              This preference is saved on this device only.
+            </p>
           </div>
         </div>
       </SettingSection>

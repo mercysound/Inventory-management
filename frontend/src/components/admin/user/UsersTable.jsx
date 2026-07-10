@@ -98,6 +98,16 @@ export default function UsersTable({
     { key: "role",  label: "Role"  },
   ];
 
+  // Copy text to clipboard helper
+  const copyId = (id) => {
+    navigator.clipboard?.writeText(id)
+      .then(() => {
+        const el = document.getElementById(`uid-copied-${id}`);
+        if (el) { el.style.display = "inline"; setTimeout(() => { el.style.display = "none"; }, 1500); }
+      })
+      .catch(() => {});
+  };
+
   const filterRoles = ["all", "admin", "staff", "customer", "wholesale"];
 
   // Users that can be selected — admin cannot select themselves
@@ -315,6 +325,7 @@ export default function UsersTable({
                     </button>
                   </th>
                 ))}
+                <th className="ut-th">User ID <span style={{ fontWeight: 400, textTransform: "none", fontSize: 9 }}>(click to copy)</span></th>
                 <th className="ut-th">Status</th>
                 <th className="ut-th" style={{ textAlign: "center" }}>Actions</th>
               </tr>
@@ -381,6 +392,30 @@ export default function UsersTable({
                       </td>
                       <td className="ut-td">
                         <StatusBadge isActive={user.isActive} />
+                      </td>
+                      {/* ── User ID — immutable, copyable ── */}
+                      <td className="ut-td" style={{ fontSize: 11 }}>
+                        <div
+                          title={`Full ID: ${user._id} — click to copy`}
+                          onClick={() => copyId(user._id)}
+                          style={{
+                            fontFamily: "'DM Mono', monospace",
+                            color: "#6366f1",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                            background: "#f5f3ff",
+                            border: "1px solid #ddd6fe",
+                            borderRadius: 6,
+                            padding: "2px 7px",
+                            width: "fit-content",
+                            userSelect: "all",
+                          }}
+                        >
+                          ...{String(user._id).slice(-8).toUpperCase()}
+                          <span id={`uid-copied-${user._id}`} style={{ display: "none", fontSize: 9, color: "#16a34a", fontWeight: 700 }}>✓</span>
+                        </div>
                       </td>
                       <td className="ut-td">
                         <div style={{ display: "flex", gap: 5, justifyContent: "center", flexWrap: "wrap" }}>
@@ -460,6 +495,41 @@ export default function UsersTable({
                       {user.address && <div className="ut-card-row"><span className="ut-card-key">Address</span><span style={{ wordBreak: "break-word" }}>{user.address}</span></div>}
                     </div>
                   )}
+                  {/* User ID — immutable, for history filter use */}
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    background: "#f5f3ff", border: "1px solid #ddd6fe",
+                    borderRadius: 8, padding: "5px 10px", marginBottom: 10,
+                    flexWrap: "wrap",
+                  }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: "#7c3aed", textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>
+                      User ID
+                    </span>
+                    <span
+                      onClick={() => copyId(user._id)}
+                      title="Tap to copy full User ID"
+                      style={{
+                        fontFamily: "'DM Mono', monospace",
+                        fontSize: 11, color: "#6366f1",
+                        cursor: "pointer", userSelect: "all",
+                        wordBreak: "break-all", flex: 1,
+                      }}
+                    >
+                      {String(user._id)}
+                    </span>
+                    <button
+                      onClick={() => copyId(user._id)}
+                      style={{
+                        background: "#ede9fe", color: "#7c3aed",
+                        border: "1px solid #ddd6fe", borderRadius: 6,
+                        padding: "2px 8px", fontSize: 10, fontWeight: 700,
+                        cursor: "pointer", fontFamily: "inherit", flexShrink: 0,
+                      }}
+                    >
+                      Copy
+                    </button>
+                    <span id={`uid-copied-${user._id}`} style={{ display: "none", fontSize: 10, color: "#16a34a", fontWeight: 700 }}>✓ Copied!</span>
+                  </div>
                   <div className="ut-card-actions">
                     <button onClick={() => onEdit(user)} className="ut-edit-btn" style={{ flex: 1, justifyContent: "center" }}>✏️ Edit</button>
                     {!isSelf && (

@@ -8,6 +8,7 @@ import Sidebar from "../components/share-component/sidebar/Sidebar";
 import FloatingCartButton from "../components/share-component/cart/FloatingCartButton";
 import FloatingScrollButtons from "../components/share-component/scroll/FloatingScrollButtons";
 import PullToRefresh from "../components/share-component/PullToRefresh";
+import FloatingCalculator from "../components/share-component/calculator/FloatingCalculator";
 import { useAuth } from "../context/AuthContext";
 import axiosInstance from "../utils/axiosInstance";
 import { useCart } from "../context/CartContext";
@@ -343,6 +344,8 @@ const Dashboard = () => {
 
       {/* Floating cart — non-admin users on any non-cart page */}
       <FloatingCartButton />
+      {/* Floating calculator — all users, all pages (can be toggled off in settings) */}
+      <FloatingCalculator />
       {/* Scroll up/down floating buttons — all users, all pages */}
       <FloatingScrollButtons />
       {/* Pull-to-refresh — works from anywhere on the page, not just the top */}

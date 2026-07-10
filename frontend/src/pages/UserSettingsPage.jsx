@@ -7,11 +7,12 @@ import { motion } from "framer-motion";
 import {
   Moon, Sun, Palette, CheckCircle2, Settings2,
   User, Mail, Phone, MapPin, Lock, Eye, EyeOff,
-  Pencil, X, Save, Loader2,
+  Pencil, X, Save, Loader2, Calculator,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import axiosInstance from "../utils/axiosInstance";
 import { useTheme, GLOBAL_THEMES, PERSONAL_MODES } from "../context/ThemeContext";
+import { isCalculatorEnabled, setCalculatorEnabled } from "../components/share-component/calculator/FloatingCalculator";
 
 // ── Reusable labelled field ───────────────────────────────────────────────────
 const Field = ({ label, icon: Icon, children }) => (
@@ -59,6 +60,9 @@ const PwdField = ({ label, field, show, setShow, pwdData, setPwdData }) => (
 const UserSettingsPage = () => {
   const { globalTheme, personalMode, setPersonalMode } = useTheme();
   const activeTheme = GLOBAL_THEMES.find((t) => t.id === globalTheme) || GLOBAL_THEMES[0];
+
+  // ── Calculator preference ─────────────────────────────────────────────────
+  const [calcEnabled, setCalcEnabled] = useState(isCalculatorEnabled);
 
   // ── Profile state ─────────────────────────────────────────────────────────
   const [profile,    setProfile]    = useState({ name: "", email: "", phone: "", address: "" });
@@ -271,6 +275,43 @@ const UserSettingsPage = () => {
       <p className="text-xs text-gray-400 dark:text-gray-500 text-center pb-4">
         Display mode is saved on this device only.
       </p>
+
+      {/* ── Floating Calculator ───────────────────────────────────────────── */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-6">
+        <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1 flex items-center gap-2">
+          <Calculator size={16} className="text-emerald-500" /> Floating Calculator
+        </h2>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+          Shows a calculator button (bottom-left) on every page — useful for quick price and quantity calculations.
+        </p>
+        <div className="flex items-center justify-between py-2">
+          <div>
+            <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Show calculator button</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Tap the green 🧮 button at the bottom-left of any page to open it.
+            </p>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <span className={`text-xs font-semibold ${calcEnabled ? "text-emerald-600 dark:text-emerald-400" : "text-gray-400"}`}>
+              {calcEnabled ? "ON" : "OFF"}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !calcEnabled;
+                setCalcEnabled(next);
+                setCalculatorEnabled(next);
+              }}
+              className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors focus:outline-none
+                ${calcEnabled ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600"}`}
+            >
+              <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform
+                ${calcEnabled ? "translate-x-5" : "translate-x-1"}`} />
+            </button>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 };
