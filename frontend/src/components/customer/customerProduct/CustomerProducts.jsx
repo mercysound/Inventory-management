@@ -97,7 +97,7 @@ const QuickAddButton = ({ product, cartItem, onAdd, onIncrease, onDecrease }) =>
 };
 
 // ─── ProductCard — shared card used by all three tabs ────────────────────────
-const ProductCard = ({ product, index, cartMap, user, canSeeStock, showWholesaleCol, onCardClick, onAdd, onIncrease, onDecrease, isFav, onToggleFav }) => {
+const ProductCard = ({ product, index, cartMap, user, canSeeStock, showWholesaleCol, onCardClick, onAdd, onIncrease, onDecrease, isFav, onToggleFav, onViewDetail, isHighlighted }) => {
   const cartItem = cartMap[product._id] || null;
   const inCart   = !!cartItem;
   const thumb    = product.images?.[0] || product.image || null;
@@ -107,6 +107,7 @@ const ProductCard = ({ product, index, cartMap, user, canSeeStock, showWholesale
   const oos = product.stock === 0;
   return (
     <motion.div
+      id={`product-card-${product._id}`}
       key={product._id}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
@@ -115,7 +116,8 @@ const ProductCard = ({ product, index, cartMap, user, canSeeStock, showWholesale
       className={`relative group flex flex-col bg-white rounded-2xl border overflow-hidden
         cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5
         ${inCart ? "border-green-200 shadow-sm shadow-green-100/60" : "border-gray-100 shadow-sm"}
-        ${oos ? "opacity-60" : ""}`}
+        ${oos ? "opacity-60" : ""}
+        ${isHighlighted ? "ring-2 ring-indigo-400 ring-offset-2 shadow-indigo-100" : ""}`}
     >
       <div className="relative w-full h-32 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden shrink-0">
         {thumb ? (
@@ -193,12 +195,15 @@ const ProductCard = ({ product, index, cartMap, user, canSeeStock, showWholesale
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
             {/* See detail button */}
-            <Link to={`/product/${product._id}`} onClick={e => e.stopPropagation()}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onViewDetail?.(product._id); }}
               className="w-7 h-7 rounded-lg border border-gray-200 flex items-center justify-center
                 text-gray-400 hover:text-indigo-600 hover:border-indigo-300 transition"
-              title="See full details" aria-label="View product details">
+              title="See full details" aria-label="View product details"
+            >
               <ExternalLink size={11} />
-            </Link>
+            </button>
             <QuickAddButton product={product} cartItem={cartItem}
               onAdd={() => onAdd(product)}
               onIncrease={() => onIncrease(product._id)}
@@ -268,6 +273,35 @@ const CustomerProducts = () => {
   const { isFavorite, toggleFavorite, favoriteIds } = useFavorites(user);
   // products that are favorited — built from the main products list
   const [favProducts, setFavProducts] = useState([]);
+
+  // ── Last-clicked product for scroll-back highlight ────────────────────────
+  const [lastClickedId, setLastClickedId] = useState(
+    () => sessionStorage.getItem("melech_last_product_click") || null
+  );
+  // Clear the highlight after 3 seconds
+  useEffect(() => {
+    if (!lastClickedId) return;
+    // Scroll to the last-clicked card
+    const el = document.getElementById(`product-card-${lastClickedId}`);
+    if (el) {
+      requestAnimationFrame(() => {
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
+        sessionStorage.removeItem("melech_last_product_click");
+      });
+    }
+    const t = setTimeout(() => setLastClickedId(null), 3000);
+    return () => clearTimeout(t);
+  }, [lastClickedId]);
+
+  // Save scroll position + product ID before navigating to detail page
+  const handleViewDetail = useCallback((productId) => {
+    const scroller = document.getElementById("main-scroll");
+    if (scroller) {
+      sessionStorage.setItem("melech_scroll_pos", String(scroller.scrollTop));
+    }
+    sessionStorage.setItem("melech_last_product_click", productId);
+    navigate(`/product/${productId}`);
+  }, [navigate]);
 
   const [categories,       setCategories]       = useState([]);
   const [products,         setProducts]         = useState([]);
@@ -854,7 +888,7 @@ const CustomerProducts = () => {
             ) : (
               <>
                 <div ref={pageTopRef} className="grid grid-cols-2 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 md:gap-3">
-                  {newPaginated.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} isFav={isFavorite(product._id)} onToggleFav={handleToggleFav} />)}
+                  {newPaginated.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} isFav={isFavorite(product._id)} onToggleFav={handleToggleFav} onViewDetail={handleViewDetail} isHighlighted={lastClickedId === product._id} />)}
                 </div>
                 <TabPagination current={newPage} total={newTotalPages} count={newFiltered.length} pageSize={PRODUCTS_PAGE_SIZE} jump={newJump} setJump={setNewJump} goTo={goToNewPage} color="indigo" />
               </>
@@ -883,7 +917,7 @@ const CustomerProducts = () => {
             ) : (
               <>
                 <div ref={pageTopRef} className="grid grid-cols-2 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 md:gap-3">
-                  {bonanzaPaginated.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} isFav={isFavorite(product._id)} onToggleFav={handleToggleFav} />)}
+                  {bonanzaPaginated.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} isFav={isFavorite(product._id)} onToggleFav={handleToggleFav} onViewDetail={handleViewDetail} isHighlighted={lastClickedId === product._id} />)}
                 </div>
                 <TabPagination current={bonanzaPage} total={bonanzaTotalPages} count={bonanzaFiltered.length} pageSize={PRODUCTS_PAGE_SIZE} jump={bonanzaJump} setJump={setBonanzaJump} goTo={goToBonanzaPage} color="orange" />
               </>
@@ -905,7 +939,7 @@ const CustomerProducts = () => {
               </div>
             ) : (
               <div className="grid grid-cols-2 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 md:gap-3">
-                {favProducts.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} isFav={true} onToggleFav={handleToggleFav} />)}
+                {favProducts.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} isFav={true} onToggleFav={handleToggleFav} onViewDetail={handleViewDetail} isHighlighted={lastClickedId === product._id} />)}
               </div>
             )}
           </div>
@@ -921,7 +955,7 @@ const CustomerProducts = () => {
           <>
             {/* ── All products grid ── */}
             <div ref={pageTopRef} className="grid grid-cols-2 min-[480px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 md:gap-3">
-              {cpPaginated.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} isFav={isFavorite(product._id)} onToggleFav={handleToggleFav} />)}
+              {cpPaginated.map((product, index) => <ProductCard key={product._id} product={product} index={index} cartMap={cartMap} user={user} canSeeStock={canSeeStock} showWholesaleCol={showWholesaleCol} onCardClick={handleOrderChange} onAdd={handleQuickAdd} onIncrease={handleQuickIncrease} onDecrease={handleQuickDecrease} isFav={isFavorite(product._id)} onToggleFav={handleToggleFav} onViewDetail={handleViewDetail} isHighlighted={lastClickedId === product._id} />)}
             </div>
             <TabPagination current={currentPage} total={totalPages} count={filteredProducts.length} pageSize={PRODUCTS_PAGE_SIZE} jump={jumpInput} setJump={setJumpInput} goTo={goToPage} color="green" />
           </>

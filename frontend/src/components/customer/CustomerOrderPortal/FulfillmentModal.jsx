@@ -82,15 +82,18 @@ const FulfillmentModal = ({ isOpen, onClose, onConfirm, userProfile = null }) =>
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 flex items-center justify-center overflow-y-auto"
-          style={{ backgroundColor: "rgba(0,0,0,0.55)", touchAction: "none", padding: "16px", zIndex: 9999 }}
+          className="fixed inset-0 z-[9999] flex items-center justify-center"
+          style={{
+            backgroundColor: "rgba(0,0,0,0.55)",
+            padding: "16px",
+          }}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
           onClick={handleClose}
         >
           <motion.div
-            className="bg-white w-full sm:max-w-lg rounded-3xl shadow-2xl flex flex-col my-auto"
-            style={{ maxHeight: "92vh" }}
+            className="bg-white w-full sm:max-w-lg rounded-3xl shadow-2xl flex flex-col"
+            style={{ maxHeight: "calc(100dvh - 32px)" }}
             initial={{ scale: 0.95, opacity: 0, y: 16 }}
             animate={{ scale: 1,    opacity: 1, y: 0  }}
             exit={{    scale: 0.95, opacity: 0, y: 16 }}

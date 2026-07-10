@@ -279,9 +279,9 @@ const ProductDetailPage = () => {
       <nav className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-100 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <button onClick={() => navigate(-1)}
-            className="flex items-center gap-1.5 text-gray-600 hover:text-indigo-600 text-sm font-medium transition">
-            <ArrowLeft size={16} /> Back
-          </button>
+          className="flex items-center gap-1.5 text-gray-600 hover:text-indigo-600 text-sm font-medium transition">
+          <ArrowLeft size={16} /> Back
+        </button>
           <div className="flex items-center gap-2">
             <button onClick={handleShare}
               className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center

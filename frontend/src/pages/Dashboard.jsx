@@ -120,32 +120,75 @@ const Dashboard = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // ── Fix scroll hang after app resume (Page Visibility API) ───────────────
-  // When the user switches away and back, iOS Safari sometimes suspends
-  // requestAnimationFrame and scroll events. Force a tiny re-paint on
-  // visibility restore to unblock the browser's rendering pipeline.
+  // ── Fix scroll hang + navbar disappearing after app resume ─────────────
+  // When the user switches away and back (iOS/Android background suspend),
+  // the browser compositor can drop layers, making the navbar and content
+  // invisible. We force a full repaint of the entire app container on restore.
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        const el = document.getElementById("main-scroll");
-        if (el) {
-          // Nudge the element to force a repaint — 0-cost layout trick
-          const st = el.scrollTop;
-          el.scrollTop = st + 1;
-          el.scrollTop = st;
-        }
+    const forceRepaint = () => {
+      document.body.style.display = "none";
+      // eslint-disable-next-line no-unused-expressions
+      document.body.offsetHeight;
+      document.body.style.display = "";
+      const el = document.getElementById("main-scroll");
+      if (el) {
+        const st = el.scrollTop;
+        el.scrollTop = st + 1;
+        el.scrollTop = st;
       }
     };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") forceRepaint();
+    };
+    // pageshow fires on bfcache restore (back/forward navigation)
+    const handlePageShow = (e) => {
+      if (e.persisted) forceRepaint();
+    };
+    // focus fires when browser tab regains focus
+    const handleFocus = () => forceRepaint();
+
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pageshow",           handlePageShow);
+    window.addEventListener("focus",              handleFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pageshow",           handlePageShow);
+      window.removeEventListener("focus",              handleFocus);
+    };
   }, []);
 
   const toggleSidebar = () => setIsOpen((p) => !p);
 
   // Scroll #main-scroll to top on every route change
+  // EXCEPT when returning from a product detail page — in that case restore saved position
   useEffect(() => {
     const el = document.getElementById("main-scroll");
-    if (el) el.scrollTop = 0;
+    if (!el) return;
+
+    const savedKey  = "melech_scroll_pos";
+    const savedPath = "melech_scroll_from";
+    const prevPath  = sessionStorage.getItem(savedPath) || "";
+
+    // If we're returning FROM a product detail page (/product/:id), restore position
+    const comingBackFromDetail = prevPath.startsWith("/product/") &&
+      !location.pathname.startsWith("/product/");
+
+    if (comingBackFromDetail) {
+      const savedPos = parseFloat(sessionStorage.getItem(savedKey) || "0");
+      // Use requestAnimationFrame to restore after the new route has rendered
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          el.scrollTop = savedPos;
+        });
+      });
+    } else if (!location.pathname.startsWith("/product/")) {
+      // Normal route change — reset to top
+      el.scrollTop = 0;
+    }
+
+    // Save current path so next route change can detect "came from"
+    sessionStorage.setItem(savedPath, location.pathname);
   }, [location.pathname]);
 
   // Pull-to-refresh: navigate to same path to trigger data re-fetch
@@ -184,6 +227,10 @@ const Dashboard = () => {
             flexGrow: 0,
             position: "relative",
             zIndex: 60,
+            // Force GPU layer so the navbar is never dropped by the compositor
+            willChange: "transform",
+            transform: "translateZ(0)",
+            WebkitTransform: "translateZ(0)",
           }}
         >
           <button

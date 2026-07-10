@@ -6,80 +6,123 @@ export const sendLowStockAdminEmail = async ({ adminEmail, products, storeName }
 
   const appUrl = (process.env.FRONTEND_URL || "https://bigpos.onrender.com").replace(/\/$/, "");
 
-  const rows = products.map((p) => `
-    <tr style="border-bottom:1px solid #f3f4f6;">
-      <td style="padding:10px 12px;font-weight:600;color:#111827;">${p.name}</td>
-      <td style="padding:10px 12px;text-align:center;">
-        <span style="display:inline-block;padding:2px 10px;border-radius:99px;
-          background:${p.stock === 0 ? "#fee2e2" : "#fef3c7"};
-          color:${p.stock === 0 ? "#b91c1c" : "#92400e"};
-          font-weight:700;font-size:13px;">
-          ${p.stock === 0 ? "Out of stock" : `${p.stock} left`}
-        </span>
-      </td>
-      <td style="padding:10px 12px;text-align:center;color:#6b7280;font-size:13px;">Alert at ≤${p.threshold}</td>
-      <td style="padding:10px 12px;color:#6b7280;font-size:13px;">${p.category || "—"}</td>
-      <td style="padding:10px 12px;color:#6b7280;font-size:13px;">${p.supplier || "—"}</td>
-    </tr>
-  `).join("");
+  // ── Vertical card layout — works on ALL email clients and mobile screens ──
+  // Using a 2-column mini-table inside each card instead of a wide horizontal
+  // table that gets clipped on mobile email clients.
+  const cards = products.map((p) => {
+    const isOut      = p.stock === 0;
+    const stockBg    = isOut ? "#fee2e2" : "#fef3c7";
+    const stockColor = isOut ? "#b91c1c" : "#92400e";
+    const stockLabel = isOut ? "Out of stock" : `${p.stock} left`;
+    return `
+      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;
+        padding:16px;margin-bottom:12px;">
+        <p style="margin:0 0 12px;font-size:15px;font-weight:700;color:#111827;">
+          ${p.name}
+        </p>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="padding:4px 0;width:50%;vertical-align:top;">
+              <span style="font-size:11px;font-weight:600;color:#9ca3af;
+                text-transform:uppercase;letter-spacing:.05em;display:block;">
+                Stock
+              </span>
+              <span style="display:inline-block;margin-top:4px;padding:3px 12px;
+                border-radius:99px;background:${stockBg};color:${stockColor};
+                font-weight:700;font-size:13px;">
+                ${stockLabel}
+              </span>
+            </td>
+            <td style="padding:4px 0;width:50%;vertical-align:top;">
+              <span style="font-size:11px;font-weight:600;color:#9ca3af;
+                text-transform:uppercase;letter-spacing:.05em;display:block;">
+                Threshold
+              </span>
+              <span style="font-size:13px;color:#374151;font-weight:600;
+                display:inline-block;margin-top:6px;">
+                Alert at ≤${p.threshold}
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0 0;vertical-align:top;">
+              <span style="font-size:11px;font-weight:600;color:#9ca3af;
+                text-transform:uppercase;letter-spacing:.05em;display:block;">
+                Category
+              </span>
+              <span style="font-size:13px;color:#374151;
+                display:inline-block;margin-top:4px;">
+                ${p.category || "—"}
+              </span>
+            </td>
+            <td style="padding:8px 0 0;vertical-align:top;">
+              <span style="font-size:11px;font-weight:600;color:#9ca3af;
+                text-transform:uppercase;letter-spacing:.05em;display:block;">
+                Supplier
+              </span>
+              <span style="font-size:13px;color:#374151;
+                display:inline-block;margin-top:4px;">
+                ${p.supplier || "—"}
+              </span>
+            </td>
+          </tr>
+        </table>
+      </div>`;
+  }).join("");
 
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-    <body style="margin:0;padding:0;background:#f9fafb;font-family:system-ui,-apple-system,sans-serif;">
-      <div style="max-width:640px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 8px rgba(0,0,0,.08);">
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<body style="margin:0;padding:0;background:#f9fafb;
+  font-family:system-ui,-apple-system,Arial,sans-serif;">
+  <div style="max-width:560px;margin:32px auto;padding:0 16px 32px;">
 
-        <!-- Header -->
-        <div style="background:linear-gradient(135deg,#dc2626,#f97316);padding:28px 32px;">
-          <h1 style="margin:0;color:#fff;font-size:20px;font-weight:700;">⚠️ Low Stock Alert — ${storeName}</h1>
-          <p style="margin:6px 0 0;color:rgba(255,255,255,.8);font-size:14px;">
-            ${products.length} product${products.length !== 1 ? "s" : ""} ${products.length !== 1 ? "are" : "is"} at or below the low-stock threshold.
-          </p>
-        </div>
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#dc2626,#f97316);
+      padding:24px 28px;border-radius:16px 16px 0 0;">
+      <h1 style="margin:0;color:#fff;font-size:20px;font-weight:700;line-height:1.3;">
+        ⚠️ Low Stock Alert — ${storeName}
+      </h1>
+      <p style="margin:6px 0 0;color:rgba(255,255,255,.85);font-size:14px;">
+        ${products.length} product${products.length !== 1 ? "s" : ""}
+        ${products.length !== 1 ? "are" : "is"} at or below the low-stock threshold.
+      </p>
+    </div>
 
-        <!-- Table -->
-        <div style="padding:24px 32px 16px;">
-          <table style="width:100%;border-collapse:collapse;font-size:14px;">
-            <thead>
-              <tr style="background:#f9fafb;">
-                <th style="padding:10px 12px;text-align:left;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Product</th>
-                <th style="padding:10px 12px;text-align:center;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Stock</th>
-                <th style="padding:10px 12px;text-align:center;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Threshold</th>
-                <th style="padding:10px 12px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Category</th>
-                <th style="padding:10px 12px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Supplier</th>
-              </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
+    <!-- Product cards -->
+    <div style="background:#f9fafb;padding:20px 20px 8px;
+      border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;">
+      ${cards}
+    </div>
 
-        <!-- CTA Button -->
-        <div style="padding:8px 32px 24px;text-align:center;">
-          <a href="${appUrl}/admin-dashboard/products"
-            style="display:inline-block;background:#dc2626;color:#fff;font-size:14px;font-weight:700;
-              padding:12px 28px;border-radius:10px;text-decoration:none;letter-spacing:.01em;">
-            🔧 Go to Products Page →
-          </a>
-          <p style="margin:10px 0 0;font-size:12px;color:#9ca3af;">
-            Or go directly to
-            <a href="${appUrl}/admin-dashboard/settings" style="color:#4f46e5;text-decoration:none;font-weight:600;">
-              Admin Settings → Inventory Alerts
-            </a>
-            to adjust thresholds.
-          </p>
-        </div>
+    <!-- CTA -->
+    <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;
+      padding:20px 24px 24px;text-align:center;border-radius:0 0 16px 16px;">
+      <a href="${appUrl}/admin-dashboard/products"
+        style="display:inline-block;background:#dc2626;color:#fff;
+          font-size:14px;font-weight:700;padding:12px 28px;
+          border-radius:10px;text-decoration:none;letter-spacing:.01em;">
+        🔧 Go to Products Page →
+      </a>
+      <p style="margin:14px 0 0;font-size:12px;color:#9ca3af;line-height:1.5;">
+        Or visit
+        <a href="${appUrl}/admin-dashboard/settings"
+          style="color:#4f46e5;text-decoration:none;font-weight:600;">
+          Admin Settings → Inventory Alerts
+        </a>
+        to adjust thresholds.
+      </p>
+      <p style="margin:10px 0 0;font-size:11px;color:#d1d5db;">
+        ${storeName} · Low-stock alerts run every 30 minutes.
+      </p>
+    </div>
 
-        <!-- Footer -->
-        <div style="padding:16px 32px;border-top:1px solid #f3f4f6;background:#f9fafb;">
-          <p style="margin:0;font-size:12px;color:#9ca3af;text-align:center;">
-            ${storeName} · Low-stock alerts run every 30 minutes.
-          </p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+  </div>
+</body>
+</html>`;
 
   await sendWithRetry({
     to:      adminEmail,

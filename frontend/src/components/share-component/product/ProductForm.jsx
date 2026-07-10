@@ -400,7 +400,7 @@ const ProductForm = ({
   // ── Outer wrapper differs: inline page vs modal overlay ──────────────────
   const Outer = inlinePage
     ? ({ children }) => (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
           {children}
         </div>
       )
@@ -409,7 +409,7 @@ const ProductForm = ({
           style={{ padding: "12px" }}
           onClick={onClose}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col"
-            style={{ maxHeight: "calc(100dvh - 24px)", height: "calc(100dvh - 24px)" }}
+            style={{ maxHeight: "calc(100dvh - 24px)" }}
             onClick={e => e.stopPropagation()}>
             {children}
           </div>
@@ -435,7 +435,7 @@ const ProductForm = ({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto overscroll-contain px-6 pb-6 pt-4 space-y-5">
+        <div className={inlinePage ? "px-6 pb-8 pt-4 space-y-5" : "flex-1 overflow-y-auto overscroll-contain px-6 pb-6 pt-4 space-y-5"}>
 
           {/* ── Draft restored banner ───────────────────────────────────── */}
           <AnimatePresence>
