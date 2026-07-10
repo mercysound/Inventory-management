@@ -160,35 +160,62 @@ const Dashboard = () => {
 
   const toggleSidebar = () => setIsOpen((p) => !p);
 
+  // ── Scroll position save on every scroll event ───────────────────────────
+  // We save the scroll position of #main-scroll continuously so we can
+  // restore it when navigating back from product detail pages.
+  useEffect(() => {
+    const el = document.getElementById("main-scroll");
+    if (!el) return;
+    let ticking = false;
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(() => {
+          // Only save scroll when on a products page (not on detail page)
+          if (!location.pathname.startsWith("/product/")) {
+            sessionStorage.setItem("melech_scroll_pos_" + location.pathname, String(el.scrollTop));
+          }
+          ticking = false;
+        });
+      }
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [location.pathname]);
+
   // Scroll #main-scroll to top on every route change
-  // EXCEPT when returning from a product detail page — in that case restore saved position
+  // EXCEPT when returning from a product detail page — restore saved position
   useEffect(() => {
     const el = document.getElementById("main-scroll");
     if (!el) return;
 
-    const savedKey  = "melech_scroll_pos";
-    const savedPath = "melech_scroll_from";
-    const prevPath  = sessionStorage.getItem(savedPath) || "";
+    const prevPath = sessionStorage.getItem("melech_scroll_from") || "";
 
-    // If we're returning FROM a product detail page (/product/:id), restore position
-    const comingBackFromDetail = prevPath.startsWith("/product/") &&
+    // Coming back from product detail → restore scroll for this path
+    const comingBackFromDetail =
+      prevPath.startsWith("/product/") &&
       !location.pathname.startsWith("/product/");
 
     if (comingBackFromDetail) {
-      const savedPos = parseFloat(sessionStorage.getItem(savedKey) || "0");
-      // Use requestAnimationFrame to restore after the new route has rendered
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          el.scrollTop = savedPos;
-        });
-      });
+      const savedPos = parseFloat(
+        sessionStorage.getItem("melech_scroll_pos_" + location.pathname) || "0"
+      );
+      if (savedPos > 0) {
+        // Restore after content renders — use multiple rAF + fallback timeout
+        const restore = () => { el.scrollTop = savedPos; };
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          restore();
+          // Fallback in case page data loads after first rAF
+          setTimeout(restore, 100);
+          setTimeout(restore, 300);
+          setTimeout(restore, 600);
+        }));
+      }
     } else if (!location.pathname.startsWith("/product/")) {
-      // Normal route change — reset to top
       el.scrollTop = 0;
     }
 
-    // Save current path so next route change can detect "came from"
-    sessionStorage.setItem(savedPath, location.pathname);
+    sessionStorage.setItem("melech_scroll_from", location.pathname);
   }, [location.pathname]);
 
   // Pull-to-refresh: navigate to same path to trigger data re-fetch

@@ -281,24 +281,14 @@ const CustomerProducts = () => {
   // Clear the highlight after 3 seconds
   useEffect(() => {
     if (!lastClickedId) return;
-    // Scroll to the last-clicked card
-    const el = document.getElementById(`product-card-${lastClickedId}`);
-    if (el) {
-      requestAnimationFrame(() => {
-        el.scrollIntoView({ block: "center", behavior: "smooth" });
-        sessionStorage.removeItem("melech_last_product_click");
-      });
-    }
+    // Clear the stored ID immediately so it doesn't persist across other navigations
+    sessionStorage.removeItem("melech_last_product_click");
     const t = setTimeout(() => setLastClickedId(null), 3000);
     return () => clearTimeout(t);
   }, [lastClickedId]);
 
-  // Save scroll position + product ID before navigating to detail page
+  // Navigate to product detail — save the clicked product ID for highlight on return
   const handleViewDetail = useCallback((productId) => {
-    const scroller = document.getElementById("main-scroll");
-    if (scroller) {
-      sessionStorage.setItem("melech_scroll_pos", String(scroller.scrollTop));
-    }
     sessionStorage.setItem("melech_last_product_click", productId);
     navigate(`/product/${productId}`);
   }, [navigate]);
