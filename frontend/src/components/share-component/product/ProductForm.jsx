@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Camera, Upload, X, ImagePlus, Loader2, Plus, Trash2, GripVertical } from "lucide-react";
 import axiosInstance from "../../../utils/axiosInstance";
@@ -404,16 +405,29 @@ const ProductForm = ({
           {children}
         </div>
       )
-    : ({ children }) => (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
-          style={{ padding: "12px" }}
-          onClick={onClose}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col"
+    : ({ children }) => createPortal(
+        <div
+          className="flex items-center justify-center"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: "rgba(0,0,0,0.55)",
+            backdropFilter: "blur(4px)",
+            WebkitBackdropFilter: "blur(4px)",
+            padding: "12px",
+          }}
+          onClick={onClose}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col"
             style={{ maxHeight: "calc(100dvh - 24px)" }}
-            onClick={e => e.stopPropagation()}>
+            onClick={e => e.stopPropagation()}
+          >
             {children}
           </div>
-        </div>
+        </div>,
+        document.body
       );
 
   return (
