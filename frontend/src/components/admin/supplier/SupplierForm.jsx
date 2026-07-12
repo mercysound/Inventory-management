@@ -1,5 +1,6 @@
 import React, { useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
+import { createPortal } from "react-dom";
 import useEscapeToClose from "../../share-component/receipt/useEscapeToClose";
 
 const SupplierForm = ({
@@ -27,8 +28,8 @@ const SupplierForm = ({
     };
   }, []);
 
-  return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50 overflow-y-auto" style={{ touchAction: "none", padding: "16px" }}>
+  return createPortal(
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-[9999]" style={{ padding: "16px" }}>
       <motion.div
         initial={{ scale: 0.95, opacity: 0, y: 10 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -181,7 +182,8 @@ const SupplierForm = ({
           </div>
         </form>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

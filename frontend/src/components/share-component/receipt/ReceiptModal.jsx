@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 import axiosInstance from "../../../utils/axiosInstance";
@@ -256,7 +257,7 @@ const ReceiptModal = ({
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center"
@@ -362,7 +363,8 @@ const ReceiptModal = ({
 
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
 

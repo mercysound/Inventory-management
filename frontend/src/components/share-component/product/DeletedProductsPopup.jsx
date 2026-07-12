@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { RotateCcw, Trash2, X } from "lucide-react";
 import DeletedProductsSkeleton from "./DeletedProductsSkeleton";
 
@@ -53,9 +54,9 @@ const DeletedProductsPopup = ({
   // Early return AFTER all hooks
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 overflow-y-auto" style={{ touchAction: "none", padding: "16px" }}>
-      <div className="bg-white w-full max-w-5xl rounded-xl shadow-xl relative overflow-hidden flex flex-col my-auto" style={{ maxHeight: "88vh" }}>
+  return createPortal(
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[9999]" style={{ padding: "16px" }}>
+      <div className="bg-white w-full max-w-5xl rounded-xl shadow-xl relative overflow-hidden flex flex-col my-auto" style={{ maxHeight: "calc(100dvh - 32px)" }}>
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
@@ -194,7 +195,8 @@ const DeletedProductsPopup = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

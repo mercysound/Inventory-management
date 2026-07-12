@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { Search, ScanLine, CalendarClock, X, Trash2, Star, ShieldOff, Tag, Layers, FileText } from "lucide-react";
@@ -10,10 +11,9 @@ import DeletedProductsPopup from "./DeletedProductsPopup";
 
 // ── Mode chooser modal — shown before opening the product form ───────────────
 // Lets admin pick between the quick modal or full-page form.
-const ModeChooserModal = ({ onModal, onFullPage, onClose, isEditing }) => (
+const ModeChooserModal = ({ onModal, onFullPage, onClose, isEditing }) => createPortal(
   <div
-    className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 px-4"
-    style={{ padding: "16px" }}
+    style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", padding: "16px", display: "flex", alignItems: "center", justifyContent: "center" }}
     onClick={onClose}
   >
     <div
@@ -56,7 +56,8 @@ const ModeChooserModal = ({ onModal, onFullPage, onClose, isEditing }) => (
         </button>
       </div>
     </div>
-  </div>
+  </div>,
+  document.body
 );
 
 // Extract a readable message from an axios error

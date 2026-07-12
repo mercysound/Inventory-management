@@ -1,5 +1,6 @@
 // FulfillmentModal.jsx
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, MapPin, Phone, User, Truck, Store, AlertTriangle } from "lucide-react";
 import useEscapeToClose from "../../share-component/receipt/useEscapeToClose";
@@ -78,7 +79,7 @@ const FulfillmentModal = ({ isOpen, onClose, onConfirm, userProfile = null }) =>
     };
   }, [isOpen]);
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -222,7 +223,8 @@ const FulfillmentModal = ({ isOpen, onClose, onConfirm, userProfile = null }) =>
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
 

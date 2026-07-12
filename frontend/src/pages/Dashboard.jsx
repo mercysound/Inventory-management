@@ -306,8 +306,6 @@ const Dashboard = () => {
           style={{
             WebkitOverflowScrolling: "touch",
             overscrollBehaviorY: "contain",
-            willChange: "scroll-position",
-            transform: "translateZ(0)",
             minHeight: 0,
           }}
         >
