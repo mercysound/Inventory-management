@@ -296,8 +296,9 @@ const ProductForm = ({
   }, [open, editProduct]);
 
   // Lock the main scroll container while form modal is open.
+  // Skip in inlinePage mode — the page itself is the scroller, don't lock it.
   useEffect(() => {
-    if (!open) return;
+    if (!open || inlinePage) return;
     document.body.style.overflow = "hidden";
     const scroller = document.getElementById("main-scroll");
     if (scroller) scroller.style.overflow = "hidden";
@@ -306,7 +307,7 @@ const ProductForm = ({
       const scroller = document.getElementById("main-scroll");
       if (scroller) scroller.style.overflow = "";
     };
-  }, [open]);
+  }, [open, inlinePage]);
 
   // ── Escape key ────────────────────────────────────────────────────────────
   useEffect(() => {
