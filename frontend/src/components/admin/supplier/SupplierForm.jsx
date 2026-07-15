@@ -16,7 +16,7 @@ const SupplierForm = ({
   };
 
   // Lock scroll + ESC key
-  useEscapeToClose(true, onClose);
+  useEscapeToClose(true, closeModal);
   useEffect(() => {
     document.body.style.overflow = "hidden";
     const scroller = document.getElementById("main-scroll");
