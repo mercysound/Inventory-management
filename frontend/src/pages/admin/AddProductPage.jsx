@@ -24,7 +24,7 @@ const EMPTY_FORM = {
 
 const AddProductPage = () => {
   const navigate    = useNavigate();
-  const { id }      = useParams();         // undefined when adding
+  const { id }      = useParams();
   const isEditing   = Boolean(id);
 
   const [formData,      setFormData]      = useState(EMPTY_FORM);
@@ -33,6 +33,13 @@ const AddProductPage = () => {
   const [imageFiles,    setImageFiles]    = useState([]);
   const [keptImageUrls, setKeptImageUrls] = useState([]);
   const [loadingInit,   setLoadingInit]   = useState(true);
+
+  // ── Scroll to top when page mounts ───────────────────────────────────────
+  useEffect(() => {
+    const el = document.getElementById("main-scroll");
+    if (el) el.scrollTop = 0;
+    window.scrollTo(0, 0);
+  }, []);
 
   // ── Load categories, suppliers + optionally existing product ─────────────
   useEffect(() => {
