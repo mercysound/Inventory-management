@@ -164,8 +164,50 @@ const Product = () => {
     } catch { toast.error("Bulk flag update failed"); }
   };
 
-  // ── Fetch all products ────────────────────────────────────────────────────
-  const fetchProducts = useCallback(async () => {
+  // ── Fetch all products — skip if returning from full-page add/edit ──────
+  const fetchProducts = useCallback(async (force = false) => {
+    // If returning from add-product or edit-product, use cached data and skip the
+    // network round-trip so the product list renders instantly without jumping to top.
+    const prevPath = sessionStorage.getItem("melech_scroll_from") || "";
+    const returningFromEdit =
+      !force &&
+      (prevPath.includes("/add-product") || prevPath.includes("/edit-product"));
+
+    if (returningFromEdit) {
+      const cached = sessionStorage.getItem("melech_products_cache");
+      if (cached) {
+        try {
+          const { products: cachedProducts, categories: cachedCats, suppliers: cachedSups, threshold } = JSON.parse(cached);
+          productsRef.current = cachedProducts;
+          setProducts(cachedProducts);
+          setCategories(cachedCats || []);
+          setSuppliers(cachedSups || []);
+          if (threshold !== undefined) setLowStockThreshold(threshold);
+          setFilteredProducts(cachedProducts);
+          setLoading(false);
+          // After restoring from cache, do a background refresh to pick up the edit
+          setTimeout(async () => {
+            try {
+              const res = await axiosInstance.get("/products");
+              if (res.data.success) {
+                const fresh = res.data.products;
+                productsRef.current = fresh;
+                setProducts(fresh);
+                setFilteredProducts(fresh);
+                sessionStorage.setItem("melech_products_cache", JSON.stringify({
+                  products: fresh,
+                  categories: res.data.categories,
+                  suppliers:  res.data.suppliers,
+                  threshold:  threshold,
+                }));
+              }
+            } catch {}
+          }, 800);
+          return;
+        } catch {}
+      }
+    }
+
     setLoading(true);
     try {
       const [prodRes, settingsRes] = await Promise.all([
@@ -178,33 +220,33 @@ const Product = () => {
         const newProducts = prodRes.data.products;
         productsRef.current = newProducts;
         setProducts(newProducts);
+        const threshold = settingsRes?.data?.settings?.lowStockThreshold;
+        if (threshold !== undefined) setLowStockThreshold(threshold);
+
+        // Cache for next back-navigation restore
+        sessionStorage.setItem("melech_products_cache", JSON.stringify({
+          products:   newProducts,
+          categories: prodRes.data.categories,
+          suppliers:  prodRes.data.suppliers,
+          threshold,
+        }));
+
         const currentCat    = selectedCategoryRef.current;
         const currentSearch = searchValueRef.current;
         const currentBatch  = batchSearchRef.current;
         const currentExpiry = expiryDaysRef.current;
         setFilteredProducts(
           newProducts.filter((p) => {
-            const matchesSearch   = currentSearch
-              ? p.name.toLowerCase().includes(currentSearch.toLowerCase())
-              : true;
-            const matchesCategory = currentCat
-              ? (p.categoryId?._id ?? p.categoryId) === currentCat
-              : true;
-            const matchesBatch = currentBatch
-              ? (p.batchNumber || "").toLowerCase().includes(currentBatch.toLowerCase())
-              : true;
-            const matchesExpiry = currentExpiry
-              ? p.expiryDate && new Date(p.expiryDate) <= new Date(currentExpiry)
-              : true;
+            const matchesSearch   = currentSearch ? p.name.toLowerCase().includes(currentSearch.toLowerCase()) : true;
+            const matchesCategory = currentCat    ? (p.categoryId?._id ?? p.categoryId) === currentCat         : true;
+            const matchesBatch    = currentBatch  ? (p.batchNumber || "").toLowerCase().includes(currentBatch.toLowerCase()) : true;
+            const matchesExpiry   = currentExpiry ? p.expiryDate && new Date(p.expiryDate) <= new Date(currentExpiry) : true;
             return matchesSearch && matchesCategory && matchesBatch && matchesExpiry;
           })
         );
       } else {
         toast.error("Error fetching products. Please try again");
       }
-      // Update the low stock threshold from settings
-      const threshold = settingsRes?.data?.settings?.lowStockThreshold;
-      if (threshold !== undefined) setLowStockThreshold(threshold);
     } catch (error) {
       console.error("Error fetching products", error);
       toast.error("Failed to load products");
@@ -797,6 +839,14 @@ const Product = () => {
           }}
           onFullPage={() => {
             setShowChooser(false);
+            // Save scroll position so we can restore it on back navigation
+            const scroller = document.getElementById("main-scroll");
+            if (scroller) {
+              sessionStorage.setItem(
+                "melech_scroll_pos_/admin-dashboard/products",
+                String(scroller.scrollTop)
+              );
+            }
             if (pendingEdit) {
               navigate(`/admin-dashboard/edit-product/${pendingEdit._id}`);
             } else {

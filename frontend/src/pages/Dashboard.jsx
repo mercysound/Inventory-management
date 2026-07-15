@@ -184,34 +184,40 @@ const Dashboard = () => {
   }, [location.pathname]);
 
   // Scroll #main-scroll to top on every route change
-  // EXCEPT when returning from a product detail page — restore saved position
+  // EXCEPT when returning from product detail or full-page product edit/add
   useEffect(() => {
     const el = document.getElementById("main-scroll");
     if (!el) return;
 
     const prevPath = sessionStorage.getItem("melech_scroll_from") || "";
 
-    // Coming back from product detail → restore scroll for this path
-    const comingBackFromDetail =
-      prevPath.startsWith("/product/") &&
-      !location.pathname.startsWith("/product/");
+    // Paths we return FROM that should restore scroll position
+    const isReturnFromSubPage =
+      (prevPath.startsWith("/product/") ||
+       prevPath.includes("/add-product") ||
+       prevPath.includes("/edit-product")) &&
+      !location.pathname.startsWith("/product/") &&
+      !location.pathname.includes("/add-product") &&
+      !location.pathname.includes("/edit-product");
 
-    if (comingBackFromDetail) {
+    if (isReturnFromSubPage) {
       const savedPos = parseFloat(
         sessionStorage.getItem("melech_scroll_pos_" + location.pathname) || "0"
       );
       if (savedPos > 0) {
-        // Restore after content renders — use multiple rAF + fallback timeout
         const restore = () => { el.scrollTop = savedPos; };
         requestAnimationFrame(() => requestAnimationFrame(() => {
           restore();
-          // Fallback in case page data loads after first rAF
           setTimeout(restore, 100);
           setTimeout(restore, 300);
           setTimeout(restore, 600);
         }));
       }
-    } else if (!location.pathname.startsWith("/product/")) {
+    } else if (
+      !location.pathname.startsWith("/product/") &&
+      !location.pathname.includes("/add-product") &&
+      !location.pathname.includes("/edit-product")
+    ) {
       el.scrollTop = 0;
     }
 
@@ -226,7 +232,7 @@ const Dashboard = () => {
   }, [navigate, location.pathname]);
 
   return (
-    <div className="flex h-screen overflow-hidden theme-page">
+    <div className="flex overflow-hidden theme-page" style={{ height: "100dvh" }}>
       {/* Desktop sidebar */}
       <div className="hidden md:block md:w-64 md:flex-shrink-0">
         <Sidebar isOpen={true} toggleSidebar={toggleSidebar} />
@@ -241,8 +247,8 @@ const Dashboard = () => {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        {/* Mobile top bar — always above content, never collapses */}
+      <div className="flex-1 flex flex-col overflow-hidden" style={{ minHeight: 0 }}>
+        {/* Mobile top bar — sticky, GPU-composited, never disappears */}
         <div
           className="md:hidden flex items-center justify-between px-4 py-3 shadow-md"
           style={{
@@ -252,9 +258,11 @@ const Dashboard = () => {
             height: "56px",
             flexShrink: 0,
             flexGrow: 0,
-            position: "relative",
+            // Use sticky so it stays within the flex column layout
+            position: "sticky",
+            top: 0,
             zIndex: 60,
-            // Force GPU layer so the navbar is never dropped by the compositor
+            // Dedicated GPU layer — prevents compositor from dropping it
             willChange: "transform",
             transform: "translateZ(0)",
             WebkitTransform: "translateZ(0)",
