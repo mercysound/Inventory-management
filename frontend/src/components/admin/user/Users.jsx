@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import axiosInstance from "../../../utils/axiosInstance";
@@ -249,13 +250,13 @@ export default function Users() {
 
       {/* ── Single-user Suspend / Activate confirmation modal ── */}
       <AnimatePresence>
-        {suspendTarget && (
+        {suspendTarget && createPortal(
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={() => !suspendLoading && setSuspendTarget(null)}
             style={{
               position: "fixed", inset: 0, background: "rgba(15,23,42,.55)",
-              zIndex: 1300, display: "flex", alignItems: "center",
+              zIndex: 9999, display: "flex", alignItems: "center",
               justifyContent: "center", padding: "16px", backdropFilter: "blur(3px)",
             }}>
             <motion.div
@@ -265,6 +266,7 @@ export default function Users() {
               style={{
                 background: "#fff", borderRadius: 18, width: "100%", maxWidth: 440,
                 boxShadow: "0 24px 64px rgba(0,0,0,.2)", overflow: "hidden",
+                maxHeight: "calc(100dvh - 32px)", display: "flex", flexDirection: "column",
               }}>
               {/* Header */}
               <div style={{
@@ -350,7 +352,8 @@ export default function Users() {
                 </button>
               </div>
             </motion.div>
-          </motion.div>
+          </motion.div>,
+          document.body
         )}
       </AnimatePresence>
     </>

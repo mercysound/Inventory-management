@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import axiosInstance from "../../../utils/axiosInstance";
@@ -32,17 +33,6 @@ export default function EditUserModal({ user, onClose, onSuccess }) {
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, [handleKey]);
-
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    const scroller = document.getElementById("main-scroll");
-    if (scroller) scroller.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-      const s = document.getElementById("main-scroll");
-      if (s) s.style.overflow = "";
-    };
-  }, []);
 
   const set = (k, v) => { setForm(p => ({ ...p, [k]: v })); if (errors[k]) setErrors(p => ({ ...p, [k]: undefined })); };
 
@@ -84,11 +74,11 @@ export default function EditUserModal({ user, onClose, onSuccess }) {
 
   const roleChanged = form.role !== user?.role;
 
-  return (
+  return createPortal(
     <>
       <style>{`
-        .eum-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:1200;backdrop-filter:blur(3px);overflow-y:auto;display:flex;align-items:center;justify-content:center;padding:16px 12px;}
-        .eum-modal{background:#fff;border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,.2);width:100%;max-width:540px;flex-shrink:0;position:relative;margin:auto;}
+        .eum-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9999;backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:16px 12px;}
+        .eum-modal{background:#fff;border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,.2);width:100%;max-width:540px;flex-shrink:0;position:relative;margin:auto;max-height:calc(100dvh - 32px);display:flex;flex-direction:column;overflow:hidden;}
         .eum-header{display:flex;justify-content:space-between;align-items:center;padding:20px 18px 16px;border-bottom:1px solid #f1f5f9;gap:10px;}
         .eum-avatar-row{display:flex;gap:10px;align-items:center;min-width:0;}
         .eum-avatar{width:40px;height:40px;border-radius:50%;background:#eff6ff;color:#1d4ed8;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;flex-shrink:0;}
@@ -149,8 +139,8 @@ export default function EditUserModal({ user, onClose, onSuccess }) {
             <button onClick={onClose} className="eum-close" aria-label="Close">✕</button>
           </div>
 
-          <form onSubmit={handleSubmit} noValidate>
-            <div className="eum-body">
+          <form onSubmit={handleSubmit} noValidate style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
+            <div className="eum-body" style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
               <div className="eum-grid">
                 <div className="eum-field">
                   <label className="eum-label">Full name <span style={{ color: "#ef4444" }}>*</span></label>
@@ -234,6 +224,7 @@ export default function EditUserModal({ user, onClose, onSuccess }) {
           </form>
         </motion.div>
       </motion.div>
-    </>
+    </>,
+    document.body
   );
 }
