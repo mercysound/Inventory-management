@@ -19,7 +19,14 @@ const GUEST_CART_KEY    = "melech_guest_cart";
 
 // ── Guest cart helpers ────────────────────────────────────────────────────────
 // Each item: { productId, quantity, name, price, image, stock, categoryName }
-const readGuestCart  = () => { try { return JSON.parse(localStorage.getItem(GUEST_CART_KEY) || "[]"); } catch { return []; } };
+const readGuestCart = () => {
+  try {
+    const raw = JSON.parse(localStorage.getItem(GUEST_CART_KEY) || "[]");
+    // Filter out old-format entries that have no product details (name/price missing)
+    // so stale localStorage entries don't cause NaN display
+    return raw.filter(i => i.productId && i.name && typeof i.price === "number");
+  } catch { return []; }
+};
 const writeGuestCart = (items) => { try { localStorage.setItem(GUEST_CART_KEY, JSON.stringify(items)); } catch {} };
 
 export const getGuestCartCount = () => readGuestCart().reduce((s, i) => s + i.quantity, 0);
@@ -135,7 +142,7 @@ const ProductCard = ({ product, isFav, onToggleFav, onViewDetail, onAddToCart, o
 
 // ── Cart Drawer ───────────────────────────────────────────────────────────────
 const CartDrawer = ({ items, onClose, onIncrease, onDecrease, onRemove, onCheckout }) => {
-  const total = items.reduce((s, i) => s + i.price * i.quantity, 0);
+  const total = items.reduce((s, i) => s + (Number(i.price) || 0) * i.quantity, 0);
   return createPortal(
     <AnimatePresence>
       <motion.div
@@ -184,15 +191,15 @@ const CartDrawer = ({ items, onClose, onIncrease, onDecrease, onRemove, onChecko
                         </div>
                     }
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 leading-snug line-clamp-2">{item.name}</p>
+                      <p className="text-sm font-semibold text-gray-800 leading-snug line-clamp-2">{item.name || "Product"}</p>
                       {item.categoryName && (
                         <p className="text-[10px] text-indigo-500 font-semibold mt-0.5 uppercase">{item.categoryName}</p>
                       )}
                       <p className="text-sm font-bold text-green-700 mt-1">
-                        ₦{Number(item.price).toLocaleString()} × {item.quantity}
+                        ₦{Number(item.price || 0).toLocaleString()} × {item.quantity}
                       </p>
                       <p className="text-xs text-gray-400 font-medium">
-                        = ₦{Number(item.price * item.quantity).toLocaleString()}
+                        = ₦{Number((item.price || 0) * item.quantity).toLocaleString()}
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-2 shrink-0">
