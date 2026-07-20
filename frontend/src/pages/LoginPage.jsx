@@ -16,6 +16,25 @@ import { useAuth } from "../context/AuthContext";
 import axiosInstance from "../utils/axiosInstance";
 import { useMaintenance } from "../hooks/useMaintenance";
 
+const GUEST_CART_KEY = "melech_guest_cart";
+
+// Sync guest cart items to server as real orders
+const syncGuestCartToServer = async (guestCart) => {
+  if (!guestCart || guestCart.length === 0) return;
+  try {
+    for (const item of guestCart) {
+      await axiosInstance.put(`/orders/qty/${item.productId}`, {
+        quantity:  item.quantity,
+        price:     item.price,
+        priceMode: "retail",
+      });
+    }
+    localStorage.removeItem(GUEST_CART_KEY);
+  } catch {
+    // Non-fatal — guest cart sync failure shouldn't block login
+  }
+};
+
 const dashboardByRole = (role) => {
   if (role === "admin")     return "/admin-dashboard";
   if (role === "staff")     return "/customer-dashboard";
@@ -49,6 +68,14 @@ const LoginPage = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errors, setErrors]               = useState({});
   const [maintenance, setMaintenance]     = useState(null);
+
+  // Show guest cart reminder banner
+  const guestCartCount = (() => {
+    try {
+      const cart = JSON.parse(localStorage.getItem(GUEST_CART_KEY) || "[]");
+      return cart.reduce((s, i) => s + i.quantity, 0);
+    } catch { return 0; }
+  })();
 
   const [formData, setFormData] = useState({
     name: "", email: localStorage.getItem("pos-last-email") || "",
@@ -114,15 +141,28 @@ const LoginPage = () => {
       if (isLogin) {
         const res = await axiosInstance.post("/auth/login", { email: formData.email, password: formData.password });
         if (res.data.success) {
+          const guestCart = JSON.parse(localStorage.getItem(GUEST_CART_KEY) || "[]");
           await login(res.data.user, res.data.token);
-          toast.success("Welcome back!");
+          // Sync any guest cart items the user added before logging in
+          if (guestCart.length > 0) {
+            await syncGuestCartToServer(guestCart);
+            toast.success("Welcome back! Your cart items have been saved. 🛒");
+          } else {
+            toast.success("Welcome back!");
+          }
           navigate(dashboardByRole(res.data.user.role));
         } else { toast.error(res.data.message || "Login failed"); }
       } else {
         const res = await axiosInstance.post("/users/register", formData);
         if (res.data.success && res.data.token) {
+          const guestCart = JSON.parse(localStorage.getItem(GUEST_CART_KEY) || "[]");
           await login(res.data.user, res.data.token);
-          toast.success("Account created — welcome!");
+          if (guestCart.length > 0) {
+            await syncGuestCartToServer(guestCart);
+            toast.success("Account created! Your cart items have been saved. 🛒");
+          } else {
+            toast.success("Account created — welcome!");
+          }
           navigate(!res.data.user.phone || !res.data.user.address ? "/complete-profile" : dashboardByRole(res.data.user.role));
         } else {
           toast.success(res.data.message || "Account created! Please log in.");
@@ -141,8 +181,14 @@ const LoginPage = () => {
     try {
       const res = await axiosInstance.post("/auth/google-login", { tokenId: cred.credential });
       if (!res.data.success) { toast.error(res.data.message || "Google login failed"); return; }
+      const guestCart = JSON.parse(localStorage.getItem(GUEST_CART_KEY) || "[]");
       await login(res.data.user, res.data.token);
-      toast.success("Signed in with Google!");
+      if (guestCart.length > 0) {
+        await syncGuestCartToServer(guestCart);
+        toast.success("Signed in with Google! Your cart items have been saved. 🛒");
+      } else {
+        toast.success("Signed in with Google!");
+      }
       navigate(!res.data.user.phone || !res.data.user.address ? "/complete-profile" : dashboardByRole(res.data.user.role));
     } catch (err) {
       toast.error(err?.response?.data?.message || "Google sign-in failed.");
@@ -189,6 +235,19 @@ const LoginPage = () => {
           Melech<span className="text-indigo-400"> Hub</span>
         </span>
       </div>
+
+      {/* Cart reminder banner */}
+      {guestCartCount > 0 && (
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md mb-4 bg-green-500/90 backdrop-blur text-white
+            rounded-2xl px-4 py-3 flex items-center gap-3 shadow-lg">
+          <ShoppingCart size={18} className="shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold leading-tight">You have {guestCartCount} item{guestCartCount !== 1 ? "s" : ""} in your cart</p>
+            <p className="text-xs text-green-100 mt-0.5">Sign in or create an account to complete your order</p>
+          </div>
+        </motion.div>
+      )}
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md bg-white/[0.06] backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-7 md:p-9">
