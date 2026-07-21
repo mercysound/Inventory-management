@@ -180,12 +180,15 @@ export const updateUserSchema = Joi.object({
   newPassword: Joi.string().min(6).allow("", null).optional(),
 }).min(1);
 
-export const userUpdateSchema = userSchema.fork([
-  "name", "email", "password", "phone", "address", "role",
-], (field) => field.optional()).keys({
+export const userUpdateSchema = Joi.object({
+  name:            Joi.string().min(3).max(80).optional(),
+  email:           Joi.string().email().optional(),
+  password:        Joi.string().min(8).optional(),
+  phone:           Joi.string().min(10).max(20).allow("", null).optional(),
+  address:         Joi.string().min(10).max(500).allow("", null).optional(),
   oldPassword:     Joi.string().optional(),
   confirmPassword: Joi.string().optional(),
-});
+}).min(1);
 
 // ─── Email broadcast schema — wholesale role included ─────────────────────────
 export const emailBroadcastSchema = Joi.object({
