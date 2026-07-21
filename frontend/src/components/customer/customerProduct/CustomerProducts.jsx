@@ -718,13 +718,12 @@ const CustomerProducts = () => {
           </AnimatePresence>
         </div>
 
-        {/* ── Filter bar — sticky, single scrollable row (Jiji style) ── */}
+        {/* ── Filter bar — responsive for all screens ── */}
         <div
           className="bg-white border border-gray-100 shadow-sm rounded-2xl"
           style={{ position: "sticky", top: 0, zIndex: 20 }}
         >
-          <div className="flex items-center gap-2 px-3 py-2 overflow-x-auto"
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+          <div className="flex flex-wrap items-center gap-2 px-3 py-2">
 
           {/* Searchable category dropdown */}
           <div className="relative flex-shrink-0" ref={catDropdownRef}>
@@ -735,11 +734,11 @@ const CustomerProducts = () => {
                 text-xs text-gray-700 bg-gray-50 hover:bg-white transition whitespace-nowrap"
             >
               <SlidersHorizontal size={11} className="text-gray-400 shrink-0" />
-              <span className="truncate max-w-[80px]">{selectedCatName}</span>
+              <span className="truncate max-w-[100px] sm:max-w-[140px]">{selectedCatName}</span>
               <span className="text-gray-400 text-[10px]">▾</span>
             </button>
             {showCatDropdown && (
-              <div className="absolute top-full mt-1 left-0 z-50 w-56 bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden">
+              <div className="absolute top-full mt-1 left-0 z-[9990] w-56 bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden">
                 <div className="p-2 border-b border-gray-100">
                   <div className="relative">
                     <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
@@ -775,12 +774,12 @@ const CustomerProducts = () => {
             )}
           </div>
 
-          {/* Divider */}
-          <div className="w-px h-4 bg-gray-200 flex-shrink-0" />
+          {/* Divider — hidden on small mobile */}
+          <div className="hidden sm:block w-px h-4 bg-gray-200 flex-shrink-0" />
 
-          {/* Product name search */}
+          {/* Product name search — expands to fill available space on desktop */}
           {activeTab === "all" && (
-            <div className="relative flex-shrink-0 w-36">
+            <div className="relative flex-1 min-w-[120px] max-w-xs sm:max-w-sm">
               <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               <input type="text" placeholder="Search…" value={searchQuery} onChange={handleSearch}
                 className="w-full border border-gray-200 rounded-lg pl-7 pr-3 py-1.5 text-xs
