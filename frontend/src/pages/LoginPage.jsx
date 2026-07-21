@@ -54,7 +54,14 @@ const dashboardByRole = (role) => {
 // Priority: 1. ?redirect= (from protected route)  2. ?ref=cart  3. incomplete profile  4. role dashboard
 const resolvePostLoginPath = (role, searchParams, user) => {
   const redirect = searchParams.get("redirect");
-  if (redirect && redirect.startsWith("/")) {
+  // SECURITY: only allow same-origin relative paths — reject absolute URLs
+  // This prevents open-redirect attacks where an attacker crafts:
+  // /login?redirect=https://evil.com
+  if (redirect &&
+      redirect.startsWith("/") &&
+      !redirect.startsWith("//") &&     // reject protocol-relative URLs
+      !redirect.includes("://")          // reject absolute URLs
+  ) {
     return decodeURIComponent(redirect);
   }
   const ref = searchParams.get("ref");
@@ -139,7 +146,10 @@ const LoginPage = () => {
         const u = JSON.parse(userData);
         // Respect ?redirect= so email links work even when already logged in
         const redirect = searchParams.get("redirect");
-        if (redirect && redirect.startsWith("/")) {
+        if (redirect &&
+            redirect.startsWith("/") &&
+            !redirect.startsWith("//") &&
+            !redirect.includes("://")) {
           navigate(decodeURIComponent(redirect), { replace: true });
         } else {
           navigate(dashboardByRole(u.role), { replace: true });

@@ -4,13 +4,15 @@ import Joi from "joi";
 const VALID_ROLES = ["admin", "staff", "customer", "wholesale"];
 
 // ─── User schemas ─────────────────────────────────────────────────────────────
+// Public registration — role field is STRIPPED (not allowed from public)
+// The controller always assigns "customer" on public register.
 export const userSchema = Joi.object({
   name:     Joi.string().required().trim().min(3).max(80),
   email:    Joi.string().email().required().lowercase().trim(),
   password: Joi.string().min(8).required(),
   phone:    Joi.string().required().trim().min(10).max(20),
   address:  Joi.string().required().trim().min(10).max(500),
-  role:     Joi.string().valid(...VALID_ROLES).default("customer"),
+  // role is intentionally excluded — public users cannot self-assign roles
 });
 
 export const loginSchema = Joi.object({

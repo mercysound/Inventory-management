@@ -167,9 +167,12 @@ const refreshToken = async (req, res) => {
   try {
     const { token } = req.body;
     if (!token) return sendError(res, 401, "No token provided");
-    const decoded = jwt.verify(token, process.env.JWT_SECRET, { ignoreExpiration: true });
+    // Verify without ignoring expiration — expired tokens must not get new tokens
+    // This enforces the 2-day session limit. The frontend handles re-login.
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user    = await User.findById(decoded.id);
     if (!user) return sendError(res, 404, "User not found");
+    if (user.isActive === false) return sendError(res, 403, "Account suspended");
     const newToken = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,

@@ -48,7 +48,7 @@ const addUser = async (req, res) => {
     }, 'User created successfully');
   } catch (error) {
     console.error('Error adding user:', error);
-    return sendError(res, 500, `Failed to create user: ${error.message}`);
+    return sendError(res, 500, 'Failed to create user');
   }
 };
 

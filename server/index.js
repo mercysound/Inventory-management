@@ -204,13 +204,16 @@ app.use(requestLogger);
 app.use("/api/", limiter);
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/google-login", authLimiter);
+app.use("/api/users/register", authLimiter); // prevent registration spam
 
 // ── SANITIZE AGAINST NoSQL INJECTION ──
 app.use(mongoSanitize());
 
 // ── BODY SIZE LIMITS ──
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+// 10mb for JSON (handles large product lists)
+// 50mb only for multipart (product image uploads via multer handle it separately)
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 // ── API ROUTES ──
 app.use("/api/auth", authRoutes);
