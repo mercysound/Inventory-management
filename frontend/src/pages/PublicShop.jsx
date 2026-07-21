@@ -14,7 +14,7 @@ import { useAuth } from "../context/AuthContext";
 import { useFavorites } from "../hooks/useFavorites";
 import { useMaintenance } from "../hooks/useMaintenance";
 
-const PRODUCTS_PER_PAGE = 20;
+const PRODUCTS_PER_PAGE = 8;
 const GUEST_CART_KEY    = "melech_guest_cart";
 
 // ── Guest cart helpers ────────────────────────────────────────────────────────
@@ -506,12 +506,39 @@ const PublicShop = () => {
             )}
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-8">
-                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                  className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-white disabled:opacity-30 transition">← Prev</button>
-                <span className="text-sm text-gray-500 font-medium px-2">{page} / {totalPages}</span>
-                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                  className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-white disabled:opacity-30 transition">Next →</button>
+              <div className="flex items-center justify-center gap-2 mt-8 flex-wrap">
+                <button onClick={() => { setPage(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  disabled={page === 1}
+                  className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium
+                    text-gray-600 hover:bg-white disabled:opacity-30 transition">
+                  ← Prev
+                </button>
+                {/* Page number pills */}
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                  .reduce((acc, p, idx, arr) => {
+                    if (idx > 0 && p - arr[idx - 1] > 1) acc.push("…");
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((p, idx) =>
+                    p === "…"
+                      ? <span key={`dot-${idx}`} className="text-gray-400 text-sm px-1">…</span>
+                      : <button key={p} onClick={() => { setPage(p); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                          className={`w-9 h-9 rounded-xl text-sm font-bold transition ${
+                            page === p
+                              ? "bg-indigo-600 text-white shadow-sm"
+                              : "border border-gray-200 text-gray-600 hover:bg-white"
+                          }`}>
+                          {p}
+                        </button>
+                  )}
+                <button onClick={() => { setPage(p => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  disabled={page === totalPages}
+                  className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium
+                    text-gray-600 hover:bg-white disabled:opacity-30 transition">
+                  Next →
+                </button>
               </div>
             )}
 

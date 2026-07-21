@@ -18,20 +18,28 @@ import { useMaintenance } from "../hooks/useMaintenance";
 
 const GUEST_CART_KEY = "melech_guest_cart";
 
-// Sync guest cart items to server as real orders
-const syncGuestCartToServer = async (guestCart) => {
-  if (!guestCart || guestCart.length === 0) return;
+// Fix admin/staff login: skip cart sync — admin has no cart, just clear guest data
+const syncGuestCartToServer = async (guestCart, userRole) => {
+  if (!guestCart || guestCart.length === 0) return 0;
+  // Admin and staff don't have a customer cart — just clear localStorage silently
+  if (userRole === "admin" || userRole === "staff") {
+    localStorage.removeItem(GUEST_CART_KEY);
+    return 0;
+  }
   try {
+    let synced = 0;
     for (const item of guestCart) {
       await axiosInstance.put(`/orders/qty/${item.productId}`, {
         quantity:  item.quantity,
         price:     item.price,
         priceMode: "retail",
       });
+      synced++;
     }
     localStorage.removeItem(GUEST_CART_KEY);
+    return synced;
   } catch {
-    // Non-fatal — guest cart sync failure shouldn't block login
+    return 0;
   }
 };
 
@@ -141,29 +149,32 @@ const LoginPage = () => {
       if (isLogin) {
         const res = await axiosInstance.post("/auth/login", { email: formData.email, password: formData.password });
         if (res.data.success) {
-          const guestCart = JSON.parse(localStorage.getItem(GUEST_CART_KEY) || "[]");
+          const guestCart = JSON.parse(localStorage.getItem(GUEST_CART_KEY) || "[]").filter(i => i.name && typeof i.price === "number");
           await login(res.data.user, res.data.token);
-          // Sync any guest cart items the user added before logging in
-          if (guestCart.length > 0) {
-            await syncGuestCartToServer(guestCart);
-            toast.success("Welcome back! Your cart items have been saved. 🛒");
+          const role = res.data.user.role;
+          const synced = await syncGuestCartToServer(guestCart, role);
+          if (role === "admin" || role === "staff") {
+            toast.success("Welcome back!");
+          } else if (synced > 0) {
+            toast.success(`Welcome back! ${synced} cart item${synced !== 1 ? "s" : ""} saved to your cart 🛒`);
           } else {
             toast.success("Welcome back!");
           }
-          navigate(dashboardByRole(res.data.user.role));
+          navigate(dashboardByRole(role));
         } else { toast.error(res.data.message || "Login failed"); }
       } else {
         const res = await axiosInstance.post("/users/register", formData);
         if (res.data.success && res.data.token) {
-          const guestCart = JSON.parse(localStorage.getItem(GUEST_CART_KEY) || "[]");
+          const guestCart = JSON.parse(localStorage.getItem(GUEST_CART_KEY) || "[]").filter(i => i.name && typeof i.price === "number");
           await login(res.data.user, res.data.token);
-          if (guestCart.length > 0) {
-            await syncGuestCartToServer(guestCart);
-            toast.success("Account created! Your cart items have been saved. 🛒");
+          const role = res.data.user.role;
+          const synced = await syncGuestCartToServer(guestCart, role);
+          if (synced > 0) {
+            toast.success(`Account created! ${synced} cart item${synced !== 1 ? "s" : ""} saved 🛒`);
           } else {
             toast.success("Account created — welcome!");
           }
-          navigate(!res.data.user.phone || !res.data.user.address ? "/complete-profile" : dashboardByRole(res.data.user.role));
+          navigate(!res.data.user.phone || !res.data.user.address ? "/complete-profile" : dashboardByRole(role));
         } else {
           toast.success(res.data.message || "Account created! Please log in.");
           setIsLogin(true);
@@ -181,15 +192,18 @@ const LoginPage = () => {
     try {
       const res = await axiosInstance.post("/auth/google-login", { tokenId: cred.credential });
       if (!res.data.success) { toast.error(res.data.message || "Google login failed"); return; }
-      const guestCart = JSON.parse(localStorage.getItem(GUEST_CART_KEY) || "[]");
+      const guestCart = JSON.parse(localStorage.getItem(GUEST_CART_KEY) || "[]").filter(i => i.name && typeof i.price === "number");
       await login(res.data.user, res.data.token);
-      if (guestCart.length > 0) {
-        await syncGuestCartToServer(guestCart);
-        toast.success("Signed in with Google! Your cart items have been saved. 🛒");
+      const role = res.data.user.role;
+      const synced = await syncGuestCartToServer(guestCart, role);
+      if (role === "admin" || role === "staff") {
+        toast.success("Signed in with Google!");
+      } else if (synced > 0) {
+        toast.success(`Signed in! ${synced} cart item${synced !== 1 ? "s" : ""} saved 🛒`);
       } else {
         toast.success("Signed in with Google!");
       }
-      navigate(!res.data.user.phone || !res.data.user.address ? "/complete-profile" : dashboardByRole(res.data.user.role));
+      navigate(!res.data.user.phone || !res.data.user.address ? "/complete-profile" : dashboardByRole(role));
     } catch (err) {
       toast.error(err?.response?.data?.message || "Google sign-in failed.");
     } finally { setGoogleLoading(false); }
