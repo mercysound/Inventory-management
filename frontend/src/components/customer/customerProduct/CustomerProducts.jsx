@@ -681,14 +681,10 @@ const CustomerProducts = () => {
         {/* ── Header ──────────────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2.5">
-              <span className="w-9 h-9 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600
-                flex items-center justify-center shadow-md shadow-green-200 shrink-0">
-                <ShoppingBag size={17} className="text-white" />
-              </span>
+            <h1 className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight">
               Products
             </h1>
-            <p className="text-xs text-gray-400 mt-0.5 ml-11">
+            <p className="text-xs text-gray-400 mt-0.5">
               {filteredProducts.length} item{filteredProducts.length !== 1 ? "s" : ""}
               {user?.role === "wholesale" && (
                 <span className="ml-2 bg-amber-100 text-amber-700 border border-amber-200
