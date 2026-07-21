@@ -19,7 +19,8 @@ import {
   userUpdateSchema,
   completeProfileSchema,
   updateUserSchema,
-  emailBroadcastSchema
+  emailBroadcastSchema,
+  adminCreateUserSchema,
 } from '../validators/schemas.js';
 
 const router = express.Router();
@@ -41,7 +42,7 @@ router.post('/email-broadcast', authMiddleware, authorizeRoles('admin'), validat
 router.get('/email-broadcast/:jobId', authMiddleware, authorizeRoles('admin'), emailBroadcastStatus);
 
 // ── Admin: user management ────────────────────────────────────────────────────
-router.post('/add', authMiddleware, authorizeRoles('admin'), validate(userSchema), addUser);
+router.post('/add', authMiddleware, authorizeRoles('admin'), validate(adminCreateUserSchema), addUser);
 router.get('/', authMiddleware, authorizeRoles('admin'), getUsers);
 
 // ── Admin: activate / deactivate ─────────────────────────────────────────────

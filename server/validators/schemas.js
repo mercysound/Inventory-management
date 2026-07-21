@@ -15,6 +15,16 @@ export const userSchema = Joi.object({
   // role is intentionally excluded — public users cannot self-assign roles
 });
 
+// Admin-only user creation schema — allows role assignment
+export const adminCreateUserSchema = Joi.object({
+  name:     Joi.string().required().trim().min(3).max(80),
+  email:    Joi.string().email().required().lowercase().trim(),
+  password: Joi.string().min(8).required(),
+  phone:    Joi.string().required().trim().min(10).max(20),
+  address:  Joi.string().required().trim().min(10).max(500),
+  role:     Joi.string().valid(...VALID_ROLES).default("customer"),
+});
+
 export const loginSchema = Joi.object({
   email:    Joi.string().email().required(),
   password: Joi.string().required(),
