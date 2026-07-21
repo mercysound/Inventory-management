@@ -51,19 +51,23 @@ const dashboardByRole = (role) => {
 };
 
 // After login, resolve where to navigate:
-// 1. ?redirect=<path> — came from a protected route (e.g. email link)
-// 2. ?ref=cart — came from guest cart checkout button → go to cart page
-// 3. default — go to role dashboard
+// Priority: 1. ?redirect= (from protected route)  2. ?ref=cart  3. incomplete profile  4. role dashboard
 const resolvePostLoginPath = (role, searchParams, user) => {
   const redirect = searchParams.get("redirect");
   if (redirect && redirect.startsWith("/")) {
-    // Only allow same-origin paths — strip any query that might re-trigger the redirect
     return decodeURIComponent(redirect);
   }
   const ref = searchParams.get("ref");
-  if (ref === "cart") return cartPathByRole(role);
-  // Incomplete profile check
-  if (!user?.phone || !user?.address) return "/complete-profile";
+  if (ref === "cart") {
+    // Admin/staff don't use the customer cart — send them to their dashboard
+    if (role === "admin")  return "/admin-dashboard";
+    if (role === "staff")  return "/customer-dashboard/orders";
+    return cartPathByRole(role);
+  }
+  // Incomplete profile check (only for customer/wholesale — not admin/staff)
+  if (role !== "admin" && role !== "staff") {
+    if (!user?.phone || !user?.address) return "/complete-profile";
+  }
   return dashboardByRole(role);
 };
 
