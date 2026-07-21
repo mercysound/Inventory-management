@@ -314,7 +314,7 @@ const Dashboard = () => {
         )}
 
         {/* Spacer so content doesn't hide under the fixed navbar on mobile */}
-        <div className="md:hidden" style={{ height: "56px", flexShrink: 0 }} />
+        <div className="md:hidden" style={{ height: "64px", flexShrink: 0 }} />
 
         {/* Desktop top bar — admin only */}
         {user?.role === "admin" && (
