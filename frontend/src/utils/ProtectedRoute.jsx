@@ -1,20 +1,16 @@
 // src/utils/ProtectedRoute.jsx
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-/**
- * Wraps a route and redirects to "/" if:
- *  - User is not logged in
- *  - User's role is not in the requireRole array
- *
- * Supports all roles: admin, staff, customer, wholesale
- */
 const ProtectedRoute = ({ children, requireRole }) => {
-  const { user } = useAuth();
+  const { user }   = useAuth();
+  const location   = useLocation();
 
   if (!user) {
-    return <Navigate to="/" replace />;
+    // Preserve the intended URL so LoginPage can redirect there after login
+    const intended = location.pathname + location.search;
+    return <Navigate to={`/login?redirect=${encodeURIComponent(intended)}`} replace />;
   }
 
   if (requireRole && !requireRole.includes(user.role)) {

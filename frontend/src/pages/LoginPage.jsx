@@ -50,6 +50,29 @@ const dashboardByRole = (role) => {
   return "/user-dashboard";
 };
 
+// After login, resolve where to navigate:
+// 1. ?redirect=<path> — came from a protected route (e.g. email link)
+// 2. ?ref=cart — came from guest cart checkout button → go to cart page
+// 3. default — go to role dashboard
+const resolvePostLoginPath = (role, searchParams, user) => {
+  const redirect = searchParams.get("redirect");
+  if (redirect && redirect.startsWith("/")) {
+    // Only allow same-origin paths — strip any query that might re-trigger the redirect
+    return decodeURIComponent(redirect);
+  }
+  const ref = searchParams.get("ref");
+  if (ref === "cart") return cartPathByRole(role);
+  // Incomplete profile check
+  if (!user?.phone || !user?.address) return "/complete-profile";
+  return dashboardByRole(role);
+};
+
+const cartPathByRole = (role) => {
+  if (role === "wholesale") return "/wholesale-dashboard/orders";
+  if (role === "staff")     return "/customer-dashboard/orders";
+  return "/user-dashboard/orders";
+};
+
 const Field = ({ label, error, children }) => (
   <div className="space-y-1">
     {label && <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide pl-0.5">{label}</label>}
@@ -110,10 +133,16 @@ const LoginPage = () => {
     if (token && userData) {
       try {
         const u = JSON.parse(userData);
-        navigate(dashboardByRole(u.role), { replace: true });
+        // Respect ?redirect= so email links work even when already logged in
+        const redirect = searchParams.get("redirect");
+        if (redirect && redirect.startsWith("/")) {
+          navigate(decodeURIComponent(redirect), { replace: true });
+        } else {
+          navigate(dashboardByRole(u.role), { replace: true });
+        }
       } catch {}
     }
-  }, [navigate]);
+  }, [navigate, searchParams]);
 
   const handleChange = (e) => {
     setFormData(p => ({ ...p, [e.target.name]: e.target.value }));
@@ -160,7 +189,7 @@ const LoginPage = () => {
           } else {
             toast.success("Welcome back!");
           }
-          navigate(dashboardByRole(role));
+          navigate(resolvePostLoginPath(role, searchParams, res.data.user));
         } else { toast.error(res.data.message || "Login failed"); }
       } else {
         const res = await axiosInstance.post("/users/register", formData);
@@ -174,7 +203,7 @@ const LoginPage = () => {
           } else {
             toast.success("Account created — welcome!");
           }
-          navigate(!res.data.user.phone || !res.data.user.address ? "/complete-profile" : dashboardByRole(role));
+          navigate(resolvePostLoginPath(role, searchParams, res.data.user));
         } else {
           toast.success(res.data.message || "Account created! Please log in.");
           setIsLogin(true);
@@ -203,7 +232,7 @@ const LoginPage = () => {
       } else {
         toast.success("Signed in with Google!");
       }
-      navigate(!res.data.user.phone || !res.data.user.address ? "/complete-profile" : dashboardByRole(role));
+      navigate(resolvePostLoginPath(role, searchParams, res.data.user));
     } catch (err) {
       toast.error(err?.response?.data?.message || "Google sign-in failed.");
     } finally { setGoogleLoading(false); }
