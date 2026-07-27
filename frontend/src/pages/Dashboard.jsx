@@ -261,7 +261,7 @@ const Dashboard = () => {
               top:        0,
               left:       0,
               right:      0,
-              zIndex:     9990,   // below modals (9999) but above everything else
+              zIndex:     60,    // above page content, below all modals (which use 9999)
               height:     "56px",
               minHeight:  "56px",
               display:    "flex",

@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 import useEscapeToClose from "../../share-component/receipt/useEscapeToClose";
@@ -392,7 +393,7 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
       });
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         className="fixed inset-0 flex items-end sm:items-center justify-center overflow-y-auto"
@@ -658,7 +659,8 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
           </div>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
 
