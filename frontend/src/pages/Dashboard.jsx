@@ -1,6 +1,5 @@
 // src/pages/Dashboard.jsx
 import React, { useState, useEffect, useCallback } from "react";
-import { createPortal } from "react-dom";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { FaBars } from "react-icons/fa";
 import { Clock } from "lucide-react";
@@ -250,71 +249,60 @@ const Dashboard = () => {
       {/* Main content column */}
       <div className="flex-1 flex flex-col overflow-hidden" style={{ minHeight: 0 }}>
 
-        {/* ── MOBILE NAV — rendered via portal directly on body so it's NEVER
-            affected by flex/overflow/transform on any parent container.
-            position:fixed on body = always viewport-relative, always visible. ── */}
-        {typeof document !== "undefined" && createPortal(
-          <div
-            className="md:hidden"
+        {/* ── MOBILE NAV — sticky inside flex column, NOT a portal.
+            The old portal approach caused every sticky/fixed child (cart header,
+            modals, etc.) to render behind it. Back to sticky — it works correctly
+            now that transform:translateZ(0) was removed from #main-scroll. ── */}
+        <div
+          className="md:hidden flex items-center justify-between"
+          style={{
+            padding:    "0 16px",
+            height:     "56px",
+            minHeight:  "56px",
+            flexShrink: 0,
+            flexGrow:   0,
+            position:   "sticky",
+            top:        0,
+            zIndex:     50,
+            background: "var(--bg-sidebar, linear-gradient(to right, #111827, #1f2937))",
+            boxShadow:  "0 2px 8px rgba(0,0,0,.35)",
+          }}
+        >
+          <button
+            onClick={toggleSidebar}
             style={{
-              position:   "fixed",
-              top:        0,
-              left:       0,
-              right:      0,
-              zIndex:     60,    // above page content, below all modals (which use 9999)
-              height:     "56px",
-              minHeight:  "56px",
-              display:    "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding:    "0 16px",
-              background: "var(--bg-sidebar, linear-gradient(to right, #111827, #1f2937))",
-              boxShadow:  "0 2px 8px rgba(0,0,0,.35)",
-              // Own GPU compositor layer — browser never drops it
-              willChange: "transform",
-              transform:  "translate3d(0,0,0)",
+              background: "transparent", border: "none", cursor: "pointer",
+              color: "#fff", padding: "8px", borderRadius: "8px",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              WebkitTapHighlightColor: "transparent",
+              flexShrink: 0,
             }}
+            aria-label="Open menu"
           >
-            <button
-              onClick={toggleSidebar}
-              style={{
-                background: "transparent", border: "none", cursor: "pointer",
-                color: "#fff", padding: "8px", borderRadius: "8px",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                WebkitTapHighlightColor: "transparent",
-                flexShrink: 0,
-              }}
-              aria-label="Open menu"
-            >
-              <FaBars size={20} />
-            </button>
+            <FaBars size={20} />
+          </button>
 
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, minWidth: 0, padding: "0 8px" }}>
-              <span style={{ fontWeight: 700, color: "#fff", fontSize: "14px", lineHeight: 1.2,
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "180px" }}>
-                {storeName}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, minWidth: 0, padding: "0 8px" }}>
+            <span style={{ fontWeight: 700, color: "#fff", fontSize: "14px", lineHeight: 1.2,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "180px" }}>
+              {storeName}
+            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
+              <span style={{ color: "rgba(255,255,255,.6)", fontSize: "10px", fontWeight: 500,
+                letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                {pageName}
               </span>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
-                <span style={{ color: "rgba(255,255,255,.6)", fontSize: "10px", fontWeight: 500,
-                  letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                  {pageName}
-                </span>
-                {user?.role === "admin"     && <span style={{ fontSize:"9px", background:"#ef4444", color:"#fff", borderRadius:"99px", padding:"1px 6px", fontWeight:700, letterSpacing:"0.04em" }}>Admin</span>}
-                {user?.role === "staff"     && <span style={{ fontSize:"9px", background:"#6366f1", color:"#fff", borderRadius:"99px", padding:"1px 6px", fontWeight:700, letterSpacing:"0.04em" }}>Staff</span>}
-                {user?.role === "customer"  && <span style={{ fontSize:"9px", background:"#22c55e", color:"#fff", borderRadius:"99px", padding:"1px 6px", fontWeight:700, letterSpacing:"0.04em" }}>Customer</span>}
-                {user?.role === "wholesale" && <span style={{ fontSize:"9px", background:"#f59e0b", color:"#fff", borderRadius:"99px", padding:"1px 6px", fontWeight:700, letterSpacing:"0.04em" }}>Wholesale</span>}
-              </div>
+              {user?.role === "admin"     && <span style={{ fontSize:"9px", background:"#ef4444", color:"#fff", borderRadius:"99px", padding:"1px 6px", fontWeight:700, letterSpacing:"0.04em" }}>Admin</span>}
+              {user?.role === "staff"     && <span style={{ fontSize:"9px", background:"#6366f1", color:"#fff", borderRadius:"99px", padding:"1px 6px", fontWeight:700, letterSpacing:"0.04em" }}>Staff</span>}
+              {user?.role === "customer"  && <span style={{ fontSize:"9px", background:"#22c55e", color:"#fff", borderRadius:"99px", padding:"1px 6px", fontWeight:700, letterSpacing:"0.04em" }}>Customer</span>}
+              {user?.role === "wholesale" && <span style={{ fontSize:"9px", background:"#f59e0b", color:"#fff", borderRadius:"99px", padding:"1px 6px", fontWeight:700, letterSpacing:"0.04em" }}>Wholesale</span>}
             </div>
+          </div>
 
-            <div style={{ flexShrink: 0 }}>
-              {user?.role === "admin" ? <ExpiryBell /> : <div style={{ width: "36px" }} />}
-            </div>
-          </div>,
-          document.body
-        )}
-
-        {/* Spacer so content doesn't hide under the fixed navbar on mobile */}
-        <div className="md:hidden" style={{ height: "64px", flexShrink: 0 }} />
+          <div style={{ flexShrink: 0 }}>
+            {user?.role === "admin" ? <ExpiryBell /> : <div style={{ width: "36px" }} />}
+          </div>
+        </div>
 
         {/* Desktop top bar — admin only */}
         {user?.role === "admin" && (
@@ -335,7 +323,6 @@ const Dashboard = () => {
             WebkitOverflowScrolling: "touch",
             overscrollBehaviorY: "contain",
             minHeight: 0,
-            paddingTop: "32px",
           }}
         >
           <div className="flex flex-col min-h-full">
