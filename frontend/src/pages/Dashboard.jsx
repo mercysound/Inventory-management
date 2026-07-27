@@ -335,7 +335,7 @@ const Dashboard = () => {
             WebkitOverflowScrolling: "touch",
             overscrollBehaviorY: "contain",
             minHeight: 0,
-            paddingTop: "20px",
+            paddingTop: "32px",
           }}
         >
           <div className="flex flex-col min-h-full">

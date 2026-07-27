@@ -679,7 +679,7 @@ const CustomerProducts = () => {
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-5 pb-24 space-y-5">
 
         {/* ── Header ──────────────────────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight flex items-center gap-2.5">
               <span className="w-9 h-9 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600
