@@ -632,23 +632,27 @@ const Product = () => {
     <div className="w-full h-full flex flex-col gap-4 p-4">
       <h1 className="text-2xl font-bold mb-2">Product Management</h1>
 
-      {/* Search + Category filter + Batch search + Expiry filter — sticky */}
+      {/* ── Filter bar — responsive, no hidden scroll ── */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 flex flex-col gap-2"
         style={{ position: "sticky", top: 0, zIndex: 20 }}>
 
-        {/* Row 1: Name search + Category — horizontal scroll on mobile */}
-        <div className="flex items-center gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-          <input
-            type="text"
-            placeholder="Search by name..."
-            value={searchValue}
-            onChange={handleSearch}
-            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm flex-shrink-0 w-40 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+        {/* Row 1: Search + Category — wrap on mobile, single line on desktop */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Name search — expands on desktop */}
+          <div className="relative flex-1 min-w-[140px]">
+            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search by name..."
+              value={searchValue}
+              onChange={handleSearch}
+              className="w-full border border-gray-300 rounded-md pl-7 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
           <select
             value={selectedCategory}
             onChange={handleCategoryChange}
-            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm flex-shrink-0 w-36 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm flex-1 min-w-[130px] focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">All Categories</option>
             {categories.map((cat) => (
@@ -657,7 +661,7 @@ const Product = () => {
           </select>
 
           {/* Batch number text search */}
-          <div className="relative flex-shrink-0 w-40">
+          <div className="relative flex-1 min-w-[140px]">
             <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
               type="text"
@@ -674,7 +678,7 @@ const Product = () => {
           </div>
 
           {/* Expiry days filter */}
-          <div className="relative flex-shrink-0 w-36">
+          <div className="relative flex-1 min-w-[130px]">
             <CalendarClock size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
               type="number" min="0" max="3650"
@@ -685,8 +689,11 @@ const Product = () => {
               className="border border-gray-300 rounded-md pl-7 pr-3 py-1.5 w-full focus:outline-none focus:ring-2 focus:ring-orange-400 text-sm"
             />
           </div>
+        </div>
 
-          {/* Day presets */}
+        {/* Row 2: Day presets + clear — scrollable on mobile with visible hint */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1"
+          style={{ scrollbarWidth: "thin", scrollbarColor: "#e2e8f0 transparent" }}>
           {[7, 14, 30, 60, 90].map((d) => (
             <button key={d}
               onClick={() => handleExpiryDaysChange(expiryDaysFilter === String(d) ? "" : String(d))}
