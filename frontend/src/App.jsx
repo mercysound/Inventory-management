@@ -32,6 +32,8 @@ import ExpiringOrders from "./components/admin/expiring/ExpiringOrders.jsx";
 import UserSettingsPage from "./pages/UserSettingsPage.jsx";
 import EngagementMonitor from "./pages/admin/EngagementMonitor.jsx";
 import AddProductPage from "./pages/admin/AddProductPage.jsx";
+import SuperAdminLogin     from "./pages/superadmin/SuperAdminLogin.jsx";
+import SuperAdminDashboard from "./pages/superadmin/SuperAdminDashboard.jsx";
 
 export const BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -155,6 +157,10 @@ function App() {
             <Route path="settings"          element={<UserSettingsPage />} />
             <Route path="logout"            element={<Logout />} />
           </Route>
+
+          {/* ── Super Admin Platform ── */}
+          <Route path="/super-admin"           element={<SuperAdminLogin />} />
+          <Route path="/super-admin/dashboard" element={<SuperAdminDashboard />} />
 
           {/* ── Unauthorized ── */}
           <Route path="/unauthorized" element={<Unauthorized />} />
