@@ -166,7 +166,7 @@ const VariantsEditor = ({ variants = [], onChange }) => {
                     <label className="block text-[10px] text-gray-400 font-semibold uppercase mb-0.5">Stock</label>
                     <input type="number" min="0" value={v.stock}
                       onChange={e => updateVariant(idx, "stock", Math.max(0, Number(e.target.value)))}
-                      onWheel={e => e.currentTarget.blur()}
+                      onWheel={e => e.preventDefault()}
                       className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-violet-300" />
                   </div>
                   {/* Price override (optional) */}
@@ -177,7 +177,7 @@ const VariantsEditor = ({ variants = [], onChange }) => {
                     <input type="number" min="0" step="0.01"
                       value={v.price === null || v.price === undefined ? "" : v.price}
                       onChange={e => updateVariant(idx, "price", e.target.value === "" ? null : Number(e.target.value))}
-                      onWheel={e => e.currentTarget.blur()}
+                      onWheel={e => e.preventDefault()}
                       placeholder="Base price"
                       className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-violet-300" />
                   </div>
@@ -418,11 +418,14 @@ const ProductForm = ({
             WebkitBackdropFilter: "blur(4px)",
             padding: "12px",
           }}
-          onClick={onClose}
+          onMouseDown={onClose}
+          onTouchEnd={onClose}
         >
           <div
             className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col"
             style={{ maxHeight: "calc(100dvh - 24px)" }}
+            onMouseDown={e => e.stopPropagation()}
+            onTouchEnd={e => e.stopPropagation()}
             onClick={e => e.stopPropagation()}
           >
             {children}
@@ -751,7 +754,7 @@ const ProductForm = ({
                     setFormData(updated);
                     debouncedSaveDraft(updated);
                   }}
-                  onWheel={(e) => e.currentTarget.blur()}
+                  onWheel={e => e.preventDefault()}
                   placeholder="e.g. 5  (global default used if empty)"
                   className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-transparent"
                 />

@@ -32,6 +32,11 @@ import ExpiringOrders from "./components/admin/expiring/ExpiringOrders.jsx";
 import UserSettingsPage from "./pages/UserSettingsPage.jsx";
 import EngagementMonitor from "./pages/admin/EngagementMonitor.jsx";
 import AddProductPage from "./pages/admin/AddProductPage.jsx";
+import SuperAdminLogin     from "./pages/superadmin/SuperAdminLogin.jsx";
+import SuperAdminDashboard from "./pages/superadmin/SuperAdminDashboard.jsx";
+import TenantShop         from "./pages/tenant/TenantShop.jsx";
+import TenantDashboard    from "./pages/tenant/TenantDashboard.jsx";
+import { TenantOwnerLogin, TenantCustomerLogin } from "./pages/tenant/TenantLogin.jsx";
 
 export const BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -155,6 +160,18 @@ function App() {
             <Route path="settings"          element={<UserSettingsPage />} />
             <Route path="logout"            element={<Logout />} />
           </Route>
+
+          {/* ── Super Admin Platform ── */}
+          <Route path="/super-admin"           element={<SuperAdminLogin />} />
+          <Route path="/super-admin/dashboard" element={<SuperAdminDashboard />} />
+
+          {/* ── Tenant (per-store) public routes ── */}
+          <Route path="/shop/:slug"       element={<TenantShop />} />
+          <Route path="/shop/:slug/login" element={<TenantCustomerLogin />} />
+
+          {/* ── Tenant store owner routes ── */}
+          <Route path="/store/:slug/login"     element={<TenantOwnerLogin />} />
+          <Route path="/store/:slug/dashboard" element={<TenantDashboard />} />
 
           {/* ── Unauthorized ── */}
           <Route path="/unauthorized" element={<Unauthorized />} />

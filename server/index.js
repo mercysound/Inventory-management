@@ -36,6 +36,8 @@ import settingsRoutes       from "./routes/settingsRoutes.js";
 import engagementRoutes     from "./routes/engagementRoutes.js";
 import favoriteRoutes       from "./routes/favoriteRoutes.js";
 import maintenanceRoutes    from "./routes/maintenanceRoutes.js";
+import superAdminRoutes     from "./routes/superAdminRoutes.js";
+import tenantRoutes          from "./routes/tenantRoutes.js";
 import cloudinary from "./config/cloudinary.js";
 import { startOrderExpiryCron }   from "./jobs/orderExpiryCron.js";
 import { startProductExpiryCron } from "./jobs/productExpiryCron.js";
@@ -230,6 +232,8 @@ app.use("/api/settings",    settingsRoutes);
 app.use("/api/engagement",  engagementRoutes);
 app.use("/api/favorites",   favoriteRoutes);
 app.use("/api/maintenance", maintenanceRoutes);
+app.use("/api/super-admin", superAdminRoutes);
+app.use("/api/t/:tenantSlug",  tenantRoutes);
 
 // ── SERVE FRONTEND IN PRODUCTION WHEN DEPLOYING FULLSTACK TOGETHER ──
 if (!isDev) {

@@ -48,13 +48,14 @@ const CategoryForm = ({
             display: "flex", alignItems: "center", justifyContent: "center",
             padding: "16px",
           }}
-          onClick={onCancel}
+          onMouseDown={onCancel}
         >
           <motion.div
             initial={{ scale: 0.93, opacity: 0, y: 16 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.93, opacity: 0, y: 16 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            onMouseDown={e => e.stopPropagation()}
             onClick={e => e.stopPropagation()}
             style={{ width: "100%", maxWidth: "440px", maxHeight: "calc(100dvh - 32px)" }}
             className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col"

@@ -90,7 +90,7 @@ const FulfillmentModal = ({ isOpen, onClose, onConfirm, userProfile = null }) =>
           }}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
-          onClick={handleClose}
+          onMouseDown={handleClose}
         >
           <motion.div
             className="bg-white w-full sm:max-w-lg rounded-3xl shadow-2xl flex flex-col"
@@ -99,7 +99,8 @@ const FulfillmentModal = ({ isOpen, onClose, onConfirm, userProfile = null }) =>
             animate={{ scale: 1,    opacity: 1, y: 0  }}
             exit={{    scale: 0.95, opacity: 0, y: 16 }}
             transition={{ type: "spring", stiffness: 380, damping: 32 }}
-            onClick={(e) => e.stopPropagation()}
+            onMouseDown={e => e.stopPropagation()}
+            onClick={e => e.stopPropagation()}
           >
             {/* ── Header ── */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
