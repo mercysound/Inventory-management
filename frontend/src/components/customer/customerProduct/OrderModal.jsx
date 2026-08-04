@@ -402,7 +402,7 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.15 }}
-        onClick={closeModal}
+        onMouseDown={closeModal}
       >
         <motion.div
           className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl
@@ -410,9 +410,10 @@ const OrderModal = ({ orderData, setOrderData, closeModal, patchCart, showStock,
           style={{ maxHeight: "92vh" }}
           initial={{ y: "100%", opacity: 0 }}
           animate={{ y: 0,      opacity: 1 }}
+          onMouseDown={e => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
           exit={{   y: "100%", opacity: 0 }}
           transition={{ type: "spring", stiffness: 420, damping: 38, mass: 0.9 }}
-          onClick={(e) => e.stopPropagation()}
         >
           {/* ── Image carousel — flush to top, rounded top corners ── */}
           <div className="relative flex-shrink-0">

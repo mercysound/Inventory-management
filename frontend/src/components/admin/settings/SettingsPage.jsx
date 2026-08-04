@@ -352,7 +352,7 @@ const SettingsPage = () => {
   const numInput = (field, min, max, ringColor = "focus:ring-indigo-300") => ({
     type: "number", min, max,
     value: settings[field],
-    onWheel: (e) => e.currentTarget.blur(),
+    onWheel: (e) => e.preventDefault(),
     onChange: (e) => {
       const raw = e.target.value;
       if (raw === "") { handleChange(field, ""); return; }

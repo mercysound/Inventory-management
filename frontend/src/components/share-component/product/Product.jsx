@@ -685,7 +685,7 @@ const Product = () => {
               placeholder="Expiring in... days"
               value={expiryDaysFilter}
               onChange={(e) => handleExpiryDaysChange(e.target.value)}
-              onWheel={(e) => e.currentTarget.blur()}
+              onWheel={e => e.preventDefault()}
               className="border border-gray-300 rounded-md pl-7 pr-3 py-1.5 w-full focus:outline-none focus:ring-2 focus:ring-orange-400 text-sm"
             />
           </div>

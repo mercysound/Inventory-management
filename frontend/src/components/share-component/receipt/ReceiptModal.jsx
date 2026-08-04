@@ -265,15 +265,16 @@ const ReceiptModal = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        onClick={onClose}
+        onMouseDown={onClose}
       >
         <motion.div
           ref={modalRef}
           tabIndex={-1}
           initial={{ scale: 0.95, y: 20 }}
           animate={{ scale: 1, y: 0 }}
+          onMouseDown={e => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
           exit={{ scale: 0.95, y: 20 }}
-          onClick={(e) => e.stopPropagation()}
           className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col outline-none"
           style={{
             // Use dvh (dynamic viewport height) with px fallback — fixes Firefox/Safari mobile

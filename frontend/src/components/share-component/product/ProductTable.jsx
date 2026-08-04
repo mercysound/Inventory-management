@@ -175,7 +175,7 @@ const PaginationBar = ({
         <span className="text-[11px] text-gray-400">Go to</span>
         <input type="number" min={1} max={totalPages} value={jumpInput}
           onChange={(e) => setJumpInput(e.target.value)}
-          onWheel={(e) => e.currentTarget.blur()}
+          onWheel={e => e.preventDefault()}
           placeholder="pg"
           className="w-14 h-8 text-center text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
         />

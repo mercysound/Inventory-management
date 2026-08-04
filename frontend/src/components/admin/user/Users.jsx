@@ -253,7 +253,7 @@ export default function Users() {
         {suspendTarget && createPortal(
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => !suspendLoading && setSuspendTarget(null)}
+            onClick={(e) => { if (e.target === e.currentTarget && !suspendLoading) setSuspendTarget(null); }}
             style={{
               position: "fixed", inset: 0, background: "rgba(15,23,42,.55)",
               zIndex: 9999, display: "flex", alignItems: "center",

@@ -118,13 +118,14 @@ export default function EditUserModal({ user, onClose, onSuccess }) {
 
       <motion.div className="eum-backdrop"
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+        onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}
         role="dialog" aria-modal="true">
         <motion.div className="eum-modal"
           initial={{ opacity: 0, scale: 0.95, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 16 }}
           transition={{ duration: 0.22 }}
+          onMouseDown={e => e.stopPropagation()}
           onClick={e => e.stopPropagation()}>
 
           {/* Header */}

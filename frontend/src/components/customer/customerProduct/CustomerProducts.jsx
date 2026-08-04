@@ -254,7 +254,7 @@ const TabPagination = ({ current, total, count, pageSize, jump, setJump, goTo, c
         className="flex items-center gap-1.5 order-2 sm:order-3">
         <span className="text-[11px] text-gray-400">Go to</span>
         <input type="number" min={1} max={total} value={jump} onChange={e => setJump(e.target.value)}
-          onWheel={e => e.currentTarget.blur()} placeholder="pg"
+          onWheel={e => e.preventDefault()} placeholder="pg"
           className={`w-14 h-9 text-center text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 ${c.ring} shadow-sm`} />
         <button type="submit" className={`h-9 px-3 rounded-xl text-xs font-semibold text-white transition shadow-sm ${c.btn}`}>Go</button>
       </form>
