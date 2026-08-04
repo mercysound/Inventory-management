@@ -4,7 +4,7 @@
 // correct per-tenant database before any controller runs.
 
 import express from "express";
-import bcrypt  from "bcryptjs";
+import bcrypt  from "bcrypt";
 import jwt     from "jsonwebtoken";
 import TenantModel from "../models/TenantModel.js";
 import { tenantAuthMiddleware, tenantUserAuthMiddleware } from "../middleware/tenantAuthMiddleware.js";
